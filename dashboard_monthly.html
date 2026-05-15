@@ -465,7 +465,9 @@ function renderCharts(monthly){
 function renderRows(monthly){
   $("tableHead").innerHTML =
     "<tr>" +
-    ["月","応募","面接実施","採用","応募→面接","応募→採用"].map(h => "<th>" + h + "</th>").join("") +
+    ["月","応募","面接実施","採用","応募→面接","応募→採用"]
+      .map((h, i) => `<th style="text-align:${i === 0 ? 'left' : 'center'}">${h}</th>`)
+      .join("") +
     "</tr>";
 
   if(!monthly.length){

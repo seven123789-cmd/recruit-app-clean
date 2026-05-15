@@ -93,3 +93,11 @@
   font-weight:800;
   text-align:center;
 }
+
+.monthly-summary-table thead th {
+  position: static;
+  text-align: center;
+}
+.monthly-summary-table thead th:first-child {
+  text-align: left;
+}
