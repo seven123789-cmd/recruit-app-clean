@@ -23,3 +23,32 @@
 .auth-shell{max-width:520px;margin:48px auto 0;}.auth-title{margin:0 0 8px;font-size:28px;color:#fff;}.auth-sub{margin:0 0 20px;color:rgba(255,255,255,.82);}.auth-card{background:#fff;border:1px solid rgba(226,232,240,.9);border-radius:22px;box-shadow:var(--shadow);padding:24px;}.auth-card h2{margin:0 0 8px;font-size:22px;color:#0f172a;}.auth-note{margin:0 0 18px;color:var(--muted);font-size:13px;}
 @media(max-width:1200px){.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.priority-grid,.reason-grid{grid-template-columns:1fr;}.flow-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:720px){.filter-grid,.flow-grid{grid-template-columns:1fr;}.topbar h1{font-size:22px;min-height:58px;padding:0 20px;}}
+/* unified analysis table alignment */
+.table-card table th:not(:first-child),
+.table-card table td:not(:first-child),
+.analysis-table th:not(:first-child),
+.analysis-table td:not(:first-child),
+.report-table th:not(:first-child),
+.report-table td:not(:first-child),
+.kpi-table th:not(:first-child),
+.kpi-table td:not(:first-child){
+  text-align:center !important;
+}
+
+.table-card table th:first-child,
+.table-card table td:first-child,
+.analysis-table th:first-child,
+.analysis-table td:first-child,
+.report-table th:first-child,
+.report-table td:first-child,
+.kpi-table th:first-child,
+.kpi-table td:first-child{
+  text-align:left !important;
+}
+
+.table-card table td,
+.analysis-table td,
+.report-table td,
+.kpi-table td{
+  font-variant-numeric:tabular-nums;
+}

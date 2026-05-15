@@ -1,0 +1,29 @@
+
+【今回の修正】
+
+■ 修正したファイル
+- assets/css/dashboard_monthly.css
+- assets/css/dashboard.css
+- assets/css/print_report.css
+
+■ やったこと
+- 月次分析
+- 本部分析
+- 媒体分析
+- 印刷プレビュー
+- クロス分析
+
+上記で共通利用している table 系を横断確認。
+
+数値列を中央寄せへ統一。
+月・区分などの先頭列のみ左寄せへ統一。
+
+分析画面でヘッダーと数値位置がズレて見える問題を整理。
+
+■ 削除した不要ファイル
+なし
+
+■ 未対応
+- AI分析
+- script外部化
+- table component化
