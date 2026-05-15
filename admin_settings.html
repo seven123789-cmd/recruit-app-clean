@@ -205,7 +205,16 @@
           <input id="costId" type="hidden">
           <label>契約開始日<input id="costContractStart" type="date"></label>
           <label>契約終了日<input id="costContractEnd" type="date"></label>
-          <label>媒体<input id="costChannel" type="text" placeholder="例：エン転職"></label>
+          <label>媒体区分<select id="costChannelType">
+            <option value="求人媒体">求人媒体</option>
+            <option value="紹介">紹介</option>
+            <option value="リファラル">リファラル</option>
+            <option value="ハローワーク">ハローワーク</option>
+            <option value="その他">その他</option>
+          </select></label>
+          <label>媒体名<select id="costChannel">
+            <option value="">媒体マスタから選択</option>
+          </select></label>
           <label>契約総額<input id="costAmount" type="number" placeholder="例：800000"></label>
           <label>本部（任意）<input id="costDivisionNote" type="text" placeholder="例：家電物流事業部"></label>
           <label>営業所（任意）<input id="costCenterNote" type="text" placeholder="例：福島センター"></label>

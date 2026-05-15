@@ -686,6 +686,27 @@ async function loadOptionMasters(){
   optionMasters=all.sort((a,b)=>String(a.kind_label||"").localeCompare(String(b.kind_label||""),"ja") || Number(a.display_order||0)-Number(b.display_order||0) || String(a.name||"").localeCompare(String(b.name||""),"ja"));
   updateOptionPanelMeta();
   renderOptionMasters();
+  syncCostChannelSelect();
+}
+function costChannelTypeOf(channel){
+  const value=String(channel||"").trim();
+  if(!value)return "求人媒体";
+  if(value.includes("ハローワーク") || value.includes("ハロワ"))return "ハローワーク";
+  if(value.includes("紹介"))return "紹介";
+  if(value.includes("リファラル"))return "リファラル";
+  if(value.includes("その他"))return "その他";
+  return "求人媒体";
+}
+function syncCostChannelSelect(){
+  const select=$("costChannel");
+  if(!select || select.tagName!=="SELECT")return;
+  const current=String(select.value||"").trim();
+  const channels=[...new Set(optionMasters
+    .filter(row=>row.kind==="channel" && row.is_active!==false)
+    .map(row=>String(row.name||"").trim())
+    .filter(Boolean))];
+  select.innerHTML='<option value="">媒体マスタから選択</option>' + channels.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join("");
+  if(current && channels.includes(current))select.value=current;
 }
 function renderOptionKindTabs(){}
 function setOptionKindFilter(kind){
@@ -886,12 +907,15 @@ function editCost(id){
   $("costId").value=c.id;
   $("costContractStart").value=(c.target_month||"")+"-01";
   $("costContractEnd").value=(c.target_month||"")+"-01";
+  syncCostChannelSelect();
   $("costChannel").value=c.channel||"";
+  const costChannelType=$("costChannelType");
+  if(costChannelType)costChannelType.value=costChannelTypeOf(c.channel);
   $("costAmount").value=Number(c.cost_amount||0);
   ["costDivisionNote","costCenterNote","costJobNote"].forEach(id=>{const el=$(id);if(el)el.value=""});
   window.scrollTo({top:0,behavior:"smooth"});
 }
-function clearCostForm(){["costId","costContractStart","costContractEnd","costChannel","costAmount","costDivisionNote","costCenterNote","costJobNote"].forEach(id=>{const el=$(id);if(el)el.value=""})}
+function clearCostForm(){["costId","costContractStart","costContractEnd","costChannel","costAmount","costDivisionNote","costCenterNote","costJobNote"].forEach(id=>{const el=$(id);if(el)el.value=""});const costChannelType=$("costChannelType");if(costChannelType)costChannelType.value="求人媒体";}
 async function saveCostContract(){
   const editingId=$("costId")?.value||"";
   const start=$("costContractStart")?.value||"";
@@ -900,7 +924,7 @@ async function saveCostContract(){
   const amount=Number($("costAmount")?.value||0);
   const months=monthKeysBetween(start,end);
   if(!start||!end||!months.length){adminError("契約開始日・契約終了日を正しく入力してください。");return}
-  if(!channel){adminError("媒体を入力してください。");return}
+  if(!channel){adminError("媒体名を媒体マスタから選択してください。");return}
   if(Number.isNaN(amount)||amount<0){adminError("契約総額は0以上の数字で入力してください。");return}
   try{
     if(editingId){
