@@ -262,11 +262,9 @@ function isActionRequired(r){
   return daysBetween(todayStr(),r.next_action_date)<=1;
 }
 function isHired(r){
-  return !!r && (
-    r.status==="入社" ||
-    r.hiring_result==="採用" ||
-    validDate(r.join_date)
-  );
+  // ダッシュボードの「採用」は join_date（採用日）で集計しているため、
+  // 応募者一覧への遷移後も同じ条件に統一する。
+  return !!r && validDate(r.join_date);
 }
 function normalizeStatusColor(value){
   const v=String(value||"").trim();
@@ -298,6 +296,10 @@ function getDashboardFiscalYear(){
   if(dashboardTo)return getFiscalYearFromAppliedDate(dashboardTo);
   return "";
 }
+function fiscalYearLabel(value){
+  const v=String(value||"").trim();
+  return /^\d{4}$/.test(v) ? v + "年度" : v;
+}
 function setFilterValue(id,value){
   const el=$(id);
   if(!el)return;
@@ -305,8 +307,13 @@ function setFilterValue(id,value){
   if(v && ![...el.options].some(opt=>opt.value===v)){
     const option=document.createElement("option");
     option.value=v;
-    option.textContent=v;
+    option.textContent=id==="filterYear" ? fiscalYearLabel(v) : v;
     el.appendChild(option);
+  }
+  if(id==="filterYear"){
+    [...el.options].forEach(opt=>{
+      if(/^\d{4}$/.test(String(opt.value||""))) opt.textContent=fiscalYearLabel(opt.value);
+    });
   }
   el.value=v;
 }
@@ -368,7 +375,10 @@ function setSelectOptions(id,values,blank){
   const cur=el.value;
   const list=[...new Set((values||[]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));
   el.innerHTML='<option value="">'+blank+'</option>';
-  list.forEach(v=>{el.innerHTML+='<option value="'+esc(v)+'">'+esc(v)+'</option>';});
+  list.forEach(v=>{
+    const label=id==="filterYear" ? fiscalYearLabel(v) : v;
+    el.innerHTML+='<option value="'+esc(v)+'">'+esc(label)+'</option>';
+  });
   if(list.includes(cur))el.value=cur;
 }
 async function getUser(){
@@ -739,7 +749,7 @@ function getListFilterLabel(){
     interview_set:"面接設定",
     interview_done:"面接実施",
     offer:"内定",
-    hired:"採用・入社",
+    hired:"採用",
     action:"要対応",
     today:"要対応",
     not_done:"未実施",

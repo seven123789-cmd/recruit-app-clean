@@ -605,11 +605,14 @@ function activateDashboardLink(event, filterType){
 }
 
 function goListFilter(filterType){
+  const fiscalType = document.getElementById("filterFiscalYear")?.value || "current";
+  const fiscalRange = getFiscalRangeByType(fiscalType);
   const payload = {
     source:"dashboard",
     filterType:filterType || "action",
-    from:document.getElementById("filterFrom")?.value || "",
-    to:document.getElementById("filterTo")?.value || "",
+    from:document.getElementById("filterFrom")?.value || fiscalRange.from || "",
+    to:document.getElementById("filterTo")?.value || fiscalRange.to || "",
+    year:fiscalRange.fiscalYear ? String(fiscalRange.fiscalYear) : "",
     division:document.getElementById("filterDivision")?.value || "",
     center:document.getElementById("filterCenter")?.value || "",
     channel:document.getElementById("filterChannel")?.value || "",
@@ -629,6 +632,7 @@ function goListFilter(filterType){
   params.set("filter", payload.filterType);
   if (payload.from) params.set("from", payload.from);
   if (payload.to) params.set("to", payload.to);
+  if (payload.year) params.set("year", payload.year);
   if (payload.division) params.set("division", payload.division);
   if (payload.center) params.set("center", payload.center);
   if (payload.channel) params.set("channel", payload.channel);
