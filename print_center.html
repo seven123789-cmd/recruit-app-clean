@@ -451,7 +451,7 @@ function viewModeLabel(view){
 
 function estimatePageText(report, cond){
   if(report.type === "list") return "複数ページ想定";
-  if(report.type === "hq") return cond.division === "すべて" ? "全体概要＋本部別ページ" : "本部導線レポート";
+  if(report.type === "hq") return cond.division === "すべて" ? "全本部＋本部別ページ" : "本部導線レポート";
   if(cond.view === "table") return "全件を自動改ページ";
   if(report.type === "single") return "A4 1枚寄せ";
   return "A4 1枚想定";
@@ -617,59 +617,110 @@ window.addEventListener("beforeunload", savePrintCenterState);
 
 
 async function buildFilterOptionsFromCandidates(){
+  const client = window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : (window.sb || null);
+
+  const pick = (row, keys) => {
+    for(const key of keys){
+      const value = row?.[key];
+      if(value !== undefined && value !== null && String(value).trim() !== "") return String(value).trim();
+    }
+    return "";
+  };
+
   const escapeOption = (value) => String(value || "")
     .replace(/&/g,"&amp;")
     .replace(/</g,"&lt;")
     .replace(/>/g,"&gt;")
     .replace(/"/g,"&quot;");
 
+  const uniqueClean = (values) => [...new Set((values || [])
+    .map(value => String(value || "").trim())
+    .filter(Boolean)
+    .filter(value => value !== "全本部"))]
+    .sort((a,b) => a.localeCompare(b, "ja"));
+
+  const mergeMasterFirst = (masterValues, fallbackValues) => uniqueClean([
+    ...uniqueClean(masterValues),
+    ...uniqueClean(fallbackValues).filter(value => !uniqueClean(masterValues).includes(value))
+  ]);
+
   const restoreSelectValue = (el, current) => {
     if(!el) return;
     const exists = Array.from(el.options).some(option => option.value === current);
-    el.value = exists ? current : "すべて";
+    if(exists) el.value = current;
+    else el.value = "すべて";
     delete el.dataset.pendingValue;
   };
 
   const setOptions = (id, values, options = {}) => {
     const el = document.getElementById(id);
     if(!el) return;
+
     const firstValue = options.firstValue || "すべて";
     const firstLabel = options.firstLabel || firstValue;
     const current = el.dataset.pendingValue || el.value || firstValue;
-    const unique = [...new Set((values || [])
-      .map(value => String(value || "").trim())
-      .filter(Boolean)
-      .filter(value => value !== firstValue && value !== "全本部"))]
-      .sort((a,b) => a.localeCompare(b, "ja"));
+    const unique = uniqueClean(values).filter(value => value !== firstValue);
+
     el.innerHTML =
       `<option value="${escapeOption(firstValue)}">${escapeOption(firstLabel)}</option>` +
       unique.map(value => `<option value="${escapeOption(value)}">${escapeOption(value)}</option>`).join("");
-    restoreSelectValue(el, current === "全本部" ? firstValue : current);
+
+    restoreSelectValue(el, current);
   };
 
-  const fallback = () => {
-    setOptions("reportDivision", []);
-    setOptions("reportCenter", []);
-    setOptions("reportChannel", []);
-    setOptions("reportOwner", []);
-    setOptions("reportJob", []);
+  const fallbackMasters = {
+    divisions:[],
+    centers:[],
+    channels:[],
+    channelDetails:[],
+    owners:[],
+    jobTypes:[]
+  };
+
+  const applyOptions = (masters = fallbackMasters, active = []) => {
+    const divisionKeys = ["division","head_office","headOffice","hq","hq_name","department","department_name","本部"];
+    const centerKeys = ["center_name","center","office","office_name","branch","branch_name","sales_office","salesOffice","営業所","センター"];
+    const channelKeys = ["channel","channel_name","media","media_name","source","source_name","recruit_channel","応募媒体","媒体"];
+    const channelDetailKeys = ["channel_detail","media_detail","source_detail","媒体詳細"];
+    const ownerKeys = ["owner_name","owner","manager","manager_name","recruiter","recruiter_name","担当者","担当"];
+    const jobKeys = ["job_type","job","position","position_name","occupation","occupation_name","職種"];
+
+    const masterCenters = Array.isArray(masters.centers)
+      ? masters.centers.map(row => typeof row === "string" ? row : row.center_name)
+      : [];
+
+    setOptions("reportDivision", mergeMasterFirst(masters.divisions, active.map(row => pick(row, divisionKeys))));
+    setOptions("reportCenter", mergeMasterFirst(masterCenters, active.map(row => pick(row, centerKeys))));
+    setOptions("reportChannel", mergeMasterFirst(
+      [...(masters.channels || []), ...(masters.channelDetails || [])],
+      active.flatMap(row => [pick(row, channelKeys), pick(row, channelDetailKeys)])
+    ));
+    setOptions("reportOwner", mergeMasterFirst(masters.owners, active.map(row => pick(row, ownerKeys))));
+    setOptions("reportJob", mergeMasterFirst(masters.jobTypes, active.map(row => pick(row, jobKeys))));
   };
 
   try{
-    const masters = window.RecruitMaster && typeof window.RecruitMaster.load === "function"
-      ? await window.RecruitMaster.load(true)
-      : null;
-    if(!masters) throw new Error("RecruitMaster is not available");
+    let masters = fallbackMasters;
+    if(window.RecruitMaster?.load){
+      const loaded = await window.RecruitMaster.load(false);
+      masters = loaded || fallbackMasters;
+    }
 
-    setOptions("reportDivision", masters.divisions || []);
-    setOptions("reportCenter", (masters.centers || []).map(row => row.center_name));
-    setOptions("reportChannel", [...(masters.channels || []), ...(masters.channelDetails || [])]);
-    setOptions("reportOwner", masters.owners || []);
-    setOptions("reportJob", masters.jobTypes || []);
+    let active = [];
+    if(client){
+      const {data,error} = await client
+        .from("candidates")
+        .select("*")
+        .limit(10000);
+      if(error) throw error;
+      active = (data || []).filter(row => !(row.is_deleted || row.deleted_at || row.deleted_by));
+    }
+
+    applyOptions(masters, active);
     updateConditionSummary();
   }catch(e){
-    console.warn("詳細絞り込み候補のマスター取得に失敗しました", e);
-    fallback();
+    console.warn("詳細絞り込み候補の取得に失敗しました", e);
+    applyOptions(fallbackMasters, []);
     updateConditionSummary();
   }
 }

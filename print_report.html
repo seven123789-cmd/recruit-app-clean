@@ -140,6 +140,80 @@ function hqFlowRows(rows, axis){
     x.joinRate || rate(x.join, x.applied)
   ]);
 }
+function hqHasStage(row, key){
+  if(key === "applied") return has(row, "applied");
+  if(key === "appointment") return has(row, "appointment") || has(row, "interview") || has(row, "join");
+  if(key === "interview") return has(row, "interview") || has(row, "join");
+  if(key === "join") return has(row, "join");
+  return false;
+}
+function hqStageAggregate(rows, axis){
+  const map = new Map();
+  (rows || []).forEach(r => {
+    const key = hqAxisValue(r, axis);
+    if(!map.has(key)) map.set(key,{key,applied:0,appointment:0,interview:0,join:0});
+    const x = map.get(key);
+    if(hqHasStage(r,"applied")) x.applied++;
+    if(hqHasStage(r,"appointment")) x.appointment++;
+    if(hqHasStage(r,"interview")) x.interview++;
+    if(hqHasStage(r,"join")) x.join++;
+  });
+  return [...map.values()].sort((a,b)=>b.applied-a.applied||b.join-a.join||String(a.key).localeCompare(String(b.key),"ja"));
+}
+function hqStageRows(rows, axis){
+  return hqStageAggregate(rows, axis).map(x => [
+    `<strong>${esc(x.key)}</strong>`,
+    Number(x.applied||0),
+    Number(x.appointment||0),
+    Number(x.interview||0),
+    Number(x.join||0)
+  ]);
+}
+function hqStageStats(rows){
+  const applied = (rows || []).filter(r => hqHasStage(r,"applied")).length;
+  const appointment = (rows || []).filter(r => hqHasStage(r,"appointment")).length;
+  const interview = (rows || []).filter(r => hqHasStage(r,"interview")).length;
+  const join = (rows || []).filter(r => hqHasStage(r,"join")).length;
+  return { applied, appointment, interview, join };
+}
+function hqRateState(value, warn, danger){
+  const n = Number(value || 0);
+  if(n <= danger) return "danger";
+  if(n <= warn) return "warning";
+  return "good";
+}
+function hqConversionBlock(rows, label){
+  const s = hqStageStats(rows);
+  const appoRate = rateNum(s.appointment, s.applied);
+  const showRate = rateNum(s.interview, s.appointment);
+  const hireRate = rateNum(s.join, s.interview);
+  const base = Math.max(s.applied, 1);
+  const stages = [
+    {key:"応募", value:s.applied, width:100, cls:"applied"},
+    {key:"アポ", value:s.appointment, width:Math.max(8, Math.round((s.appointment / base) * 100)), cls:"appointment"},
+    {key:"面接", value:s.interview, width:Math.max(8, Math.round((s.interview / base) * 100)), cls:"interview"},
+    {key:"採用", value:s.join, width:Math.max(8, Math.round((s.join / base) * 100)), cls:"join"}
+  ];
+  const rates = [
+    {label:"応募→アポ", value:`${appoRate.toFixed(1)}%`, cls:hqRateState(appoRate, 55, 35), sub:`${s.applied} → ${s.appointment}`},
+    {label:"アポ→面接", value:`${showRate.toFixed(1)}%`, cls:hqRateState(showRate, 60, 40), sub:`${s.appointment} → ${s.interview}`},
+    {label:"面接→採用", value:`${hireRate.toFixed(1)}%`, cls:hqRateState(hireRate, 25, 10), sub:`${s.interview} → ${s.join}`}
+  ];
+  return `<section class="hq-conversion-panel">
+    <div class="hq-conversion-head">
+      <div><h2>導線率 <small>${esc(label || "応募から採用まで")}</small></h2><p>応募→アポ→面接→採用の落ち込み箇所を確認。</p></div>
+      <span class="hq-conversion-badge">ミニファネル</span>
+    </div>
+    <div class="hq-conversion-body">
+      <div class="hq-conversion-rates">
+        ${rates.map(x => `<div class="hq-rate-row ${x.cls}"><span>${esc(x.label)}</span><strong>${esc(x.value)}</strong><small>${esc(x.sub)}</small></div>`).join("")}
+      </div>
+      <div class="hq-mini-funnel" aria-label="応募から採用までのミニファネル">
+        ${stages.map(x => `<div class="hq-funnel-row ${x.cls}"><span>${esc(x.key)}</span><div class="hq-funnel-track"><b style="width:${x.width}%"></b></div><strong>${x.value}</strong></div>`).join("")}
+      </div>
+    </div>
+  </section>`;
+}
 function hqFlowPageTitle(cond){
   const div = normalizeAll(cond.division) || "全本部";
   const ch = normalizeAll(cond.channel) || "全媒体";
@@ -187,31 +261,31 @@ async function renderHqAnalysis(report, rows, cond){
 
   if(div && !ch){
     const mediaRows = hqFlowRows(rows,"channel");
-    const jobRows = hqFlowRows(rows,"job");
+    const jobRows = hqStageRows(rows,"job");
     const body = allKpi + chips +
-      `<section class="detail-table hq-flow-table"><h2>${esc(div)} 媒体別 <small>応募→面接→採用</small></h2>${table(["媒体","応募","面接","採用","面接率","採用率"], mediaRows)}</section>` +
-      `<section class="detail-table hq-flow-table"><h2>${esc(div)} 職種別 <small>職種ごとの導線</small></h2>${table(["職種","応募","面接","採用","面接率","採用率"], jobRows)}</section>`;
+      `<section class="detail-table hq-flow-table"><h2>${esc(div)} 媒体別 <small>本部全体の成果比較</small></h2>${table(["媒体","応募","面接","採用","面接率","採用率"], mediaRows)}</section>` +
+      `<section class="detail-table hq-flow-table"><h2>${esc(div)} 職種別 <small>職種ごとの実数内訳</small></h2>${table(["職種","応募","アポ","面接","採用"], jobRows)}</section>`;
     pages.push(page({...report,title:`本部分析：${div}`},cond,body,`${div}全体の媒体・職種別フロー。`));
     const topChannels = hqAggregate(rows,"channel").slice(0,8).map(x=>x.key).filter(x=>x!=="未設定");
     topChannels.forEach((media, idx)=>{
       const mediaRowsRaw = rows.filter(r => hqAxisValue(r,"channel") === media);
-      const jobFlow = hqFlowRows(mediaRowsRaw,"job");
-      const ownerFlow = hqFlowRows(mediaRowsRaw,"owner").slice(0,10);
-      const body2 = kpiStrip(mediaRowsRaw, metric("媒体", media, `${div}`)) +
-        `<section class="detail-table hq-flow-table"><h2>${esc(media)} 職種別 <small>${esc(div)}内訳</small></h2>${table(["職種","応募","面接","採用","面接率","採用率"], jobFlow)}</section>` +
-        `<section class="detail-table hq-flow-table"><h2>${esc(media)} 担当者別 <small>上位</small></h2>${table(["担当者","応募","面接","採用","面接率","採用率"], ownerFlow)}</section>`;
-      pages.push(page({...report,title:`本部分析：${div} / ${media} ${idx+1}/${topChannels.length}`},cond,body2,`${media}の職種別採用導線。`));
+      const jobFlow = hqStageRows(mediaRowsRaw,"job");
+      const ownerFlow = hqStageRows(mediaRowsRaw,"owner").slice(0,10);
+      const body2 = hqConversionBlock(mediaRowsRaw, `${div} / ${media}`) +
+        `<section class="detail-table hq-flow-table"><h2>${esc(media)} 職種別 <small>${esc(div)}内訳</small></h2>${table(["職種","応募","アポ","面接","採用"], jobFlow)}</section>` +
+        `<section class="detail-table hq-flow-table"><h2>${esc(media)} 担当者別 <small>上位</small></h2>${table(["担当者","応募","アポ","面接","採用"], ownerFlow)}</section>`;
+      pages.push(page({...report,title:`本部分析：${div} / ${media} ${idx+1}/${topChannels.length}`},cond,body2,`${media}の応募→アポ→面接→採用を確認。`));
     });
     return pages.join("");
   }
 
-  const jobRows = hqFlowRows(rows,"job");
-  const ownerRows = hqFlowRows(rows,"owner").slice(0,12);
-  const centerRows = hqFlowRows(rows,"center").slice(0,12);
-  const body = allKpi + chips +
-    `<section class="detail-table hq-flow-table"><h2>${esc(titleBase)} 職種別 <small>応募→面接→採用</small></h2>${table(["職種","応募","面接","採用","面接率","採用率"], jobRows)}</section>` +
-    `<section class="two-columns hq-two-columns"><div><h2>担当者別</h2>${table(["担当者","応募","面接","採用","面接率","採用率"], ownerRows)}</div><div><h2>営業所別</h2>${table(["営業所","応募","面接","採用","面接率","採用率"], centerRows)}</div></section>`;
-  return page({...report,title:`本部分析：${titleBase}`},cond,body,`${titleBase}の職種別採用導線。`);
+  const jobRows = hqStageRows(rows,"job");
+  const ownerRows = hqStageRows(rows,"owner").slice(0,12);
+  const centerRows = hqStageRows(rows,"center").slice(0,12);
+  const body = hqConversionBlock(rows, titleBase) + chips +
+    `<section class="detail-table hq-flow-table"><h2>${esc(titleBase)} 職種別 <small>応募→アポ→面接→採用</small></h2>${table(["職種","応募","アポ","面接","採用"], jobRows)}</section>` +
+    `<section class="two-columns hq-two-columns"><div><h2>担当者別</h2>${table(["担当者","応募","アポ","面接","採用"], ownerRows)}</div><div><h2>営業所別</h2>${table(["営業所","応募","アポ","面接","採用"], centerRows)}</div></section>`;
+  return page({...report,title:`本部分析：${titleBase}`},cond,body,`${titleBase}の応募→アポ→面接→採用を確認。`);
 }
 
 async function renderSummary(report, rows, cond){
