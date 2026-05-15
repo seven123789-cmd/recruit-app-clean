@@ -226,6 +226,7 @@ async function reloadAll(){
 async function loadProfiles(){
   profiles=await fetchAll("profiles","email");
   setText("sideProfiles",profiles.length.toLocaleString());
+  setText("profileCount",profiles.length.toLocaleString());
   renderProfiles();
 }
 function renderProfiles(){
@@ -323,7 +324,7 @@ async function enableAccount(userId){
   const target=profiles.find(p=>String(p.user_id)===String(userId));
   if(!target){adminError("再開対象のユーザーを確認できません。");return}
   const {error}=await sb.from("profiles").update({is_active:true,disabled_at:null,disabled_by:null,disabled_reason:null,updated_at:nowIso()}).eq("user_id",userId);
-  if(error){log("アカウント再開に失敗: "+error.message,"error");showErrorPopup("アカウント再開に失敗しました",error,{処理:"アカウント再開",user_id,email:target.email});return}
+  if(error){log("アカウント再開に失敗: "+error.message,"error");showErrorPopup("アカウント再開に失敗しました",error,{処理:"アカウント再開",user_id:userId,email:target.email});return}
   await writeAuditLog("account_enable","profiles",userId,{email:target.email||null,role:target.role||null});
   log(`${target.email||userId} を再開しました`,"success");
   await loadProfiles();
@@ -688,53 +689,25 @@ async function loadOptionMasters(){
   renderOptionMasters();
   syncCostChannelSelect();
 }
-function costChannelMainOptions(){
-  return [...new Set(optionMasters
+function costChannelTypeOf(channel){
+  const value=String(channel||"").trim();
+  if(!value)return "求人媒体";
+  if(value.includes("ハローワーク") || value.includes("ハロワ"))return "ハローワーク";
+  if(value.includes("紹介"))return "紹介";
+  if(value.includes("リファラル"))return "リファラル";
+  if(value.includes("その他"))return "その他";
+  return "求人媒体";
+}
+function syncCostChannelSelect(){
+  const select=$("costChannel");
+  if(!select || select.tagName!=="SELECT")return;
+  const current=String(select.value||"").trim();
+  const channels=[...new Set(optionMasters
     .filter(row=>row.kind==="channel" && row.is_active!==false)
     .map(row=>String(row.name||"").trim())
     .filter(Boolean))];
-}
-function costChannelDetailOptions(){
-  return [...new Set(optionMasters
-    .filter(row=>row.kind==="channel_detail" && row.is_active!==false)
-    .map(row=>String(row.name||"").trim())
-    .filter(Boolean))];
-}
-function costChannelTypeOf(channel){
-  const value=String(channel||"").trim();
-  if(!value)return "";
-  const mains=costChannelMainOptions();
-  if(mains.includes(value))return value;
-  if(value.includes("Indeed") || value.includes("Ｉｎｄｅｅｄ") || value.includes("INDEED"))return mains.includes("テンリク") ? "テンリク" : "";
-  if(value.includes("エン転職") || value.includes("doda") || value.includes("バイトル") || value.includes("マイナビ") || value.includes("リクナビ"))return mains.includes("求人媒体") ? "求人媒体" : "";
-  if(value.includes("ハローワーク") || value.includes("ハロワ"))return mains.includes("ハローワーク") ? "ハローワーク" : "";
-  if(value.includes("紹介"))return mains.includes("紹介") ? "紹介" : "";
-  if(value.includes("リファラル"))return mains.includes("リファラル") ? "リファラル" : "";
-  return "";
-}
-function syncCostChannelSelect(){
-  const typeSelect=$("costChannelType");
-  const detailSelect=$("costChannel");
-  const currentType=String(typeSelect?.value||"").trim();
-  const currentDetail=String(detailSelect?.value||"").trim();
-  const channels=costChannelMainOptions();
-  const details=costChannelDetailOptions();
-  if(typeSelect && typeSelect.tagName==="SELECT"){
-    typeSelect.innerHTML='<option value="">媒体マスタから選択</option>' + channels.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join("");
-    if(currentType && channels.includes(currentType))typeSelect.value=currentType;
-  }
-  if(detailSelect && detailSelect.tagName==="SELECT"){
-    detailSelect.innerHTML='<option value="">媒体詳細マスタから選択</option>' + details.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join("");
-    if(currentDetail && details.includes(currentDetail))detailSelect.value=currentDetail;
-  }
-}
-function costChannelDisplayParts(value){
-  const channel=String(value||"").trim();
-  const mains=costChannelMainOptions();
-  const details=costChannelDetailOptions();
-  if(!channel)return {main:"-",detail:"-"};
-  if(details.includes(channel))return {main:costChannelTypeOf(channel)||"-",detail:channel};
-  return {main:mains.includes(channel)?channel:(costChannelTypeOf(channel)||channel),detail:details.includes(channel)?channel:"-"};
+  select.innerHTML='<option value="">媒体マスタから選択</option>' + channels.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join("");
+  if(current && channels.includes(current))select.value=current;
 }
 function renderOptionKindTabs(){}
 function setOptionKindFilter(kind){
@@ -905,12 +878,10 @@ function renderCosts(){
   body.innerHTML=costs.map(c=>{
     const active=c.is_active!==false;
     const id=Number(c.id);
-    const parts=costChannelDisplayParts(c.channel);
     return `<tr class="${active?'':'row-inactive'}">
       <td>${esc(c.fiscal_year)}</td>
       <td>${esc(c.target_month)}</td>
-      <td><strong>${esc(parts.main)}</strong></td>
-      <td>${esc(parts.detail)}</td>
+      <td><strong>${esc(c.channel)}</strong></td>
       <td class="num">${Number(c.cost_amount||0).toLocaleString()}円</td>
       <td>${active?'<span class="status-pill on">使用中</span>':'<span class="status-pill off">停止</span>'}</td>
       <td class="admin-actions-cell">
@@ -919,7 +890,7 @@ function renderCosts(){
         <button class="mini-btn danger" type="button" onclick="deleteCost(${id})">削除</button>
       </td>
     </tr>`;
-  }).join("")||'<tr><td class="empty" colspan="7">媒体費がありません</td></tr>';
+  }).join("")||'<tr><td class="empty" colspan="6">媒体費がありません</td></tr>';
 }
 function fiscalYearFromMonth(month){
   return window.RecruitCost?.fiscalYearFromMonth ? window.RecruitCost.fiscalYearFromMonth(month) : null;
@@ -938,26 +909,23 @@ function editCost(id){
   $("costContractStart").value=(c.target_month||"")+"-01";
   $("costContractEnd").value=(c.target_month||"")+"-01";
   syncCostChannelSelect();
-  const detailOptions=costChannelDetailOptions();
+  $("costChannel").value=c.channel||"";
   const costChannelType=$("costChannelType");
   if(costChannelType)costChannelType.value=costChannelTypeOf(c.channel);
-  $("costChannel").value=detailOptions.includes(String(c.channel||"").trim()) ? String(c.channel||"").trim() : "";
   $("costAmount").value=Number(c.cost_amount||0);
   ["costDivisionNote","costCenterNote","costJobNote"].forEach(id=>{const el=$(id);if(el)el.value=""});
   window.scrollTo({top:0,behavior:"smooth"});
 }
-function clearCostForm(){["costId","costContractStart","costContractEnd","costChannel","costAmount","costDivisionNote","costCenterNote","costJobNote"].forEach(id=>{const el=$(id);if(el)el.value=""});const costChannelType=$("costChannelType");if(costChannelType)costChannelType.value="";}
+function clearCostForm(){["costId","costContractStart","costContractEnd","costChannel","costAmount","costDivisionNote","costCenterNote","costJobNote"].forEach(id=>{const el=$(id);if(el)el.value=""});const costChannelType=$("costChannelType");if(costChannelType)costChannelType.value="求人媒体";}
 async function saveCostContract(){
   const editingId=$("costId")?.value||"";
   const start=$("costContractStart")?.value||"";
   const end=$("costContractEnd")?.value||"";
-  const channelMain=$("costChannelType")?.value.trim()||"";
-  const channelDetail=$("costChannel")?.value.trim()||"";
-  const channel=channelDetail || channelMain;
+  const channel=$("costChannel")?.value.trim()||"";
   const amount=Number($("costAmount")?.value||0);
   const months=monthKeysBetween(start,end);
   if(!start||!end||!months.length){adminError("契約開始日・契約終了日を正しく入力してください。");return}
-  if(!channelMain){adminError("求人区分を媒体マスタから選択してください。");return}
+  if(!channel){adminError("媒体名を媒体マスタから選択してください。");return}
   if(Number.isNaN(amount)||amount<0){adminError("契約総額は0以上の数字で入力してください。");return}
   try{
     if(editingId){
@@ -982,7 +950,7 @@ async function saveCostContract(){
       }
       log(`媒体費契約を ${months.length}か月へ配賦して保存しました`,"success");
     }
-    await writeAuditLog("cost_save","channel_costs",editingId||channel,{mode:editingId?"update":"upsert_contract",channel_main:channelMain,channel_detail:channelDetail,channel,amount,months});
+    await writeAuditLog("cost_save","channel_costs",editingId||channel,{mode:editingId?"update":"upsert_contract",channel,amount,months});
     clearCostForm();
     await loadCosts();
   }catch(e){
