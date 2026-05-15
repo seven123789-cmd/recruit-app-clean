@@ -69,3 +69,14 @@
 .data-table td:nth-child(n+2){
   text-align:center;
 }
+
+/* Login screen layout fix */
+.auth-card .form-grid > *{
+  grid-column:1 / -1;
+}
+.auth-card .actions{
+  align-items:center;
+}
+.auth-card .auth-login-btn{
+  min-width:120px;
+}

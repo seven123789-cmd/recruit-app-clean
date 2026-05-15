@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="./assets/css/header.css">
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260508_sidebar2">
 <link rel="stylesheet" href="./assets/css/dashboard.css">
+<link rel="icon" href="data:,">
 <script src="./common.js"></script>
 <script src="assets/js/supabase.js"></script>
 <script src="assets/js/ui_utils.js"></script>
@@ -28,18 +29,18 @@
       <h2>ログイン</h2>
       <p class="auth-note">社内担当者のみ利用します。</p>
       <div class="form-grid">
-        <div>
+        <div class="col-12">
           <label for="loginEmail">メールアドレス</label>
           <input id="loginEmail" type="email" placeholder="example@sline.co.jp">
         </div>
-        <div>
+        <div class="col-12">
           <label for="loginPassword">パスワード</label>
           <input id="loginPassword" type="password" placeholder="パスワード">
         </div>
-        <div class="actions">
-          <button class="btn-primary" type="button" onclick="login()">ログイン</button>
+        <div class="col-12 actions">
+          <button class="btn-primary auth-login-btn" type="button" onclick="login()">ログイン</button>
         </div>
-        <div id="authMessage" class="message-box message-info">未ログインです</div>
+        <div id="authMessage" class="col-12 message-box message-info">未ログインです</div>
       </div>
     </div>
   </div>
