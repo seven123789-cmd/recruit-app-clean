@@ -576,7 +576,8 @@ async function loadDashboard(){
     if (allData) {
       await loadDashboardMasterChannels();
       populateSelect("filterChannel", getDashboardChannelOptions(allData));
-      populateSelect("filterOwner", allData.map(x => x.owner_name));
+      const ownerMasters = window.RecruitMaster ? await window.RecruitMaster.list("owners") : [];
+      populateSelect("filterOwner", ownerMasters.length ? ownerMasters : allData.map(x => x.owner_name));
       if (filterChannel && getDashboardChannelOptions(allData).includes(filterChannel)) document.getElementById("filterChannel").value = filterChannel;
       if (filterOwner) document.getElementById("filterOwner").value = filterOwner;
     }

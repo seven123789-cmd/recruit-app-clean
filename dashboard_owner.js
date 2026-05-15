@@ -100,8 +100,22 @@ function setSelectOptions(id,values,blank="すべて"){
   list.forEach(v=>{el.innerHTML+=`<option value="${esc(v)}">${esc(v)}</option>`});
   if(list.includes(current))el.value=current;
 }
-function bindMasters(data){setSelectOptions("divisionFilter",data.map(r=>r.division));updateCenterOptions(data);setSelectOptions("ownerFilter",data.map(r=>r.owner_name||"未設定"))}
-function updateCenterOptions(sourceRows=rows){const div=$("divisionFilter")?.value||"";const centers=(sourceRows||[]).filter(r=>!div||r.division===div).map(r=>r.center_name);setSelectOptions("centerFilter",centers)}
+async function loadOwnerPageMasters(){
+  try{
+    const master=window.RecruitMaster?await window.RecruitMaster.divisionCenter():{divisions:[],centersByDivision:{},centers:[]};
+    CENTER_MASTER=master.centersByDivision||{};
+  }catch(e){
+    CENTER_MASTER={};
+  }
+  try{
+    const owners=window.RecruitMaster?await window.RecruitMaster.list("owners"):[];
+    MASTER_OWNER_OPTIONS=(owners||[]).filter(Boolean);
+  }catch(e){
+    MASTER_OWNER_OPTIONS=[];
+  }
+}
+function bindMasters(data){const divisions=Object.keys(CENTER_MASTER).length?Object.keys(CENTER_MASTER):data.map(r=>r.division);setSelectOptions("divisionFilter",divisions);updateCenterOptions(data);setSelectOptions("ownerFilter",MASTER_OWNER_OPTIONS.length?MASTER_OWNER_OPTIONS:data.map(r=>r.owner_name||"未設定"))}
+function updateCenterOptions(sourceRows=rows){const div=$("divisionFilter")?.value||"";const centers=div&&CENTER_MASTER[div]?CENTER_MASTER[div]:(Object.keys(CENTER_MASTER).length?Object.values(CENTER_MASTER).flat():(sourceRows||[]).filter(r=>!div||r.division===div).map(r=>r.center_name));setSelectOptions("centerFilter",centers)}
 function filtered(data){const f=$("from").value;const t=$("to").value;const d=$("divisionFilter").value;const c=$("centerFilter").value;const o=$("ownerFilter").value;return (data||[]).filter(r=>!r.is_deleted).filter(r=>{if(!validDate(r.applied_date))return false;if(f&&r.applied_date<f)return false;if(t&&r.applied_date>t)return false;if(d&&r.division!==d)return false;if(c&&r.center_name!==c)return false;if(o&&(r.owner_name||"未設定")!==o)return false;return true})}
 function firstContactDate(r){
   const dates=[r.appointment_date,r.interview1_date,r.interview_done_date,r.offer_date,r.join_date].map(normalizeDate).filter(Boolean).sort();
@@ -308,6 +322,7 @@ async function initPageAfterLogin(){
   const {data,error}=await sb.from("candidates").select("*").order("applied_date",{ascending:false});
   if(error)throw error;
   rows=data||[];
+  await loadOwnerPageMasters();
   bindMasters(rows);
   const y=fiscalYear();
   const hasCurrent=rows.some(r=>validDate(r.applied_date)&&r.applied_date>=`${y}-04-01`&&r.applied_date<=`${y+1}-03-31`);

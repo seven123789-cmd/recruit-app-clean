@@ -87,7 +87,7 @@
         <div class="trend-card-title"><div><h3>媒体推移</h3><p>媒体または媒体詳細ごとに、月別の応募・面接・採用を確認します。本部別報告にも使えます。</p></div></div>
         <div class="trend-toolbar">
           <div class="analysis-field"><label for="mediaMode">集計単位</label><select id="mediaMode"><option value="detail">媒体詳細</option><option value="channel">媒体</option></select></div>
-          <div class="analysis-field"><label for="mediaDivision">報告本部</label><select id="mediaDivision"><option value="">全本部</option></select></div>
+          <div class="analysis-field"><label for="mediaDivision">報告本部</label><select id="mediaDivision"><option value="">すべて</option></select></div>
           <div class="analysis-field"><label for="mediaMonth">確認月</label><select id="mediaMonth"></select></div>
           <div class="analysis-field"><label>&nbsp;</label><button class="btn-secondary" onclick="renderCurrentTab()" type="button">表示更新</button></div>
         </div>
@@ -133,7 +133,7 @@
         <div class="trend-card-title"><div><h3>採用単価推移</h3><p>媒体費を月別に配賦し、応募単価・採用単価を確認します。</p></div></div>
         <div class="trend-toolbar trend-toolbar--cost">
           <div class="analysis-field"><label for="costMode">集計単位</label><select id="costMode"><option value="channel">媒体</option><option value="detail">媒体詳細</option></select></div>
-          <div class="analysis-field"><label for="costDivision">対象本部</label><select id="costDivision"><option value="">全本部</option></select></div>
+          <div class="analysis-field"><label for="costDivision">対象本部</label><select id="costDivision"><option value="">すべて</option></select></div>
           <div class="analysis-field"><label>&nbsp;</label><button class="btn-secondary" onclick="renderCurrentTab()" type="button">表示更新</button></div>
         </div>
         <div class="trend-chart-panel trend-chart-panel--wide"><div class="trend-card-title"><div><h3>採用単価月次推移グラフ</h3><p>応募単価・採用単価</p></div></div><div class="trend-chart-box"><canvas id="costUnitTrendChart"></canvas></div></div>
@@ -156,6 +156,7 @@ let rows=[];
 let costRows=[];
 let filteredRows=[];
 let CENTER_MASTER={};
+let MASTER_OWNER_OPTIONS=[];
 let currentTab="overall";
 const trendCharts = window.trendCharts || (window.trendCharts = {});
 
@@ -179,8 +180,9 @@ function monthList(){const range=fiscalRange($("fy").value);if(!range.from||!ran
 function applyFy(){const range=fiscalRange($("fy").value);const period=range.from&&range.to?`${range.from} ～ ${range.to}`:"全期間";setText("periodText","対象期間："+period);setText("headYear",range.label);setText("headPeriod",period);return range}
 function setSelectOptions(id,values,blank="すべて"){const el=$(id);if(!el)return;const current=el.value;const list=[...new Set((values||[]).map(v=>String(v||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ja"));el.innerHTML=`<option value="">${blank}</option>`+list.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");if(list.includes(current))el.value=current}
 async function loadCenterMaster(){try{const master=window.RecruitMaster?await window.RecruitMaster.divisionCenter():{centersByDivision:{},centers:[]};CENTER_MASTER=master.centersByDivision||{};return master.centers||[]}catch(e){CENTER_MASTER={};return []}}
+async function loadOwnerMaster(){try{const owners=window.RecruitMaster?await window.RecruitMaster.list("owners"):[];MASTER_OWNER_OPTIONS=(owners||[]).filter(Boolean);return MASTER_OWNER_OPTIONS}catch(e){MASTER_OWNER_OPTIONS=[];return []}}
 function updateCenterOptions(){const div=$("division")?.value||"";const centers=div&&CENTER_MASTER[div]?CENTER_MASTER[div]:Object.values(CENTER_MASTER).flat();setSelectOptions("center",centers.length?centers:rows.map(r=>r.center_name))}
-function bindMasters(){const divisions=Object.keys(CENTER_MASTER).length?Object.keys(CENTER_MASTER):rows.map(r=>r.division);setSelectOptions("division",divisions);updateCenterOptions();setSelectOptions("owner",rows.map(r=>r.owner_name));setSelectOptions("mediaDivision",divisions,"全本部");setSelectOptions("costDivision",divisions,"全本部")}
+function bindMasters(){const divisions=Object.keys(CENTER_MASTER).length?Object.keys(CENTER_MASTER):rows.map(r=>r.division);setSelectOptions("division",divisions);updateCenterOptions();setSelectOptions("owner",MASTER_OWNER_OPTIONS.length?MASTER_OWNER_OPTIONS:rows.map(r=>r.owner_name));setSelectOptions("mediaDivision",divisions,"すべて");setSelectOptions("costDivision",divisions,"すべて")}
 function filterRows(){const range=applyFy();const d=$("division").value;const c=$("center").value;const o=$("owner").value;filteredRows=(rows||[]).filter(r=>!r.is_deleted).filter(r=>{if(!validDate(r.applied_date))return false;if(range.from&&r.applied_date<range.from)return false;if(range.to&&r.applied_date>range.to)return false;if(d&&r.division!==d)return false;if(c&&r.center_name!==c)return false;if(o&&r.owner_name!==o)return false;return true});setText("headRows",filteredRows.length);}
 function metrics(list){const applied=list.length;const interview=list.filter(isInterview).length;const join=list.filter(isHired).length;return {applied,interview,join,interviewRate:rate(interview,applied),joinRate:rate(join,applied),interviewRateNum:rateNum(interview,applied),joinRateNum:rateNum(join,applied)}}
 function renderKpis(){const m=metrics(filteredRows);$("trendKpis").innerHTML=`
@@ -196,7 +198,7 @@ function emptyRow(colspan,message="表示するデータがありません"){ret
 function pct(n,d){return !d?"0.0%":(Math.round((n/d)*1000)/10).toFixed(1)+"%"}
 function renderMediaBreakdown(selected, mode, div, month){
   const caption=$("mediaBreakdownCaption");
-  if(caption)caption.textContent=`${month || "-"} / ${div || "全本部"} / ${mode==="channel"?"媒体":"媒体詳細"}基準の職種内訳`;
+  if(caption)caption.textContent=`${month || "-"} / ${div || "すべて"} / ${mode==="channel"?"媒体":"媒体詳細"}基準の職種内訳`;
   const total=selected.length;
   const jobGroups=groupBy(selected,r=>r.job_type||"未設定");
   $("mediaJobHead").innerHTML="<tr><th>職種</th><th>応募</th><th>構成比</th><th>面接</th><th>採用</th><th>応募→面接</th><th>応募→採用</th></tr>";
@@ -265,7 +267,7 @@ function renderMedia(){
   const keyFn=mode==="channel"?(r=>r.channel||"未設定"):(r=>r.channel_detail||r.channel||"未設定");
   const selected=source.filter(r=>monthKey(r.applied_date)===m);
   const selectedGroups=groupBy(selected,keyFn);
-  $("mediaMonthCaption").textContent=`${m || "-"} / ${mode==="channel"?"媒体":"媒体詳細"} / ${div||"全本部"}`;
+  $("mediaMonthCaption").textContent=`${m || "-"} / ${mode==="channel"?"媒体":"媒体詳細"} / ${div||"すべて"}`;
   $("mediaSelectedHead").innerHTML="<tr><th>媒体区分</th><th>媒体</th><th>応募</th><th>面接</th><th>採用</th><th>応募→面接</th><th>応募→採用</th></tr>";
   $("mediaSelectedBody").innerHTML=selectedGroups.map(x=>`<tr><td><strong>${esc(x.key)}</strong></td><td>${esc(x.items[0]?.channel||"-")}</td><td class="num">${x.applied}</td><td class="num">${x.interview}</td><td class="num">${x.join}</td><td class="num">${x.interviewRate}</td><td class="num">${x.joinRate}</td></tr>`).join("")||emptyRow(7,"選択月・本部に表示するデータがありません");
   renderMediaBreakdown(selected,mode,div,m);
@@ -317,7 +319,7 @@ async function showApp(){const user=await getUser();if(!user){showAuth();return 
 async function login(){const email=$("loginEmail")?.value.trim();const password=$("loginPassword")?.value;if(!email||!password){setMsg("authMessage","メールアドレスとパスワードを入力してください","error");return}try{const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;currentUser=null;currentRole=null;if(await showApp()) await initPageAfterLogin()}catch(e){setMsg("authMessage","ログイン失敗: "+(e.message||e),"error")}}
 async function logout(){try{await sb.auth.signOut()}catch(e){}showAuth("ログアウトしました","success")}
 sb.auth.onAuthStateChange((ev)=>{if(ev==="SIGNED_OUT")showAuth("ログアウトしました","success")});
-async function loadAnalysis(){try{setMsg("pageMessage","","info");applyFy();await loadCenterMaster();const {data,error}=await sb.from("candidates").select("*").order("applied_date",{ascending:true});if(error)throw error;rows=data||[];try{const costRes=await sb.from("channel_costs").select("*");costRows=costRes.error?[]:(costRes.data||[]);}catch(e){costRows=[];}bindMasters();filterRows();setupMediaMonthOptions(filteredRows);renderKpis();renderCurrentTab();}catch(e){console.error(e);setMsg("pageMessage","読込失敗: "+(e.message||e),"error")}}
+async function loadAnalysis(){try{setMsg("pageMessage","","info");applyFy();await Promise.all([loadCenterMaster(),loadOwnerMaster()]);const {data,error}=await sb.from("candidates").select("*").order("applied_date",{ascending:true});if(error)throw error;rows=data||[];try{const costRes=await sb.from("channel_costs").select("*");costRows=costRes.error?[]:(costRes.data||[]);}catch(e){costRows=[];}bindMasters();filterRows();setupMediaMonthOptions(filteredRows);renderKpis();renderCurrentTab();}catch(e){console.error(e);setMsg("pageMessage","読込失敗: "+(e.message||e),"error")}}
 async function initPageAfterLogin(){applyFy();await loadAnalysis()}
 async function authInit(){try{if(await showApp()) await initPageAfterLogin()}catch(e){console.error(e);showAuth("初期化に失敗しました","error")}finally{document.body.classList.remove("auth-checking")}}
 ["fy","division","center","owner"].forEach(id=>document.addEventListener("change",e=>{if(e.target&&e.target.id===id){if(id==="division")updateCenterOptions();filterRows();setupMediaMonthOptions();renderKpis();renderCurrentTab();}}));

@@ -37,7 +37,7 @@
    ========================================================= */
 .main-content .analysis-control-card{
   display:grid;
-  grid-template-columns:minmax(320px,1fr) auto;
+  grid-template-columns:minmax(260px,1fr) minmax(0,auto);
   align-items:center;
   gap:24px;
   min-height:132px;
@@ -79,12 +79,13 @@
   align-items:end;
   justify-content:end;
   gap:8px 10px;
-  width:auto;
+  width:min(100%, 980px);
+  max-width:100%;
   margin-left:auto;
 }
 .main-content .analysis-control-form.analysis-control-form--1{grid-template-columns:var(--ui-control-w) var(--ui-button-w);}
 .main-content .analysis-control-form.analysis-control-form--2{grid-template-columns:repeat(2,var(--ui-control-w)) var(--ui-button-w);}
-.main-content .analysis-control-form.analysis-control-form--4{grid-template-columns:repeat(4,var(--ui-control-w)) var(--ui-button-w);}
+.main-content .analysis-control-form.analysis-control-form--4{grid-template-columns:repeat(4,minmax(142px,var(--ui-control-w))) minmax(72px,var(--ui-button-w));}
 .main-content .analysis-field{min-width:0;}
 .main-content .analysis-control-form label{
   display:block;
@@ -97,8 +98,8 @@
   white-space:nowrap;
 }
 .main-content .analysis-control-form select{
-  width:var(--ui-control-w);
-  min-width:var(--ui-control-w);
+  width:100%;
+  min-width:0;
   max-width:var(--ui-control-w);
   height:var(--ui-control-h);
   min-height:var(--ui-control-h);
@@ -112,8 +113,8 @@
 }
 .main-content .analysis-control-form .btn-primary,
 .main-content .analysis-control-form button{
-  width:var(--ui-button-w);
-  min-width:var(--ui-button-w);
+  width:100%;
+  min-width:72px;
   max-width:var(--ui-button-w);
   height:var(--ui-control-h);
   min-height:var(--ui-control-h);
@@ -455,6 +456,8 @@ table td,table th{vertical-align:middle;}
   .main-content .analysis-control-form.analysis-control-form--2{grid-template-columns:repeat(2,minmax(150px,1fr)) var(--ui-button-w);}
   .main-content .analysis-control-form.analysis-control-form--1{grid-template-columns:minmax(150px,1fr) var(--ui-button-w);}
   .main-content .analysis-control-form select{width:100%;min-width:0;max-width:none;}
+  .main-content .analysis-control-form .btn-primary,
+  .main-content .analysis-control-form button{max-width:none;}
   .main-content .summary-grid,.main-content .grid-5,.main-content .grid-4{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
   .main-content .performance-grid,.main-content .reference-grid{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}
   .main-content .chart-box{height:300px;min-height:270px;}
