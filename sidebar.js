@@ -97,16 +97,20 @@
     const logoutButton = sidebar.querySelector("#sidebarLogoutButton");
     if(!logoutButton) return;
 
-    logoutButton.addEventListener("click", async function(){
-      if(window.RecruitAuth && typeof window.RecruitAuth.logoutToIndex === "function"){
-        await window.RecruitAuth.logoutToIndex();
+    logoutButton.addEventListener("click", function(){
+      if(typeof window.logout === "function"){
+        window.logout();
         return;
       }
 
-      const client = window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : (window.supabaseClient || window.sb || window.supabase);
+      const client = window.supabaseClient || window.supabase;
       if(client && client.auth && typeof client.auth.signOut === "function"){
-        try{ await client.auth.signOut(); }catch(e){}
+        client.auth.signOut().finally(function(){
+          location.href = "./index.html";
+        });
+        return;
       }
+
       location.href = "./index.html";
     });
   }
@@ -119,53 +123,44 @@
     }
   }
 
-  function isAdminRole(){
-    return getStoredRole() === "admin";
+  function isAdminRole(role){
+    return String(role || getStoredRole() || "").toLowerCase() === "admin";
   }
 
-  async function refreshStoredRole(){
-    const client = window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : (window.supabaseClient || window.sb);
+  async function fetchSidebarRole(){
+    const client = window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : (window.supabaseClient || window.sb || window.supabase);
     if(!client || !client.auth) return getStoredRole();
 
     try{
-      const { data:{ session } = {} } = await client.auth.getSession();
-      const user = session && session.user ? session.user : null;
-      if(!user) return getStoredRole();
-
-      let role = "";
-      const byUserId = await client
-        .from("profiles")
-        .select("role,is_active,email")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if(byUserId && byUserId.data && byUserId.data.is_active !== false){
-        role = byUserId.data.role || "";
+      if(window.RecruitAuth && typeof window.RecruitAuth.fetchCurrentRole === "function"){
+        return await window.RecruitAuth.fetchCurrentRole(true);
       }
 
-      if(!role && user.email){
-        const byEmail = await client
-          .from("profiles")
-          .select("role,is_active,email")
-          .eq("email", user.email)
-          .maybeSingle();
-        if(byEmail && byEmail.data && byEmail.data.is_active !== false){
-          role = byEmail.data.role || "";
-        }
-      }
+      const sessionResult = await client.auth.getSession();
+      const user = sessionResult && sessionResult.data && sessionResult.data.session ? sessionResult.data.session.user : null;
+      if(!user) return "";
 
-      if(role){
-        localStorage.setItem("recruit_user_role", String(role).toLowerCase());
-        localStorage.setItem("recruit_user_email", user.email || "");
+      let role = "editor";
+      const byUserId = await client.from("profiles").select("role,is_active,email,user_id").eq("user_id", user.id).maybeSingle();
+      let profile = byUserId.data || null;
+      if((!profile || byUserId.error) && user.email){
+        const byEmail = await client.from("profiles").select("role,is_active,email,user_id").eq("email", user.email).maybeSingle();
+        profile = byEmail.data || profile;
       }
-      return getStoredRole();
+      if(profile && profile.is_active === false){
+        role = "viewer";
+      }else if(profile && profile.role){
+        role = String(profile.role).toLowerCase();
+      }
+      try{ localStorage.setItem("recruit_user_role", role); }catch(e){}
+      return role;
     }catch(e){
-      console.warn("sidebar role refresh failed", e);
+      console.warn("Sidebar role fetch failed", e);
       return getStoredRole();
     }
   }
 
-  function renderSidebar(){
+  function renderSidebar(roleOverride){
     const sidebar =
       document.getElementById("dashboardSidebarMenu") ||
       document.querySelector("aside.sidebar") ||
@@ -176,7 +171,8 @@
     sidebar.className = "sidebar";
     sidebar.setAttribute("aria-label", "採用管理メニュー");
 
-    const systemGroup = isAdminRole() ? groupHtml("システム管理", "system", systemItems) : "";
+    const role = String(roleOverride || getStoredRole() || "").toLowerCase();
+    const systemGroup = isAdminRole(role) ? groupHtml("システム管理", "system", systemItems) : "";
 
     sidebar.innerHTML = `
       <div class="sidebar-inner">
@@ -202,20 +198,17 @@
     bindLogout(sidebar);
   }
 
-  async function renderSidebarWithRoleRefresh(){
+  async function renderSidebarWithFreshRole(){
     renderSidebar();
-    const before = getStoredRole();
-    const after = await refreshStoredRole();
-    if(before !== after){
-      renderSidebar();
-    }
+    const freshRole = await fetchSidebarRole();
+    renderSidebar(freshRole);
   }
 
   if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", renderSidebarWithRoleRefresh);
+    document.addEventListener("DOMContentLoaded", renderSidebarWithFreshRole);
   }else{
-    renderSidebarWithRoleRefresh();
+    renderSidebarWithFreshRole();
   }
 
-  window.renderDashboardSidebar = renderSidebarWithRoleRefresh;
+  window.renderDashboardSidebar = renderSidebarWithFreshRole;
 })();

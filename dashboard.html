@@ -275,6 +275,9 @@ function showApp(user, role){
   updateConnectionUi(true);
   updateRoleUi(role);
   document.body.classList.remove("auth-checking");
+  if(typeof window.renderDashboardSidebar === "function"){
+    window.renderDashboardSidebar();
+  }
 }
 async function getSessionUser(){
   if (currentUser) return currentUser;
@@ -285,12 +288,19 @@ async function getSessionUser(){
 }
 async function getCurrentRole(userId){
   if (currentRole) return currentRole;
-  const { data, error } = await sb.from("profiles").select("role").eq("user_id", userId).single();
-  if (error) {
-    currentRole = "editor";
+  if (window.RecruitAuth && typeof window.RecruitAuth.fetchCurrentRole === "function") {
+    currentRole = await window.RecruitAuth.fetchCurrentRole(true) || "editor";
     return currentRole;
   }
-  currentRole = data?.role || "editor";
+  let profile = null;
+  const { data, error } = await sb.from("profiles").select("role,email,is_active,user_id").eq("user_id", userId).maybeSingle();
+  profile = data || null;
+  if ((!profile || error) && currentUser?.email) {
+    const byEmail = await sb.from("profiles").select("role,email,is_active,user_id").eq("email", currentUser.email).maybeSingle();
+    profile = byEmail.data || profile;
+  }
+  currentRole = profile?.role || "editor";
+  try { localStorage.setItem("recruit_user_role", currentRole); } catch(e) {}
   return currentRole;
 }
 async function refreshAuthState(){
@@ -326,7 +336,8 @@ async function logout(){
   finally {
     currentUser = null;
     currentRole = null;
-    showAuth("ログアウトしました", "success");
+    try { localStorage.removeItem("recruit_user_role"); } catch(e) {}
+    location.replace("./index.html");
   }
 }
 function calcRate(num, den){

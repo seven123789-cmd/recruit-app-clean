@@ -79,7 +79,16 @@
 
     client.auth.signOut = async function(){
       _explicitSignOutUntil = Date.now() + 5000;
-      return originalSignOut.apply(client.auth, arguments);
+      try{
+        return await originalSignOut.apply(client.auth, arguments);
+      }finally{
+        try{ localStorage.removeItem("recruit_user_role"); }catch(e){}
+        try{ sessionStorage.removeItem("recruit_user_role"); }catch(e){}
+        const file = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+        if(file !== "index.html"){
+          setTimeout(function(){ location.replace("./index.html"); }, 0);
+        }
+      }
     };
 
     window.RecruitAuth = window.RecruitAuth || {};
@@ -90,22 +99,56 @@
       const { data:{ session } = {} } = await client.auth.getSession();
       return session && session.user ? session.user : null;
     };
+    window.RecruitAuth.fetchCurrentRole = async function(force){
+      const user = await window.RecruitAuth.getUser();
+      if(!user){
+        try{ localStorage.removeItem("recruit_user_role"); }catch(e){}
+        return "";
+      }
+
+      if(!force){
+        try{
+          const cached = String(localStorage.getItem("recruit_user_role") || "").toLowerCase();
+          if(cached) return cached;
+        }catch(e){}
+      }
+
+      let role = "editor";
+      try{
+        const byUserId = await client
+          .from("profiles")
+          .select("role,is_active,email,user_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        let profile = byUserId.data || null;
+
+        if((!profile || byUserId.error) && user.email){
+          const byEmail = await client
+            .from("profiles")
+            .select("role,is_active,email,user_id")
+            .eq("email", user.email)
+            .maybeSingle();
+          profile = byEmail.data || profile;
+        }
+
+        if(profile && profile.is_active === false){
+          role = "viewer";
+        }else if(profile && profile.role){
+          role = String(profile.role).toLowerCase();
+        }
+      }catch(e){
+        console.warn("Recruit role fetch failed", e);
+      }
+
+      try{ localStorage.setItem("recruit_user_role", role); }catch(e){}
+      if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.setRole === "function"){
+        try{ window.RecruitOpsGuard.setRole(role); }catch(e){}
+      }
+      return role;
+    };
     window.RecruitAuth.markExplicitSignOut = function(){
       _explicitSignOutUntil = Date.now() + 5000;
-    };
-    window.RecruitAuth.logoutToIndex = async function(){
-      _explicitSignOutUntil = Date.now() + 5000;
-      try{
-        await originalSignOut();
-      }catch(e){
-        console.warn("Recruit logout failed", e);
-      }finally{
-        try{
-          localStorage.removeItem("recruit_user_role");
-          localStorage.removeItem("recruit_user_email");
-        }catch(e){}
-        window.location.href = "./index.html";
-      }
     };
 
     client.__recruitAuthEnhanced = true;
