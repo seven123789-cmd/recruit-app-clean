@@ -704,32 +704,24 @@ tbody tr:last-child td{
   .hq-flow-scope{break-inside:avoid;}
   .hq-two-columns{break-inside:avoid;}
 }
-/* unified analysis table alignment */
-.table-card table th:not(:first-child),
-.table-card table td:not(:first-child),
-.analysis-table th:not(:first-child),
-.analysis-table td:not(:first-child),
-.report-table th:not(:first-child),
-.report-table td:not(:first-child),
-.kpi-table th:not(:first-child),
-.kpi-table td:not(:first-child){
-  text-align:center !important;
-}
 
-.table-card table th:first-child,
-.table-card table td:first-child,
-.analysis-table th:first-child,
-.analysis-table td:first-child,
-.report-table th:first-child,
-.report-table td:first-child,
-.kpi-table th:first-child,
-.kpi-table td:first-child{
-  text-align:left !important;
-}
-
-.table-card table td,
-.analysis-table td,
-.report-table td,
-.kpi-table td{
+/* Print analysis table alignment */
+.report-table.analysis-table th,
+.report-table.analysis-table td,
+.print-analysis-table th,
+.print-analysis-table td{
+  vertical-align:middle;
   font-variant-numeric:tabular-nums;
+}
+.report-table.analysis-table th:not(:first-child),
+.report-table.analysis-table td:not(:first-child),
+.print-analysis-table th:not(:first-child),
+.print-analysis-table td:not(:first-child){
+  text-align:center;
+}
+.report-table.analysis-table th:first-child,
+.report-table.analysis-table td:first-child,
+.print-analysis-table th:first-child,
+.print-analysis-table td:first-child{
+  text-align:left;
 }

@@ -8,7 +8,8 @@
 .table-card table td,
 .auth-shell{max-width:520px;margin:48px auto 0}.auth-title{margin:0 0 8px;font-size:28px;color:#fff}.auth-sub{margin:0 0 20px;color:rgba(255,255,255,.82)}.auth-card{background:#fff;border:1px solid rgba(226,232,240,.9);border-radius:22px;box-shadow:var(--shadow);padding:24px}.auth-card h2{margin:0 0 8px;font-size:22px;color:#0f172a}.auth-note{margin:0 0 18px;color:var(--muted);font-size:13px}.auth-rule{margin:6px 0 0;color:#64748b;font-size:12px;line-height:1.6}.log-box{display:none;}
 @media(max-width:760px){.chart-box,.chart-box.compact{height:240px}}
-/* Monthly table alignment */
+
+/* Monthly dashboard table layout */
 .table-card{overflow:hidden;}
 .table-card .table-head{padding-bottom:8px;}
 .table-card .table-wrap{overflow-x:auto;}
@@ -19,7 +20,7 @@
 }
 .table-card table th,
 .table-card table td{
-  padding:11px 12px;
+  padding:12px;
   border-bottom:1px solid #dbeafe;
   vertical-align:middle;
   line-height:1.35;
@@ -30,28 +31,30 @@
   color:#1e3a8a;
   font-size:12px;
   font-weight:950;
-  text-align:right;
+  text-align:center;
   white-space:nowrap;
 }
 .table-card table td{
   color:#0f172a;
   font-size:13px;
   font-weight:850;
-  text-align:right;
+  text-align:center;
   white-space:nowrap;
 }
 .table-card table th:first-child,
 .table-card table td:first-child{
   text-align:left;
+  padding-left:16px;
 }
-.table-card table td:first-child{
-  font-weight:950;
-}
+.monthly-summary-table .col-label{width:120px;}
+.monthly-summary-table .col-metric{width:12%;}
+.monthly-summary-table .col-rate{width:14%;}
 .table-card table a,
 .table-card table .count-link{
-  display:inline-block;
+  display:inline-flex;
   min-width:44px;
-  text-align:right;
+  justify-content:center;
+  text-align:center;
   font-variant-numeric:tabular-nums;
 }
 .table-card table small,
@@ -62,11 +65,8 @@
   font-size:11px;
   font-weight:750;
   line-height:1.2;
-  text-align:right;
+  text-align:center;
 }
-.monthly-summary-table .col-month{width:110px;}
-.monthly-summary-table .col-count{width:12%;}
-.monthly-summary-table .col-rate{width:14%;}
 .zero-month td{
   color:#94a3b8;
   background:#fbfdff;
@@ -75,33 +75,4 @@
   color:#64748b;
   font-weight:800;
   text-align:center!important;
-}
-/* unified analysis table alignment */
-.table-card table th:not(:first-child),
-.table-card table td:not(:first-child),
-.analysis-table th:not(:first-child),
-.analysis-table td:not(:first-child),
-.report-table th:not(:first-child),
-.report-table td:not(:first-child),
-.kpi-table th:not(:first-child),
-.kpi-table td:not(:first-child){
-  text-align:center !important;
-}
-
-.table-card table th:first-child,
-.table-card table td:first-child,
-.analysis-table th:first-child,
-.analysis-table td:first-child,
-.report-table th:first-child,
-.report-table td:first-child,
-.kpi-table th:first-child,
-.kpi-table td:first-child{
-  text-align:left !important;
-}
-
-.table-card table td,
-.analysis-table td,
-.report-table td,
-.kpi-table td{
-  font-variant-numeric:tabular-nums;
 }

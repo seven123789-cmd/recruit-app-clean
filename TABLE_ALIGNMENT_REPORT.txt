@@ -1,29 +1,34 @@
+今回の修正内容
 
-【今回の修正】
-
-■ 修正したファイル
-- assets/css/dashboard_monthly.css
+【修正したファイル】
 - assets/css/dashboard.css
+- assets/css/dashboard_monthly.css
 - assets/css/print_report.css
+- print_report.html
 
-■ やったこと
-- 月次分析
-- 本部分析
-- 媒体分析
-- 印刷プレビュー
-- クロス分析
+【やったこと】
+- dashboard_monthly.html の実テーブルへ class と colgroup を追加
+- dashboard_monthly.css の実際に効いている .table-card table 定義を書き直し
+- 月次集計表の先頭列だけ左揃え、数値列/率列を中央揃えへ統一
+- リンク化された数値も中央揃えになるよう display:inline-flex へ修正
+- dashboard.css の分析表系も同じルールへ整理
+- print_report.css / print_report.html も分析表だけ同じ揃えへ整理
+- 全年度 → 全期間 の残りを修正
 
-上記で共通利用している table 系を横断確認。
+【削除した不要ファイル】
+- なし
 
-数値列を中央寄せへ統一。
-月・区分などの先頭列のみ左寄せへ統一。
-
-分析画面でヘッダーと数値位置がズレて見える問題を整理。
-
-■ 削除した不要ファイル
-なし
-
-■ 未対応
-- AI分析
-- script外部化
+【やっていないこと】
+- RLS化
+- HTML内script外部化
+- fiscal関数の本格統合
+- ヘッダー共通化
+- ES Modules化
 - table component化
+
+【検査】
+- ZIP展開確認済み
+- JS簡易構文チェック済み
+- HTML内JS簡易構文チェック済み
+- 構文警告：なし
+- 残存注意ファイル：なし
