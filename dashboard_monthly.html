@@ -124,9 +124,20 @@
 <h2>月次集計</h2>
 </div>
 <div class="table-wrap">
-<table>
+<table class="monthly-summary-table">
+<colgroup>
+  <col class="col-month">
+  <col class="col-count">
+  <col class="col-count">
+  <col class="col-count">
+  <col class="col-count">
+  <col class="col-count">
+  <col class="col-count">
+  <col class="col-rate">
+  <col class="col-rate">
+</colgroup>
 <thead id="tableHead"></thead>
-<tbody id="tableBody"><tr><td class="empty">読込中です</td></tr></tbody>
+<tbody id="tableBody"><tr><td class="empty" colspan="9">読込中です</td></tr></tbody>
 </table>
 </div>
 </section>
@@ -137,13 +148,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
-
-function formatMonthLabel(value){
-  const s = String(value || "");
-  const m = s.match(/^(\d{4})-(\d{2})$/);
-  return m ? `${m[2]}月` : s;
-}
-
 function safeDisplayValue(v){return (v===undefined||v===null||String(v)==="undefined"||String(v)==="NaN%")?"―":v;}
 
 const SUPABASE_URL="https://shiztjmmaozrsstjotub.supabase.co";
@@ -190,9 +194,9 @@ function getMonthKey(dateStr){
   return validDate(dateStr) ? String(dateStr).slice(0,7) : "";
 }
 function monthLabel(key){
-  if(!key)return "未設定";
-  const parts=key.split("-");
-  return parts[0]+"-"+parts[1];
+  const s = String(key || "");
+  const m = s.match(/^(\d{4})-(\d{2})$/);
+  return m ? `${m[2]}月` : s;
 }
 function buildFiscalMonths(from,to){
   const months=[];
