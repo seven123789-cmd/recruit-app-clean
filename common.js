@@ -256,10 +256,9 @@
 
   async function loadOwnerNames(client){
     // 担当者候補は master_owners を正とする。
-    // テーブル未作成や未登録の場合だけ、画面を落とさないため既定値にフォールバックする。
+    // 固定値は入れず、未登録分は loadRecruitMasters 側で応募データから補完する。
     const masterOwners = await loadMasterNames(client, "owners");
-    if(masterOwners.length) return orderedOwnerNames(masterOwners);
-    return orderedOwnerNames(["三浦", "楠本", "伊藤", "その他"]);
+    return orderedOwnerNames(masterOwners);
   }
 
   function onclickArg(value){
@@ -304,6 +303,67 @@
     return result;
   }
 
+  function mergeMasterPreferred(masterValues, fallbackValues){
+    const result = [];
+    const seen = new Set();
+    [...(masterValues || []), ...(fallbackValues || [])].forEach(value => {
+      const v = String(value || "").trim();
+      if(!v || seen.has(v)) return;
+      seen.add(v);
+      result.push(v);
+    });
+    return result;
+  }
+
+  async function loadCandidateMasterFallbacks(client){
+    const empty = { divisions:[], centers:[], channels:[], channelDetails:[], jobTypes:[], owners:[], statuses:[], declineReasons:[], rejectReasons:[] };
+    try{
+      const columns = "division,center_name,channel,channel_detail,job_type,job,position,owner_name,status,decline_reason,reject_reason";
+      const { data, error } = await client.from("candidates").select(columns);
+      if(error) throw error;
+      const rows = data || [];
+      rows.forEach(r => {
+        empty.divisions.push(r.division);
+        empty.centers.push(r.center_name);
+        empty.channels.push(r.channel);
+        empty.channelDetails.push(r.channel_detail);
+        empty.jobTypes.push(r.job_type || r.job || r.position);
+        empty.owners.push(r.owner_name);
+        empty.statuses.push(r.status);
+        empty.declineReasons.push(r.decline_reason);
+        empty.rejectReasons.push(r.reject_reason);
+      });
+      Object.keys(empty).forEach(key => { empty[key] = uniqueClean(empty[key]); });
+      return empty;
+    }catch(e){
+      console.warn("応募データ補完候補の読込失敗", e);
+      return empty;
+    }
+  }
+
+  function applyCandidateFallbackToDivisionCenter(divisionCenter, fallback){
+    const next = {
+      divisions: mergeMasterPreferred(divisionCenter.divisions, fallback.divisions),
+      divisionRows: [...(divisionCenter.divisionRows || [])],
+      centersByDivision: Object.assign({}, divisionCenter.centersByDivision || {}),
+      centers: [...(divisionCenter.centers || [])]
+    };
+    const knownCenters = new Set(next.centers.map(r => String(r.center_name || "").trim()).filter(Boolean));
+    (fallback.centers || []).forEach(center => {
+      if(!center || knownCenters.has(center)) return;
+      const division = "";
+      next.centers.push({ id:null, center_name:center, division, center_code:null, short_code:null, source:"candidates" });
+      knownCenters.add(center);
+    });
+    const knownDivisionRows = new Set(next.divisionRows.map(r => String(r.name || "").trim()).filter(Boolean));
+    (fallback.divisions || []).forEach(name => {
+      if(!name || knownDivisionRows.has(name)) return;
+      next.divisionRows.push({ id:null, name, color:"", source:"candidates" });
+      knownDivisionRows.add(name);
+    });
+    return next;
+  }
+
   function clearRecruitMasterCache(){
     recruitMasterCache = null;
   }
@@ -319,7 +379,7 @@
     }
     const client = createRecruitMasterClient();
     if(!client) return null;
-    const [divisionCenter, channels, channelDetails, jobTypes, owners, statuses, declineReasons, rejectReasons] = await Promise.all([
+    const [divisionCenterRaw, channelsRaw, channelDetailsRaw, jobTypesRaw, ownersRaw, statusesRaw, declineReasonsRaw, rejectReasonsRaw, fallback] = await Promise.all([
       loadDivisionCenterMaster(client),
       loadMasterNames(client, "channels"),
       loadMasterNames(client, "channelDetails"),
@@ -327,8 +387,17 @@
       loadOwnerNames(client),
       loadMasterNames(client, "statuses"),
       loadMasterNames(client, "declineReasons"),
-      loadMasterNames(client, "rejectReasons")
+      loadMasterNames(client, "rejectReasons"),
+      loadCandidateMasterFallbacks(client)
     ]);
+    const divisionCenter = applyCandidateFallbackToDivisionCenter(divisionCenterRaw, fallback);
+    const channels = mergeMasterPreferred(channelsRaw, fallback.channels);
+    const channelDetails = mergeMasterPreferred(channelDetailsRaw, fallback.channelDetails);
+    const jobTypes = mergeMasterPreferred(jobTypesRaw, fallback.jobTypes);
+    const owners = orderedOwnerNames(mergeMasterPreferred(ownersRaw, fallback.owners));
+    const statuses = mergeMasterPreferred(statusesRaw, fallback.statuses);
+    const declineReasons = mergeMasterPreferred(declineReasonsRaw, fallback.declineReasons);
+    const rejectReasons = mergeMasterPreferred(rejectReasonsRaw, fallback.rejectReasons);
     recruitMasterCache = { ...divisionCenter, channels, channelDetails, jobTypes, owners, statuses, declineReasons, rejectReasons, loadedAt: new Date().toISOString() };
     return recruitMasterCache;
   }
