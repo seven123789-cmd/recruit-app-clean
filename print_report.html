@@ -57,7 +57,7 @@ function formatChartValue(value, key){return key==="cost"?yenDash(value):String(
 function rateNum(a,b){return b ? Math.round((a/b)*1000)/10 : 0}
 function rate(a,b){return rateNum(a,b).toFixed(1)+"%"}
 function currentFY(){const d=new Date();return d.getMonth()+1>=4?d.getFullYear():d.getFullYear()-1}
-function normalizeFYLabel(label){const v=String(label||"").trim();if(!v||v==="今年度")return `${currentFY()}年度`;if(v==="前年度")return `${currentFY()-1}年度`;if(v==="全年度"||v==="全期間")return "全期間";const m=v.match(/(\d{4})/);return m?`${Number(m[1])}年度`:`${currentFY()}年度`}
+function normalizeFYLabel(label){const v=String(label||"").trim();if(!v||v==="今年度")return `${currentFY()}年度`;if(v==="前年度")return `${currentFY()-1}年度`;if(v==="全期間"||v==="全期間")return "全期間";const m=v.match(/(\d{4})/);return m?`${Number(m[1])}年度`:`${currentFY()}年度`}
 function targetFY(label){const v=normalizeFYLabel(label);if(v==="全期間")return null;const n=parseInt(v,10);return Number.isFinite(n)?n:null}
 function fiscalMonths(fy){return [4,5,6,7,8,9,10,11,12,1,2,3].map(m=>({month:m, ym:`${m>=4?fy:fy+1}-${String(m).padStart(2,"0")}`, label:`${String(m).padStart(2,"0")}月`}))}
 function getFY(v){if(!validDate(v))return null;const y=Number(String(v).slice(0,4));const m=Number(String(v).slice(5,7));return m>=4?y:y-1}

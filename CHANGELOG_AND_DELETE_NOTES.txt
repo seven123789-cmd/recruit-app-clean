@@ -1,0 +1,41 @@
+今回の修正内容
+
+【修正したファイル】
+- assets/css/dashboard_monthly.css
+- common.js
+- dashboard.html
+- dashboard_monthly.html
+- print_center.html
+- print_report.html
+
+【今回作業フォルダから削除】
+- DELETE_FROM_GITHUB.txt
+
+【やったこと】
+- 月次TOPダッシュボードの表の列揃えを修正
+- 月/区分列は左揃え、数値・率は右揃え
+- tabular-nums を使い、数字の桁を読みやすく調整
+- 月表示を 2026-04 ではなく 04月 形式へ寄せる処理を追加
+- 全年度 → 全期間 の残りを修正
+- DELETE_FROM_GITHUB.txt / print_report (2).css は作業フォルダから削除
+
+【やっていないこと】
+- RLS化
+- HTML内script外部化
+- fiscal関数の本格統合
+- ヘッダー共通化
+- ES Modules化
+- GitHub上に残っている不要ファイル削除
+
+【GitHub側で残っていたら削除対象】
+- print_report (2).css
+- css/ フォルダ
+- ルート直下の旧CSS
+- (1)(2) / old / copy を含むファイル
+
+【検査】
+- ZIP展開確認済み
+- HTML内JS簡易構文チェック済み
+- JS簡易構文チェック済み
+- 構文警告：なし
+- 残存注意ファイル：なし

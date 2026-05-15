@@ -57,7 +57,7 @@
     const current = getRecruitCurrentFiscalYear();
     if(value === "current") return `${current}年度`;
     if(value === "previous") return `${current - 1}年度`;
-    if(value === "all" || value === "" || value === "全年度" || value === "全期間") return "全期間";
+    if(value === "all" || value === "" || value === "全期間" || value === "全期間") return "全期間";
     const match = String(value || "").match(/^(?:fy:)?(\d{4})/);
     if(match) return `${match[1]}年度`;
     return String(value || "");
@@ -75,7 +75,7 @@
         const text = String(option.textContent || '').trim();
         if(value === 'current' || value === 'this' || text === '今年度' || text === '') option.textContent = `${current}年度`;
         if(value === 'previous' || value === 'prev' || text === '前年度') option.textContent = `${current - 1}年度`;
-        if(value === 'all' || text === '全年度' || text === '全期間') option.textContent = '全期間';
+        if(value === 'all' || text === '全期間' || text === '全期間') option.textContent = '全期間';
         if(value === 'custom' || text === '期間指定') option.textContent = '期間指定';
       });
     });
@@ -110,7 +110,7 @@
     const value = fyEl ? String(fyEl.value || "current").trim() : "current";
     const match = value.match(/^(?:fy:)?(\d{4})/);
     if(value === "previous" || value === "prev" || value === "前年度") return String(current - 1);
-    if(value === "all" || value === "全期間" || value === "全年度") return "";
+    if(value === "all" || value === "全期間" || value === "全期間") return "";
     if(match) return match[1];
     return String(current);
   }

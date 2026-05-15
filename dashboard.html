@@ -381,7 +381,7 @@ function getFiscalRangeByType(type){
   const raw = String(type || "current").trim();
   const match = raw.match(/^(?:fy:)?(\d{4})/);
   if (raw === "previous" || raw === "prev" || raw === "前年度") return { fiscalYear: fy - 1, from: (fy - 1) + "-04-01", to: fy + "-03-31" };
-  if (raw === "all" || raw === "全期間" || raw === "全年度") return { fiscalYear: null, from: "", to: "" };
+  if (raw === "all" || raw === "全期間" || raw === "全期間") return { fiscalYear: null, from: "", to: "" };
   if (raw === "custom" || raw === "期間指定") return {
     fiscalYear: null,
     from: document.getElementById("filterFrom").value,

@@ -213,7 +213,7 @@ function normalizeFiscalYearValue(value){
   const current = getCurrentFiscalYear();
   if(!v || v === "今年度") return fiscalYearLabel(current);
   if(v === "前年度") return fiscalYearLabel(current - 1);
-  if(v === "全年度" || v === "全期間") return "全期間";
+  if(v === "全期間" || v === "全期間") return "全期間";
   const m = v.match(/(\d{4})/);
   return m ? fiscalYearLabel(Number(m[1])) : fiscalYearLabel(current);
 }
