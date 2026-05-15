@@ -97,93 +97,71 @@
     const logoutButton = sidebar.querySelector("#sidebarLogoutButton");
     if(!logoutButton) return;
 
-    logoutButton.addEventListener("click", function(){
-      if(typeof window.logout === "function"){
-        window.logout();
+    logoutButton.addEventListener("click", async function(){
+      if(window.RecruitAuth && typeof window.RecruitAuth.logoutToIndex === "function"){
+        await window.RecruitAuth.logoutToIndex();
         return;
       }
 
-      const client = window.supabaseClient || window.supabase;
+      const client = window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : (window.supabaseClient || window.sb || window.supabase);
       if(client && client.auth && typeof client.auth.signOut === "function"){
-        client.auth.signOut().finally(function(){
-          location.href = "./index.html";
-        });
-        return;
+        try{ await client.auth.signOut(); }catch(e){}
       }
-
       location.href = "./index.html";
     });
   }
 
-  let sidebarRoleRefreshing = false;
-
-  function normalizeRole(role){
-    return String(role || "").trim().toLowerCase();
-  }
-
   function getStoredRole(){
     try{
-      return normalizeRole(localStorage.getItem("recruit_user_role") || window.currentRole || "");
+      return String(localStorage.getItem("recruit_user_role") || "").toLowerCase();
     }catch(e){
-      return normalizeRole(window.currentRole || "");
+      return "";
     }
-  }
-
-  function setStoredRole(role){
-    const normalized = normalizeRole(role);
-    if(!normalized) return;
-    try{ localStorage.setItem("recruit_user_role", normalized); }catch(e){}
-    window.currentRole = normalized;
   }
 
   function isAdminRole(){
     return getStoredRole() === "admin";
   }
 
-  async function refreshRoleFromSession(){
-    if(sidebarRoleRefreshing) return;
-    const client = window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : (window.sb || window.supabaseClient);
-    if(!client || !client.auth || !client.from) return;
+  async function refreshStoredRole(){
+    const client = window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : (window.supabaseClient || window.sb);
+    if(!client || !client.auth) return getStoredRole();
 
-    sidebarRoleRefreshing = true;
     try{
       const { data:{ session } = {} } = await client.auth.getSession();
       const user = session && session.user ? session.user : null;
-      if(!user) return;
+      if(!user) return getStoredRole();
 
-      let profile = null;
+      let role = "";
       const byUserId = await client
         .from("profiles")
-        .select("role,is_active,email,updated_at")
+        .select("role,is_active,email")
         .eq("user_id", user.id)
-        .order("updated_at", { ascending:false })
-        .limit(1);
+        .maybeSingle();
 
-      if(byUserId.data && byUserId.data.length){
-        profile = byUserId.data[0];
-      }else if(user.email){
+      if(byUserId && byUserId.data && byUserId.data.is_active !== false){
+        role = byUserId.data.role || "";
+      }
+
+      if(!role && user.email){
         const byEmail = await client
           .from("profiles")
-          .select("role,is_active,email,updated_at")
+          .select("role,is_active,email")
           .eq("email", user.email)
-          .order("updated_at", { ascending:false })
-          .limit(1);
-        if(byEmail.data && byEmail.data.length){
-          profile = byEmail.data[0];
+          .maybeSingle();
+        if(byEmail && byEmail.data && byEmail.data.is_active !== false){
+          role = byEmail.data.role || "";
         }
       }
 
-      if(profile && profile.is_active !== false && profile.role){
-        const before = getStoredRole();
-        setStoredRole(profile.role);
-        if(before !== normalizeRole(profile.role)){
-          renderSidebar();
-        }
+      if(role){
+        localStorage.setItem("recruit_user_role", String(role).toLowerCase());
+        localStorage.setItem("recruit_user_email", user.email || "");
       }
+      return getStoredRole();
     }catch(e){
       console.warn("sidebar role refresh failed", e);
-    }finally{
-      sidebarRoleRefreshing = false;
+      return getStoredRole();
     }
   }
 
@@ -222,21 +200,22 @@
 
     bindAccordion(sidebar);
     bindLogout(sidebar);
+  }
 
-    if(!isAdminRole()){
-      refreshRoleFromSession();
+  async function renderSidebarWithRoleRefresh(){
+    renderSidebar();
+    const before = getStoredRole();
+    const after = await refreshStoredRole();
+    if(before !== after){
+      renderSidebar();
     }
   }
 
   if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", renderSidebar);
+    document.addEventListener("DOMContentLoaded", renderSidebarWithRoleRefresh);
   }else{
-    renderSidebar();
+    renderSidebarWithRoleRefresh();
   }
 
-  window.renderDashboardSidebar = renderSidebar;
-  window.setRecruitSidebarRole = function(role){
-    setStoredRole(role);
-    renderSidebar();
-  };
+  window.renderDashboardSidebar = renderSidebarWithRoleRefresh;
 })();

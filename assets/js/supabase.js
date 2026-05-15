@@ -93,6 +93,20 @@
     window.RecruitAuth.markExplicitSignOut = function(){
       _explicitSignOutUntil = Date.now() + 5000;
     };
+    window.RecruitAuth.logoutToIndex = async function(){
+      _explicitSignOutUntil = Date.now() + 5000;
+      try{
+        await originalSignOut();
+      }catch(e){
+        console.warn("Recruit logout failed", e);
+      }finally{
+        try{
+          localStorage.removeItem("recruit_user_role");
+          localStorage.removeItem("recruit_user_email");
+        }catch(e){}
+        window.location.href = "./index.html";
+      }
+    };
 
     client.__recruitAuthEnhanced = true;
     return client;
