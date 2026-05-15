@@ -205,15 +205,11 @@
           <input id="costId" type="hidden">
           <label>契約開始日<input id="costContractStart" type="date"></label>
           <label>契約終了日<input id="costContractEnd" type="date"></label>
-          <label>媒体区分<select id="costChannelType">
-            <option value="求人媒体">求人媒体</option>
-            <option value="紹介">紹介</option>
-            <option value="リファラル">リファラル</option>
-            <option value="ハローワーク">ハローワーク</option>
-            <option value="その他">その他</option>
-          </select></label>
-          <label>媒体名<select id="costChannel">
+          <label>求人区分<select id="costChannelType">
             <option value="">媒体マスタから選択</option>
+          </select></label>
+          <label>媒体詳細<select id="costChannel">
+            <option value="">媒体詳細マスタから選択</option>
           </select></label>
           <label>契約総額<input id="costAmount" type="number" placeholder="例：800000"></label>
           <label>本部（任意）<input id="costDivisionNote" type="text" placeholder="例：家電物流事業部"></label>
@@ -227,8 +223,8 @@
         <div id="costContractHelp" class="admin-help-box">例：4/1〜5/31・800,000円の場合、4月と5月へ400,000円ずつ配賦します。採用単価分析では対象期間に該当する月別費用を合算します。</div>
         <div class="table-wrap admin-table-scroll">
           <table>
-            <thead><tr><th>年度</th><th>対象月</th><th>媒体</th><th>費用</th><th>状態</th><th>操作</th></tr></thead>
-            <tbody id="costsBody"><tr><td class="empty" colspan="6">読込中です</td></tr></tbody>
+            <thead><tr><th>年度</th><th>対象月</th><th>求人区分</th><th>媒体詳細</th><th>費用</th><th>状態</th><th>操作</th></tr></thead>
+            <tbody id="costsBody"><tr><td class="empty" colspan="7">読込中です</td></tr></tbody>
           </table>
         </div>
       </section>

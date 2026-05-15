@@ -688,25 +688,53 @@ async function loadOptionMasters(){
   renderOptionMasters();
   syncCostChannelSelect();
 }
-function costChannelTypeOf(channel){
-  const value=String(channel||"").trim();
-  if(!value)return "求人媒体";
-  if(value.includes("ハローワーク") || value.includes("ハロワ"))return "ハローワーク";
-  if(value.includes("紹介"))return "紹介";
-  if(value.includes("リファラル"))return "リファラル";
-  if(value.includes("その他"))return "その他";
-  return "求人媒体";
-}
-function syncCostChannelSelect(){
-  const select=$("costChannel");
-  if(!select || select.tagName!=="SELECT")return;
-  const current=String(select.value||"").trim();
-  const channels=[...new Set(optionMasters
+function costChannelMainOptions(){
+  return [...new Set(optionMasters
     .filter(row=>row.kind==="channel" && row.is_active!==false)
     .map(row=>String(row.name||"").trim())
     .filter(Boolean))];
-  select.innerHTML='<option value="">媒体マスタから選択</option>' + channels.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join("");
-  if(current && channels.includes(current))select.value=current;
+}
+function costChannelDetailOptions(){
+  return [...new Set(optionMasters
+    .filter(row=>row.kind==="channel_detail" && row.is_active!==false)
+    .map(row=>String(row.name||"").trim())
+    .filter(Boolean))];
+}
+function costChannelTypeOf(channel){
+  const value=String(channel||"").trim();
+  if(!value)return "";
+  const mains=costChannelMainOptions();
+  if(mains.includes(value))return value;
+  if(value.includes("Indeed") || value.includes("Ｉｎｄｅｅｄ") || value.includes("INDEED"))return mains.includes("テンリク") ? "テンリク" : "";
+  if(value.includes("エン転職") || value.includes("doda") || value.includes("バイトル") || value.includes("マイナビ") || value.includes("リクナビ"))return mains.includes("求人媒体") ? "求人媒体" : "";
+  if(value.includes("ハローワーク") || value.includes("ハロワ"))return mains.includes("ハローワーク") ? "ハローワーク" : "";
+  if(value.includes("紹介"))return mains.includes("紹介") ? "紹介" : "";
+  if(value.includes("リファラル"))return mains.includes("リファラル") ? "リファラル" : "";
+  return "";
+}
+function syncCostChannelSelect(){
+  const typeSelect=$("costChannelType");
+  const detailSelect=$("costChannel");
+  const currentType=String(typeSelect?.value||"").trim();
+  const currentDetail=String(detailSelect?.value||"").trim();
+  const channels=costChannelMainOptions();
+  const details=costChannelDetailOptions();
+  if(typeSelect && typeSelect.tagName==="SELECT"){
+    typeSelect.innerHTML='<option value="">媒体マスタから選択</option>' + channels.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join("");
+    if(currentType && channels.includes(currentType))typeSelect.value=currentType;
+  }
+  if(detailSelect && detailSelect.tagName==="SELECT"){
+    detailSelect.innerHTML='<option value="">媒体詳細マスタから選択</option>' + details.map(name=>`<option value="${esc(name)}">${esc(name)}</option>`).join("");
+    if(currentDetail && details.includes(currentDetail))detailSelect.value=currentDetail;
+  }
+}
+function costChannelDisplayParts(value){
+  const channel=String(value||"").trim();
+  const mains=costChannelMainOptions();
+  const details=costChannelDetailOptions();
+  if(!channel)return {main:"-",detail:"-"};
+  if(details.includes(channel))return {main:costChannelTypeOf(channel)||"-",detail:channel};
+  return {main:mains.includes(channel)?channel:(costChannelTypeOf(channel)||channel),detail:details.includes(channel)?channel:"-"};
 }
 function renderOptionKindTabs(){}
 function setOptionKindFilter(kind){
@@ -877,10 +905,12 @@ function renderCosts(){
   body.innerHTML=costs.map(c=>{
     const active=c.is_active!==false;
     const id=Number(c.id);
+    const parts=costChannelDisplayParts(c.channel);
     return `<tr class="${active?'':'row-inactive'}">
       <td>${esc(c.fiscal_year)}</td>
       <td>${esc(c.target_month)}</td>
-      <td><strong>${esc(c.channel)}</strong></td>
+      <td><strong>${esc(parts.main)}</strong></td>
+      <td>${esc(parts.detail)}</td>
       <td class="num">${Number(c.cost_amount||0).toLocaleString()}円</td>
       <td>${active?'<span class="status-pill on">使用中</span>':'<span class="status-pill off">停止</span>'}</td>
       <td class="admin-actions-cell">
@@ -889,7 +919,7 @@ function renderCosts(){
         <button class="mini-btn danger" type="button" onclick="deleteCost(${id})">削除</button>
       </td>
     </tr>`;
-  }).join("")||'<tr><td class="empty" colspan="6">媒体費がありません</td></tr>';
+  }).join("")||'<tr><td class="empty" colspan="7">媒体費がありません</td></tr>';
 }
 function fiscalYearFromMonth(month){
   return window.RecruitCost?.fiscalYearFromMonth ? window.RecruitCost.fiscalYearFromMonth(month) : null;
@@ -908,23 +938,26 @@ function editCost(id){
   $("costContractStart").value=(c.target_month||"")+"-01";
   $("costContractEnd").value=(c.target_month||"")+"-01";
   syncCostChannelSelect();
-  $("costChannel").value=c.channel||"";
+  const detailOptions=costChannelDetailOptions();
   const costChannelType=$("costChannelType");
   if(costChannelType)costChannelType.value=costChannelTypeOf(c.channel);
+  $("costChannel").value=detailOptions.includes(String(c.channel||"").trim()) ? String(c.channel||"").trim() : "";
   $("costAmount").value=Number(c.cost_amount||0);
   ["costDivisionNote","costCenterNote","costJobNote"].forEach(id=>{const el=$(id);if(el)el.value=""});
   window.scrollTo({top:0,behavior:"smooth"});
 }
-function clearCostForm(){["costId","costContractStart","costContractEnd","costChannel","costAmount","costDivisionNote","costCenterNote","costJobNote"].forEach(id=>{const el=$(id);if(el)el.value=""});const costChannelType=$("costChannelType");if(costChannelType)costChannelType.value="求人媒体";}
+function clearCostForm(){["costId","costContractStart","costContractEnd","costChannel","costAmount","costDivisionNote","costCenterNote","costJobNote"].forEach(id=>{const el=$(id);if(el)el.value=""});const costChannelType=$("costChannelType");if(costChannelType)costChannelType.value="";}
 async function saveCostContract(){
   const editingId=$("costId")?.value||"";
   const start=$("costContractStart")?.value||"";
   const end=$("costContractEnd")?.value||"";
-  const channel=$("costChannel")?.value.trim()||"";
+  const channelMain=$("costChannelType")?.value.trim()||"";
+  const channelDetail=$("costChannel")?.value.trim()||"";
+  const channel=channelDetail || channelMain;
   const amount=Number($("costAmount")?.value||0);
   const months=monthKeysBetween(start,end);
   if(!start||!end||!months.length){adminError("契約開始日・契約終了日を正しく入力してください。");return}
-  if(!channel){adminError("媒体名を媒体マスタから選択してください。");return}
+  if(!channelMain){adminError("求人区分を媒体マスタから選択してください。");return}
   if(Number.isNaN(amount)||amount<0){adminError("契約総額は0以上の数字で入力してください。");return}
   try{
     if(editingId){
@@ -949,7 +982,7 @@ async function saveCostContract(){
       }
       log(`媒体費契約を ${months.length}か月へ配賦して保存しました`,"success");
     }
-    await writeAuditLog("cost_save","channel_costs",editingId||channel,{mode:editingId?"update":"upsert_contract",channel,amount,months});
+    await writeAuditLog("cost_save","channel_costs",editingId||channel,{mode:editingId?"update":"upsert_contract",channel_main:channelMain,channel_detail:channelDetail,channel,amount,months});
     clearCostForm();
     await loadCosts();
   }catch(e){
