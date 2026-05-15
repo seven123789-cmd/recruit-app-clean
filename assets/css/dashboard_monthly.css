@@ -18,20 +18,21 @@
 .table-card .table-wrap{
   overflow-x:auto;
 }
-.table-card table{
+.monthly-summary-table{
   width:100%;
-  border-collapse:collapse;
-  table-layout:fixed;
+  border-collapse:separate;
+  border-spacing:0;
+  table-layout:auto;
 }
-.table-card table th,
-.table-card table td{
-  padding:12px 10px;
+.monthly-summary-table th,
+.monthly-summary-table td{
+  padding:12px 14px;
   border-bottom:1px solid #dbeafe;
   vertical-align:middle;
   line-height:1.35;
   font-variant-numeric:tabular-nums;
 }
-.table-card table th{
+.monthly-summary-table th{
   background:#eff6ff;
   color:#1e3a8a;
   font-size:12px;
@@ -39,22 +40,25 @@
   text-align:center;
   white-space:nowrap;
 }
-.table-card table td{
+.monthly-summary-table td{
   color:#0f172a;
   font-size:13px;
   font-weight:850;
   text-align:center;
   white-space:nowrap;
 }
-.table-card table th:first-child,
-.table-card table td:first-child{
-  width:120px;
-  min-width:120px;
+.monthly-summary-table th:first-child,
+.monthly-summary-table td:first-child{
+  width:104px;
   text-align:left;
   padding-left:16px;
 }
-.table-card table a,
-.table-card table .count-link{
+.monthly-summary-table th:not(:first-child),
+.monthly-summary-table td:not(:first-child){
+  min-width:120px;
+}
+.monthly-summary-table a,
+.monthly-summary-table .count-link{
   display:inline-flex;
   justify-content:center;
   align-items:center;
@@ -62,8 +66,8 @@
   text-align:center;
   font-variant-numeric:tabular-nums;
 }
-.table-card table small,
-.table-card table .subline{
+.monthly-summary-table small,
+.monthly-summary-table .subline{
   display:block;
   margin-top:3px;
   color:#64748b;
@@ -79,5 +83,5 @@
 .empty{
   color:#64748b;
   font-weight:800;
-  text-align:center!important;
+  text-align:center;
 }
