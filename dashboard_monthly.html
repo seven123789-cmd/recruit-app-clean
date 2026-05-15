@@ -137,7 +137,7 @@
   <col class="col-rate">
 </colgroup>
 <thead id="tableHead"></thead>
-<tbody id="tableBody"><tr><td class="empty" colspan="6">読込中です</td></tr></tbody>
+<tbody id="tableBody"><tr><td class="empty" colspan="9">読込中です</td></tr></tbody>
 </table>
 </div>
 </section>
@@ -463,27 +463,31 @@ function renderCharts(monthly){
   });
 }
 function renderRows(monthly){
+  const C = ' style="text-align:center"';
+  const headers = ["月","応募","アポ取得","面接設定","面接実施","内定","採用","応募→面接","応募→採用"];
   $("tableHead").innerHTML =
     "<tr>" +
-    ["月","応募","面接実施","採用","応募→面接","応募→採用"].map(h => "<th>" + h + "</th>").join("") +
+    headers.map((h,i) => i===0 ? `<th>${h}</th>` : `<th${C}>${h}</th>`).join("") +
     "</tr>";
 
   if(!monthly.length){
-    $("tableBody").innerHTML = '<tr><td class="empty" colspan="6">データがありません</td></tr>';
+    $("tableBody").innerHTML = '<tr><td class="empty" colspan="9">データがありません</td></tr>';
     return;
   }
 
   $("tableBody").innerHTML = monthly.map(x => {
-    const zero = x.applied + x.interview + x.join === 0;
-    const c = 'style="text-align:center"';
+    const zero = x.applied+x.appointment+x.set+x.interview+x.offer+x.join===0;
     return `
-      <tr class="${zero ? "zero-month" : ""}">
+      <tr class="${zero?"zero-month":""}">
         <td>${esc(monthLabel(x.key))}</td>
-        <td ${c}>${monthlyCountLink(x.applied, x.key, "applied")}</td>
-        <td ${c}>${monthlyCountLink(x.interview, x.key, "interview_done")}</td>
-        <td ${c}>${monthlyCountLink(x.join, x.key, "hired")}</td>
-        <td ${c}>${monthlyRateLink(rate(x.interview, x.applied), x.key, "heat_interview_gap")}</td>
-        <td ${c}>${monthlyRateLink(rate(x.join, x.applied), x.key, "heat_hire_gap")}</td>
+        <td${C}>${monthlyCountLink(x.applied,x.key,"applied")}</td>
+        <td${C}>${monthlyCountLink(x.appointment,x.key,"appointment")}</td>
+        <td${C}>${monthlyCountLink(x.set,x.key,"interview_set")}</td>
+        <td${C}>${monthlyCountLink(x.interview,x.key,"interview_done")}</td>
+        <td${C}>${monthlyCountLink(x.offer,x.key,"offer")}</td>
+        <td${C}>${monthlyCountLink(x.join,x.key,"hired")}</td>
+        <td${C}>${monthlyRateLink(rate(x.interview,x.applied),x.key,"heat_interview_gap")}</td>
+        <td${C}>${monthlyRateLink(rate(x.join,x.applied),x.key,"heat_hire_gap")}</td>
       </tr>`;
   }).join("");
 }

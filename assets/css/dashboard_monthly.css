@@ -5,99 +5,74 @@
 .side-summary-card span{color:#64748b;font-size:11px;font-weight:900;}.side-summary-card strong{color:#0f172a;font-size:14px;font-weight:950;text-align:right;}.side-summary-card.side-summary-wide{display:block}.side-summary-card.side-summary-wide span{display:block;margin-bottom:4px}.side-summary-card.side-summary-wide strong{display:block;color:#334155;font-size:12px;line-height:1.45;text-align:left;}
 .section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;}.section-head h2{margin:0 0 4px}.section-head p{margin:0;color:#64748b;font-size:12px;font-weight:750;}
 .chart-box{height:300px;padding:14px;border:1px solid #dbeafe;border-radius:18px;background:#fff;}.chart-box.compact{height:260px;}
-.table-card table td,
 .auth-shell{max-width:520px;margin:48px auto 0}.auth-title{margin:0 0 8px;font-size:28px;color:#fff}.auth-sub{margin:0 0 20px;color:rgba(255,255,255,.82)}.auth-card{background:#fff;border:1px solid rgba(226,232,240,.9);border-radius:22px;box-shadow:var(--shadow);padding:24px}.auth-card h2{margin:0 0 8px;font-size:22px;color:#0f172a}.auth-note{margin:0 0 18px;color:var(--muted);font-size:13px}.auth-rule{margin:6px 0 0;color:#64748b;font-size:12px;line-height:1.6}.log-box{display:none;}
 @media(max-width:760px){.chart-box,.chart-box.compact{height:240px}}
-/* Dashboard table alignment fix */
-.table-card{
-  overflow:hidden;
-}
-.table-card .table-head{
-  padding-bottom:8px;
-}
-.table-card .table-wrap{
-  overflow-x:auto;
-}
+
+/* ===== テーブルラッパー ===== */
+.table-card{overflow:hidden;}
+.table-card .table-head{padding-bottom:8px;}
+.table-card .table-wrap{overflow-x:auto;}
+
+/* ===== 月次集計テーブル ===== */
 .monthly-summary-table{
   width:100%;
   border-collapse:collapse;
-  table-layout:fixed;
+  table-layout:auto;
 }
+
+/* th・td 共通: text-align:center をここで一括確定 */
 .monthly-summary-table th,
 .monthly-summary-table td{
-  padding:12px 10px;
+  padding:11px 16px;
   border-bottom:1px solid #dbeafe;
   vertical-align:middle;
-  line-height:1.35;
-  font-variant-numeric:tabular-nums;
+  text-align:center;
   white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+  line-height:1.35;
 }
+
+/* ヘッダー */
 .monthly-summary-table th{
+  position:static;
   background:#eff6ff;
   color:#1e3a8a;
   font-size:12px;
   font-weight:950;
 }
+
+/* データ行 */
 .monthly-summary-table td{
   color:#0f172a;
   font-size:13px;
   font-weight:850;
 }
-.monthly-summary-table th:nth-child(1),
-.monthly-summary-table td:nth-child(1){
-  width:13%;
+
+/* 1列目（月）だけ左寄せ */
+.monthly-summary-table th:first-child,
+.monthly-summary-table td:first-child{
   text-align:left;
-  padding-left:16px;
-}
-.monthly-summary-table th:nth-child(2),
-.monthly-summary-table td:nth-child(2),
-.monthly-summary-table th:nth-child(3),
-.monthly-summary-table td:nth-child(3),
-.monthly-summary-table th:nth-child(4),
-.monthly-summary-table td:nth-child(4){
-  width:14%;
-  text-align:center;
-}
-.monthly-summary-table th:nth-child(5),
-.monthly-summary-table td:nth-child(5),
-.monthly-summary-table th:nth-child(6),
-.monthly-summary-table td:nth-child(6){
-  width:22.5%;
-  text-align:center;
-}
-.monthly-summary-table a,
-.monthly-summary-table .count-link{
-  display:inline-flex;
-  justify-content:center;
-  align-items:center;
-  min-width:40px;
-  text-align:center;
-  font-variant-numeric:tabular-nums;
-}
-.monthly-summary-table small,
-.monthly-summary-table .subline{
-  display:block;
-  margin-top:3px;
-  color:#64748b;
-  font-size:11px;
-  font-weight:750;
-  line-height:1.2;
-  text-align:center;
-}
-.zero-month td{
-  color:#94a3b8;
-  background:#fbfdff;
-}
-.empty{
-  color:#64748b;
-  font-weight:800;
-  text-align:center;
+  padding-left:18px;
+  min-width:100px;
 }
 
-.monthly-summary-table thead th {
-  position: static;
-  text-align: center;
+/* リンク: inline-flex をやめてシンプルな inline-block に */
+.monthly-summary-table a,
+.monthly-summary-table .count-link{
+  display:inline-block;
+  text-align:center;
+  font-variant-numeric:tabular-nums;
+  text-decoration:none;
+  color:inherit;
 }
-.monthly-summary-table thead th:first-child {
-  text-align: left;
+.monthly-summary-table a:hover,
+.monthly-summary-table .count-link:hover{
+  text-decoration:underline;
+  text-underline-offset:2px;
 }
+.monthly-summary-table .muted-zero{
+  color:#94a3b8;
+}
+
+.zero-month td{color:#94a3b8;background:#fbfdff;}
+.empty{color:#64748b;font-weight:800;text-align:center;}
