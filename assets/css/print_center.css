@@ -1170,3 +1170,9 @@
   border-color:#3b82f6;
   box-shadow:0 0 0 3px rgba(59,130,246,.12);
 }
+
+/* 2026-05-15: 右下の印刷プレビューイメージのみ非表示 */
+.output-control-panel .mini-preview-title,
+.output-control-panel .paper-mini{
+  display:none;
+}
