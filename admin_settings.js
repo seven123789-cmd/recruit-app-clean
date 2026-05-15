@@ -109,9 +109,32 @@ function notifyRecruitMasterChanged(kind){
   }
 }
 function fmtDate(value){return value?String(value).slice(0,10):"-"}
+function normalizeRoleValue(role){
+  return String(role || "editor").trim().toLowerCase();
+}
 function isAdmin(){
-  const role=String(currentRole||"").toLowerCase();
-  return role==="admin";
+  return normalizeRoleValue(currentRole) === "admin";
+}
+function setStoredRole(role){
+  const normalized = normalizeRoleValue(role);
+  currentRole = normalized;
+  try{ localStorage.setItem("recruit_user_role", normalized); }catch(e){}
+  window.currentRole = normalized;
+  if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.setRole === "function"){
+    window.RecruitOpsGuard.setRole(normalized);
+  }
+  if(typeof window.renderDashboardSidebar === "function"){
+    window.renderDashboardSidebar();
+  }
+  return normalized;
+}
+function clearStoredRole(){
+  currentRole = null;
+  window.currentRole = null;
+  try{ localStorage.removeItem("recruit_user_role"); }catch(e){}
+  if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.setRole === "function"){
+    window.RecruitOpsGuard.setRole("editor");
+  }
 }
 
 async function getUser(){
@@ -120,48 +143,88 @@ async function getUser(){
   currentUser=session?.user||null;
   return currentUser;
 }
+async function fetchProfileForUser(user){
+  if(!user) return null;
+
+  const byUserId = await sb
+    .from("profiles")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("updated_at", { ascending:false })
+    .limit(1);
+
+  if(byUserId.error){
+    console.warn("profiles user_id lookup failed", byUserId.error);
+  }
+  if(byUserId.data && byUserId.data.length){
+    return byUserId.data[0];
+  }
+
+  if(user.email){
+    const byEmail = await sb
+      .from("profiles")
+      .select("*")
+      .eq("email", user.email)
+      .order("updated_at", { ascending:false })
+      .limit(1);
+
+    if(byEmail.error){
+      console.warn("profiles email lookup failed", byEmail.error);
+    }
+    if(byEmail.data && byEmail.data.length){
+      return byEmail.data[0];
+    }
+  }
+
+  return null;
+}
 async function getRole(userId){
   if(currentRole)return currentRole;
   try{
-    const {data}=await sb.from("profiles").select("role,email,is_active").eq("user_id",userId).single();
-    if(data && data.is_active===false){throw new Error("このアカウントは停止されています。管理者へ確認してください。")}
-    currentRole=data?.role||"editor";
-    if(window.RecruitOpsGuard) window.RecruitOpsGuard.setRole(currentRole);
-  }catch(e){currentRole="editor"}
-  try{localStorage.setItem("recruit_user_role",currentRole||"editor")}catch(e){}
-  return currentRole;
+    const user = currentUser || await getUser();
+    const profile = await fetchProfileForUser(user || { id:userId });
+    if(profile && profile.is_active === false){
+      throw new Error("このアカウントは停止されています。管理者へ確認してください。");
+    }
+    return setStoredRole(profile?.role || "editor");
+  }catch(e){
+    console.warn("role lookup failed", e);
+    return setStoredRole("editor");
+  }
 }
 function showAuth(msg="未ログインです",type="info"){
   $("authScreen")?.classList.remove("hidden");
   $("accessDeniedScreen")?.classList.add("hidden");
   $("appScreen")?.classList.add("hidden");
   currentUser=null;
-  currentRole=null;
+  clearStoredRole();
   setMsg("authMessage",msg,type);
   document.body.classList.remove("auth-checking");
+  document.body.classList.add("auth-mode");
 }
 function showAccessDenied(){
   $("authScreen")?.classList.add("hidden");
   $("accessDeniedScreen")?.classList.remove("hidden");
   $("appScreen")?.classList.add("hidden");
   document.body.classList.remove("auth-checking");
+  document.body.classList.add("auth-mode");
 }
 async function showApp(){
   const user=await getUser();
   if(!user){showAuth();return false}
+  currentUser = user;
   await getRole(user.id);
   if(!isAdmin()){
-    try{localStorage.setItem("recruit_user_role",currentRole||"editor")}catch(e){}
     showAccessDenied();
     return false;
   }
-  try{localStorage.setItem("recruit_user_role",currentRole||"admin")}catch(e){}
+  setStoredRole("admin");
   $("authScreen")?.classList.add("hidden");
   $("accessDeniedScreen")?.classList.add("hidden");
   $("appScreen")?.classList.remove("hidden");
   setText("sideRole",currentRole||"admin");
   document.body.classList.remove("auth-checking");
-  if(typeof renderDashboardSidebar==="function")renderDashboardSidebar();
+  document.body.classList.remove("auth-mode");
   return true;
 }
 async function login(){
@@ -177,14 +240,36 @@ async function login(){
   }catch(e){setMsg("authMessage","ログイン失敗: "+(e.message||e),"error")}
 }
 async function logout(){
-  try{await sb.auth.signOut()}catch(e){}
-  showAuth("ログアウトしました","success");
+  try{
+    if(window.RecruitAuth && typeof window.RecruitAuth.markExplicitSignOut === "function"){
+      window.RecruitAuth.markExplicitSignOut();
+    }
+    await sb.auth.signOut();
+  }catch(e){
+    console.warn("signOut failed", e);
+  }finally{
+    currentUser=null;
+    clearStoredRole();
+    showAuth("ログアウトしました","success");
+  }
 }
-sb.auth.onAuthStateChange((ev)=>{if(ev==="SIGNED_OUT")showAuth("ログアウトしました","success")});
+sb.auth.onAuthStateChange((ev)=>{
+  if(ev==="SIGNED_OUT"){
+    currentUser=null;
+    clearStoredRole();
+    showAuth("ログアウトしました","success");
+  }
+});
 async function authInit(){
-  try{if(await showApp())await reloadAll()}
-  catch(e){console.error(e);showAuth("初期化に失敗しました","error")}
-  finally{document.body.classList.remove("auth-checking")}
+  try{
+    const ok = await showApp();
+    if(ok) await reloadAll();
+  }catch(e){
+    console.error(e);
+    showAuth("初期化に失敗しました","error");
+  }finally{
+    document.body.classList.remove("auth-checking");
+  }
 }
 
 const OPTION_TAB_NAMES=new Set(["job_type","owner","channel","channel_detail","status","decline_reason","reject_reason"]);

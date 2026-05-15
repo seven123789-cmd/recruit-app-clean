@@ -115,16 +115,76 @@
     });
   }
 
+  let sidebarRoleRefreshing = false;
+
+  function normalizeRole(role){
+    return String(role || "").trim().toLowerCase();
+  }
+
   function getStoredRole(){
     try{
-      return String(localStorage.getItem("recruit_user_role") || "").toLowerCase();
+      return normalizeRole(localStorage.getItem("recruit_user_role") || window.currentRole || "");
     }catch(e){
-      return "";
+      return normalizeRole(window.currentRole || "");
     }
+  }
+
+  function setStoredRole(role){
+    const normalized = normalizeRole(role);
+    if(!normalized) return;
+    try{ localStorage.setItem("recruit_user_role", normalized); }catch(e){}
+    window.currentRole = normalized;
   }
 
   function isAdminRole(){
     return getStoredRole() === "admin";
+  }
+
+  async function refreshRoleFromSession(){
+    if(sidebarRoleRefreshing) return;
+    const client = window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : (window.sb || window.supabaseClient);
+    if(!client || !client.auth || !client.from) return;
+
+    sidebarRoleRefreshing = true;
+    try{
+      const { data:{ session } = {} } = await client.auth.getSession();
+      const user = session && session.user ? session.user : null;
+      if(!user) return;
+
+      let profile = null;
+      const byUserId = await client
+        .from("profiles")
+        .select("role,is_active,email,updated_at")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending:false })
+        .limit(1);
+
+      if(byUserId.data && byUserId.data.length){
+        profile = byUserId.data[0];
+      }else if(user.email){
+        const byEmail = await client
+          .from("profiles")
+          .select("role,is_active,email,updated_at")
+          .eq("email", user.email)
+          .order("updated_at", { ascending:false })
+          .limit(1);
+        if(byEmail.data && byEmail.data.length){
+          profile = byEmail.data[0];
+        }
+      }
+
+      if(profile && profile.is_active !== false && profile.role){
+        const before = getStoredRole();
+        setStoredRole(profile.role);
+        if(before !== normalizeRole(profile.role)){
+          renderSidebar();
+        }
+      }
+    }catch(e){
+      console.warn("sidebar role refresh failed", e);
+    }finally{
+      sidebarRoleRefreshing = false;
+    }
   }
 
   function renderSidebar(){
@@ -162,6 +222,10 @@
 
     bindAccordion(sidebar);
     bindLogout(sidebar);
+
+    if(!isAdminRole()){
+      refreshRoleFromSession();
+    }
   }
 
   if(document.readyState === "loading"){
@@ -171,4 +235,8 @@
   }
 
   window.renderDashboardSidebar = renderSidebar;
+  window.setRecruitSidebarRole = function(role){
+    setStoredRole(role);
+    renderSidebar();
+  };
 })();
