@@ -93,11 +93,31 @@
                 <small id="advancedSummary">指定なし</small>
               </summary>
               <div class="advanced-grid">
-                <label>本部<select id="reportDivision"><option value="すべて">すべて</option></select></label>
-                <label>営業所<select id="reportCenter"><option value="すべて">すべて</option></select></label>
-                <label>媒体<select id="reportChannel"><option value="すべて">すべて</option></select></label>
-                <label>担当者<select id="reportOwner"><option value="すべて">すべて</option></select></label>
-                <label>職種<select id="reportJob"><option value="すべて">すべて</option></select></label>
+                <label>本部
+                  <select id="reportDivision" data-filter-select="division">
+                    <option value="すべて">すべて</option>
+                  </select>
+                </label>
+                <label>営業所
+                  <select id="reportCenter" data-filter-select="center">
+                    <option value="すべて">すべて</option>
+                  </select>
+                </label>
+                <label>媒体
+                  <select id="reportChannel" data-filter-select="channel">
+                    <option value="すべて">すべて</option>
+                  </select>
+                </label>
+                <label>担当者
+                  <select id="reportOwner" data-filter-select="owner">
+                    <option value="すべて">すべて</option>
+                  </select>
+                </label>
+                <label>職種
+                  <select id="reportJob" data-filter-select="job">
+                    <option value="すべて">すべて</option>
+                  </select>
+                </label>
               </div>
               <div class="hq-flow-note" id="hqFlowNote" hidden>
                 <strong>本部 → 媒体 → 職種</strong>
@@ -598,27 +618,111 @@ window.addEventListener("beforeunload", savePrintCenterState);
 
 async function buildFilterOptionsFromCandidates(){
   const client = window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : (window.sb || null);
-  if(!client) return;
-  try{
-    const {data,error} = await client.from("candidates").select("division,center_name,channel,channel_detail,owner_name,job_type,job,position,is_deleted,deleted_at,deleted_by").limit(5000);
-    if(error) return;
-    const active = (data || []).filter(row => !(row.is_deleted || row.deleted_at || row.deleted_by));
-    const setOptions = (id, values, firstLabel="すべて") => {
-      const el = document.getElementById(id);
-      if(!el) return;
-      const current = el.dataset.pendingValue || el.value || firstLabel;
-      const sorted = [...new Set(values.map(v => String(v || "").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ja"));
-      el.innerHTML = `<option value="${firstLabel}">${firstLabel}</option>` + sorted.map(v => `<option value="${v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}">${v}</option>`).join("");
-      if([...el.options].some(o => o.value === current)) el.value = current;
-      delete el.dataset.pendingValue;
-    };
-    setOptions("reportDivision", ["全本部", ...active.map(r => r.division)]);
-    setOptions("reportCenter", active.map(r => r.center_name));
-    setOptions("reportChannel", active.flatMap(r => [r.channel, r.channel_detail]));
-    setOptions("reportOwner", active.map(r => r.owner_name));
-    setOptions("reportJob", active.map(r => r.job_type || r.job || r.position));
+
+  const pick = (row, keys) => {
+    for(const key of keys){
+      const value = row?.[key];
+      if(value !== undefined && value !== null && String(value).trim() !== "") return String(value).trim();
+    }
+    return "";
+  };
+
+  const escapeOption = (value) => String(value || "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
+
+  const restoreSelectValue = (el, current) => {
+    if(!el) return;
+    const exists = Array.from(el.options).some(option => option.value === current);
+    if(exists) el.value = current;
+    else el.value = "すべて";
+    delete el.dataset.pendingValue;
+  };
+
+  const setOptions = (id, values, options = {}) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+
+    const firstValue = options.firstValue || "すべて";
+    const firstLabel = options.firstLabel || firstValue;
+    const extraValues = options.extraValues || [];
+    const current = el.dataset.pendingValue || el.value || firstValue;
+
+    const cleaned = [...extraValues, ...values]
+      .map(value => String(value || "").trim())
+      .filter(Boolean)
+      .filter(value => value !== firstValue);
+
+    const unique = [...new Set(cleaned)].sort((a,b) => a.localeCompare(b, "ja"));
+    el.innerHTML =
+      `<option value="${escapeOption(firstValue)}">${escapeOption(firstLabel)}</option>` +
+      unique.map(value => `<option value="${escapeOption(value)}">${escapeOption(value)}</option>`).join("");
+
+    restoreSelectValue(el, current);
+  };
+
+  const applyFallbackOptions = () => {
+    setOptions("reportDivision", ["全本部","東日本本部","西日本本部","中部本部","家電物流事業部","本社"]);
+    setOptions("reportCenter", []);
+    setOptions("reportChannel", []);
+    setOptions("reportOwner", []);
+    setOptions("reportJob", ["職員","外商員","内務員","事務員","整備員","その他"]);
+  };
+
+  if(!client){
+    applyFallbackOptions();
     updateConditionSummary();
-  }catch(e){}
+    return;
+  }
+
+  try{
+    const {data,error} = await client
+      .from("candidates")
+      .select("*")
+      .limit(10000);
+
+    if(error) throw error;
+
+    const active = (data || []).filter(row => !(row.is_deleted || row.deleted_at || row.deleted_by));
+
+    const divisionKeys = ["division","head_office","headOffice","hq","hq_name","department","department_name","本部"];
+    const centerKeys = ["center_name","center","office","office_name","branch","branch_name","sales_office","salesOffice","営業所","センター"];
+    const channelKeys = ["channel","channel_name","media","media_name","source","source_name","recruit_channel","応募媒体","媒体"];
+    const channelDetailKeys = ["channel_detail","media_detail","source_detail","媒体詳細"];
+    const ownerKeys = ["owner_name","owner","manager","manager_name","recruiter","recruiter_name","担当者","担当"];
+    const jobKeys = ["job_type","job","position","position_name","occupation","occupation_name","職種"];
+
+    setOptions(
+      "reportDivision",
+      active.map(row => pick(row, divisionKeys)),
+      {extraValues:["全本部"]}
+    );
+    setOptions(
+      "reportCenter",
+      active.map(row => pick(row, centerKeys))
+    );
+    setOptions(
+      "reportChannel",
+      active.flatMap(row => [pick(row, channelKeys), pick(row, channelDetailKeys)])
+    );
+    setOptions(
+      "reportOwner",
+      active.map(row => pick(row, ownerKeys))
+    );
+    setOptions(
+      "reportJob",
+      active.map(row => pick(row, jobKeys)),
+      {extraValues:["職員","外商員","内務員","事務員","整備員","その他"]}
+    );
+
+    updateConditionSummary();
+  }catch(e){
+    console.warn("詳細絞り込み候補の取得に失敗しました", e);
+    applyFallbackOptions();
+    updateConditionSummary();
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {

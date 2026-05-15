@@ -1148,3 +1148,25 @@
 .paper-mini.is-hq-flow .mini-table-grid{grid-template-columns:1fr 1fr;}
 .type-tabs{grid-template-columns:repeat(4,minmax(0,1fr));}
 @media(max-width:900px){.type-tabs{grid-template-columns:repeat(2,minmax(0,1fr));}}
+/* Print filter dropdown fix */
+.advanced-grid label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.advanced-grid select{
+  width:100%;
+  min-height:44px;
+  border:1px solid #bfdbfe;
+  border-radius:12px;
+  background:#fff;
+  color:#0f172a;
+  font-size:14px;
+  font-weight:800;
+  padding:0 36px 0 12px;
+}
+.advanced-grid select:focus{
+  outline:none;
+  border-color:#3b82f6;
+  box-shadow:0 0 0 3px rgba(59,130,246,.12);
+}
