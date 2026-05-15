@@ -364,15 +364,36 @@ async function confirmDeleteAccount(){
   }
   const label=target.email||target.user_id||"対象ユーザー";
   try{
-    const {error}=await sb.from("profiles").delete().eq("user_id",target.user_id);
+    log(`${label} のログインアカウント削除を開始します`);
+
+    const {data,error}=await sb.functions.invoke("delete-auth-user",{
+      body:{
+        user_id:target.user_id,
+        email:target.email||null
+      }
+    });
     if(error)throw error;
-    await writeAuditLog("account_delete","profiles",target.user_id,{email:target.email||null,role:target.role||null});
-    log(`${label} のアプリ権限情報を削除しました`,"success");
+    if(data && data.ok===false){
+      throw new Error(data.message||"ログインアカウント削除に失敗しました。");
+    }
+
+    await writeAuditLog("account_delete","profiles",target.user_id,{
+      email:target.email||null,
+      role:target.role||null,
+      auth_deleted:true,
+      deleted_by:currentUser?.id||null
+    });
+    log(`${label} のログインアカウントとアプリ権限情報を削除しました`,"success");
     closeDeleteAccountModal();
     await loadProfiles();
   }catch(e){
     log("アカウント削除に失敗: "+(e.message||e),"error");
-    showErrorPopup("アカウント削除に失敗しました",e,{処理:"アカウント削除",user_id:target?.user_id,email:target?.email});
+    showErrorPopup("アカウント削除に失敗しました",e,{
+      処理:"ログインアカウント削除",
+      user_id:target?.user_id,
+      email:target?.email,
+      補足:"Supabase Edge Function delete-auth-user のデプロイと SUPABASE_SERVICE_ROLE_KEY の設定を確認してください。"
+    });
   }
 }
 
