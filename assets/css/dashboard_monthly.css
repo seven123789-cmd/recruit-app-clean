@@ -45,7 +45,7 @@
 }
 .monthly-summary-table th:nth-child(1),
 .monthly-summary-table td:nth-child(1){
-  width:12%;
+  width:13%;
   text-align:left;
   padding-left:16px;
 }
@@ -62,7 +62,7 @@
 .monthly-summary-table td:nth-child(5),
 .monthly-summary-table th:nth-child(6),
 .monthly-summary-table td:nth-child(6){
-  width:23%;
+  width:22.5%;
   text-align:center;
 }
 .monthly-summary-table a,
