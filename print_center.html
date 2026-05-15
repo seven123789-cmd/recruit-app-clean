@@ -334,6 +334,21 @@ function isHqReport(report){
   return (report || currentReportObject()).type === "hq";
 }
 
+function syncLayoutModeVisibility(report){
+  const target = report || currentReportObject();
+  const layoutMode = document.getElementById("layoutMode");
+  const visible = !isHqReport(target);
+  if(layoutMode){
+    layoutMode.classList.toggle("show", visible);
+    layoutMode.hidden = !visible;
+    layoutMode.style.display = visible ? "" : "none";
+  }
+  if(!visible){
+    const tableRadio = document.querySelector('input[name="viewMode"][value="table"]');
+    if(tableRadio) tableRadio.checked = true;
+  }
+}
+
 function currentViewMode(){
   return isHqReport() ? "table" : (document.querySelector('input[name="viewMode"]:checked')?.value || "graph");
 }
@@ -400,10 +415,7 @@ function renderReports(){
     });
   });
 
-  const layoutMode = document.getElementById("layoutMode");
-  if(layoutMode){
-    layoutMode.classList.toggle("show", currentReportObject().type !== "hq");
-  }
+  syncLayoutModeVisibility(currentReportObject());
   updateSelected();
 }
 
@@ -424,12 +436,7 @@ function applyConditionMode(){
   document.getElementById("conditionGuide").textContent = report.type === "hq" ? "本部合算から媒体・職種別の応募→面接→採用を確認。" : periodGuide(mode);
   const hqNote = document.getElementById("hqFlowNote");
   if(hqNote) hqNote.hidden = report.type !== "hq";
-  const layoutMode = document.getElementById("layoutMode");
-  if(layoutMode) layoutMode.classList.toggle("show", report.type !== "hq");
-  if(report.type === "hq"){
-    const tableRadio = document.querySelector('input[name="viewMode"][value="table"]');
-    if(tableRadio) tableRadio.checked = true;
-  }
+  syncLayoutModeVisibility(report);
 }
 
 function updateSelected(){
@@ -571,6 +578,7 @@ function previewLayout(report, view){
 
 function updatePrintPreview(){
   const report = currentReportObject();
+  syncLayoutModeVisibility(report);
   const cond = conditions();
   const mini = document.getElementById("paperMini");
   const title = document.getElementById("miniReportTitle");
@@ -600,6 +608,7 @@ function updateConditionSummary(){
   const cond = conditions();
   const filters = selectedFilters(cond);
   const report = currentReportObject();
+  syncLayoutModeVisibility(report);
   document.getElementById("summaryRange").textContent = formatRangeText(cond);
   document.getElementById("summaryFilters").textContent = filters.length ? filters.join(" / ") : "指定なし";
   document.getElementById("settingViewMode").textContent = viewModeLabel(cond.view, report);
