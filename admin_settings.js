@@ -226,7 +226,6 @@ async function reloadAll(){
 async function loadProfiles(){
   profiles=await fetchAll("profiles","email");
   setText("sideProfiles",profiles.length.toLocaleString());
-  setText("profileCount",profiles.length.toLocaleString());
   renderProfiles();
 }
 function renderProfiles(){
@@ -324,7 +323,7 @@ async function enableAccount(userId){
   const target=profiles.find(p=>String(p.user_id)===String(userId));
   if(!target){adminError("再開対象のユーザーを確認できません。");return}
   const {error}=await sb.from("profiles").update({is_active:true,disabled_at:null,disabled_by:null,disabled_reason:null,updated_at:nowIso()}).eq("user_id",userId);
-  if(error){log("アカウント再開に失敗: "+error.message,"error");showErrorPopup("アカウント再開に失敗しました",error,{処理:"アカウント再開",user_id:userId,email:target.email});return}
+  if(error){log("アカウント再開に失敗: "+error.message,"error");showErrorPopup("アカウント再開に失敗しました",error,{処理:"アカウント再開",user_id,email:target.email});return}
   await writeAuditLog("account_enable","profiles",userId,{email:target.email||null,role:target.role||null});
   log(`${target.email||userId} を再開しました`,"success");
   await loadProfiles();
@@ -842,17 +841,46 @@ async function toggleOptionMaster(kind,id,nextActive){
 }
 
 
+function makeArchivedMasterName(){
+  const d=new Date();
+  const pad=n=>String(n).padStart(2,"0");
+  const stamp=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  return `削除済_${stamp}`;
+}
+
+async function archiveOptionMasterAfterDeleteFailure(kind,table,id,row,deleteError){
+  const archivedName=makeArchivedMasterName();
+  const patch={
+    name:archivedName,
+    is_active:false,
+    display_order:9999,
+    updated_at:nowIso()
+  };
+  const {error}=await sb.from(table).update(patch).eq("id",id);
+  if(error)throw error;
+  await writeAuditLog("option_master_archive",table,id,{
+    kind,
+    label:optionKindLabel(kind),
+    before:row,
+    after:patch,
+    delete_error:deleteError?formatErrorDetail(deleteError):null
+  });
+  log(`${optionKindLabel(kind)}「${row.name}」を削除扱いにしました`,"success");
+}
+
 async function deleteOptionMaster(kind,id){
   const row=optionMasters.find(x=>x.kind===kind&&Number(x.id)===Number(id));
   if(!row){adminError("削除対象を確認できません。");return}
   const table=optionTableName(kind);
-  const confirmText=adminPrompt(`${optionKindLabel(kind)}「${row.name}」を完全削除します。
+  const ok=await adminConfirm(`${optionKindLabel(kind)}「${row.name}」を削除します。
 
-この操作はテスト登録や誤登録を消すための機能です。
-既存応募データで使用中の名称を削除しても、応募データの文字列は残りますが、新規候補には出なくなります。
-
-削除する場合は「削除」と入力してください。`);
-  if(confirmText!=="削除")return;
+完全削除できない場合は、同じ名称で再登録できるように「削除済み」として無効化します。
+既存応募データの文字列は残りますが、新規候補には出なくなります。`,{
+    title:`${optionKindLabel(kind)}削除確認`,
+    okText:"削除する",
+    type:"danger"
+  });
+  if(!ok)return;
   try{
     const {error}=await sb.from(table).delete().eq("id",id);
     if(error)throw error;
@@ -860,9 +888,18 @@ async function deleteOptionMaster(kind,id){
     log(`${optionKindLabel(kind)}「${row.name}」を削除しました`,"success");
     notifyRecruitMasterChanged(kind);
     await loadOptionMasters();
-  }catch(e){
-    log(`${optionKindLabel(kind)}の削除に失敗: `+(e.message||e),"error");
-    showErrorPopup(`${optionKindLabel(kind)}の削除に失敗しました`,e,{処理:"選択肢マスタ削除",kind,table,id,name:row?.name});
+  }catch(deleteError){
+    try{
+      await archiveOptionMasterAfterDeleteFailure(kind,table,id,row,deleteError);
+      notifyRecruitMasterChanged(kind);
+      await loadOptionMasters();
+      adminNotice(`${optionKindLabel(kind)}「${row.name}」は完全削除できなかったため、削除済みとして無効化しました。
+
+同じ名称で登録し直せます。`,"削除扱いにしました");
+    }catch(archiveError){
+      log(`${optionKindLabel(kind)}の削除に失敗: `+(archiveError.message||archiveError),"error");
+      showErrorPopup(`${optionKindLabel(kind)}の削除に失敗しました`,archiveError,{処理:"選択肢マスタ削除",kind,table,id,name:row?.name,deleteError:formatErrorDetail(deleteError)});
+    }
   }
 }
 
