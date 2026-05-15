@@ -100,6 +100,36 @@
             <label for="filterChannel">媒体</label>
             <select id="filterChannel"><option value="">全媒体</option></select>
           </div>
+          <div class="col-3">
+            <label for="filterDateType">日付種類</label>
+            <select id="filterDateType">
+              <option value="applied_date">応募日</option>
+              <option value="appointment_date">アポ日</option>
+              <option value="interview1_date">面接設定日</option>
+              <option value="interview_done_date">面接実施日</option>
+              <option value="offer_date">内定日</option>
+              <option value="join_date">採用日</option>
+              <option value="next_action_date">次回対応日</option>
+            </select>
+          </div>
+          <div class="col-3">
+            <label for="filterDateFrom">開始日</label>
+            <input id="filterDateFrom" type="date">
+          </div>
+          <div class="col-3">
+            <label for="filterDateTo">終了日</label>
+            <input id="filterDateTo" type="date">
+          </div>
+          <div class="col-12 list-status-filter-panel">
+            <div class="list-status-filter-head">
+              <div>
+                <span class="list-filter-label">ステータス</span>
+                <span class="list-filter-note">ステータスマスタ連動・複数選択可</span>
+              </div>
+              <button class="btn-secondary list-status-clear" type="button" onclick="clearStatusFilters()">ステータス解除</button>
+            </div>
+            <div id="statusFilterChips" class="status-filter-chips" aria-label="ステータス絞り込み"></div>
+          </div>
           <div class="col-12 actions">
             <button id="filterAllBtn" class="btn-primary" type="button" onclick="setListFilter('all')">全件</button>
             <button id="filterActionBtn" class="btn-warning" type="button" onclick="setListFilter('action')">要対応のみ</button>
@@ -127,14 +157,6 @@
             <label for="bulkStatus">ステータス</label>
             <select id="bulkStatus">
               <option value="">変更しない</option>
-              <option>応募</option>
-              <option>アポ取得</option>
-              <option>面接設定</option>
-              <option>面接実施</option>
-              <option>内定</option>
-              <option>入社</option>
-              <option>辞退</option>
-              <option>不通</option>
             </select>
           </div>
           <div class="bulk-field">
@@ -203,6 +225,9 @@ let dashboardTo="";
 let dashboardFilterActive=false;
 let dashboardContextActive=false;
 let listMasterChannels=[];
+let listMasterStatuses=[];
+let statusColorMap={};
+let selectedStatusFilters=new Set();
 let dashboardJob="";
 const selectedIds = new Set();
 
@@ -243,9 +268,23 @@ function isHired(r){
     validDate(r.join_date)
   );
 }
+function normalizeStatusColor(value){
+  const v=String(value||"").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#64748b";
+}
+function hexToRgba(hex,alpha){
+  const h=normalizeStatusColor(hex).replace("#","");
+  const r=parseInt(h.slice(0,2),16);
+  const g=parseInt(h.slice(2,4),16);
+  const b=parseInt(h.slice(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
 function badge(v){
   const t=v||"未設定";
-  return '<span class="badge '+(v?'badge-'+esc(v):'badge-empty')+'">'+esc(t)+'</span>';
+  const color=normalizeStatusColor(statusColorMap[t]||"");
+  const cls=v?"badge":"badge badge-empty";
+  const style=v?` style="color:${esc(color)};border-color:${esc(hexToRgba(color,.34))};background:${esc(hexToRgba(color,.10))}"`:"";
+  return `<span class="${cls}"${style}>${esc(t)}</span>`;
 }
 
 function getFiscalYearFromAppliedDate(dateStr){
@@ -388,12 +427,8 @@ async function login(){
   }
 }
 async function logout(){
-  if(window.RecruitAuth && typeof window.RecruitAuth.logoutToIndex === "function"){
-    await window.RecruitAuth.logoutToIndex();
-    return;
-  }
   try{await sb.auth.signOut()}catch(e){}
-  window.location.replace("./index.html");
+  showAuth("ログアウトしました","success");
 }
 sb.auth.onAuthStateChange((ev)=>{
   if(ev==="SIGNED_OUT")showAuth("ログアウトしました","success");
@@ -422,7 +457,11 @@ function saveState(){
     division:$("filterDivision").value,
     center:$("filterCenter").value,
     owner:$("filterOwner").value,
-    channel:$("filterChannel").value
+    channel:$("filterChannel").value,
+    dateType:$("filterDateType")?.value||"applied_date",
+    dateFrom:$("filterDateFrom")?.value||"",
+    dateTo:$("filterDateTo")?.value||"",
+    statuses:[...selectedStatusFilters]
   }));
 }
 function restoreState(){
@@ -483,6 +522,82 @@ function getListChannelOptions(rows=[]){
   return [...new Set((rows||[]).map(r=>String(r.channel||"").trim()).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));
 }
 
+async function loadListMasterStatuses(rows=[]){
+  listMasterStatuses=[];
+  statusColorMap={};
+  try{
+    let result=await sb
+      .from("master_statuses")
+      .select("name,color,display_order,is_active")
+      .order("display_order",{ascending:true});
+
+    if(result.error){
+      result=await sb
+        .from("master_statuses")
+        .select("name,color,is_active")
+        .order("name",{ascending:true});
+    }
+    if(result.error)throw result.error;
+
+    listMasterStatuses=(result.data||[])
+      .filter(row=>row && row.is_active!==false)
+      .map(row=>({
+        name:String(row.name||"").trim(),
+        color:normalizeStatusColor(row.color||""),
+        display_order:Number(row.display_order||0)
+      }))
+      .filter(row=>row.name);
+  }catch(e){
+    console.warn("ステータスマスタ読込失敗", e);
+    const names=window.RecruitMaster ? await window.RecruitMaster.list("statuses").catch(()=>[]) : [];
+    listMasterStatuses=(names||[]).map((name,index)=>({name:String(name||"").trim(),color:"#64748b",display_order:index+1})).filter(row=>row.name);
+  }
+
+  if(!listMasterStatuses.length){
+    listMasterStatuses=[...new Set((rows||[]).map(r=>String(r.status||"").trim()).filter(Boolean))]
+      .sort((a,b)=>String(a).localeCompare(String(b),"ja"))
+      .map((name,index)=>({name,color:"#64748b",display_order:index+1}));
+  }
+
+  statusColorMap=Object.fromEntries(listMasterStatuses.map(row=>[row.name,normalizeStatusColor(row.color)]));
+}
+function renderStatusFilterChips(){
+  const wrap=$("statusFilterChips");
+  if(!wrap)return;
+  const statuses=(listMasterStatuses||[]).filter(row=>row.name);
+  if(!statuses.length){
+    wrap.innerHTML='<span class="status-filter-empty">ステータスマスタが未登録です</span>';
+    return;
+  }
+  wrap.innerHTML=statuses.map(row=>{
+    const active=selectedStatusFilters.has(row.name);
+    const color=normalizeStatusColor(row.color);
+    const style=`--status-color:${color};--status-bg:${hexToRgba(color,.12)};--status-border:${hexToRgba(color,.34)}`;
+    return `<button class="status-filter-chip ${active?'active':''}" type="button" style="${esc(style)}" data-status="${esc(row.name)}" onclick="toggleStatusFilter(this.dataset.status)">${esc(row.name)}</button>`;
+  }).join("");
+}
+function toggleStatusFilter(status){
+  const value=String(status||"").trim();
+  if(!value)return;
+  if(selectedStatusFilters.has(value))selectedStatusFilters.delete(value);
+  else selectedStatusFilters.add(value);
+  saveState();
+  renderCandidates();
+}
+function clearStatusFilters(){
+  selectedStatusFilters.clear();
+  saveState();
+  renderCandidates();
+}
+function setupBulkStatusOptions(){
+  const select=$("bulkStatus");
+  if(!select)return;
+  const current=select.value;
+  const options=(listMasterStatuses||[]).map(row=>row.name).filter(Boolean);
+  select.innerHTML='<option value="">変更しない</option>' + options.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
+  if(options.includes(current))select.value=current;
+}
+
 async function setupFilters(rows){
   setSelectOptions("filterYear", rows.map(r=>getFiscalYearFromAppliedDate(r.applied_date)).filter(Boolean), "全期間");
   const master = await loadMasterDivisionCenterOptions();
@@ -493,12 +608,18 @@ async function setupFilters(rows){
   setSelectOptions("filterOwner", rows.map(r=>r.owner_name), "全担当");
   await loadListMasterChannels();
   setSelectOptions("filterChannel", getListChannelOptions(rows), "全媒体");
+  await loadListMasterStatuses(rows);
+  renderStatusFilterChips();
+  setupBulkStatusOptions();
 }
 function clearFilters(){
-  ["filterYear","filterMonth","filterDivision","filterCenter","filterOwner","filterChannel"].forEach(id=>{
+  ["filterYear","filterMonth","filterDivision","filterCenter","filterOwner","filterChannel","filterDateFrom","filterDateTo"].forEach(id=>{
     const el=$(id);
     if(el)el.value="";
   });
+  const dateType=$("filterDateType");
+  if(dateType)dateType.value="applied_date";
+  selectedStatusFilters.clear();
   clearDashboardRangeFilter();
   dashboardContextActive=false;
   dashboardJob="";
@@ -645,6 +766,9 @@ function filteredRows(){
   const c=$("filterCenter").value;
   const o=$("filterOwner").value;
   const ch=$("filterChannel").value;
+  const dateType=$("filterDateType")?.value || "applied_date";
+  const dateFrom=$("filterDateFrom")?.value || "";
+  const dateTo=$("filterDateTo")?.value || "";
   const job=dashboardJob;
 
   let arr=allCandidateRows.filter(r=>{
@@ -659,6 +783,13 @@ function filteredRows(){
       if(y&&String(fy)!==y)return false;
       if(m&&String(dt.getMonth()+1).padStart(2,"0")!==m)return false;
     }
+    if(dateFrom||dateTo){
+      const targetDate=String(r[dateType]||"").slice(0,10);
+      if(!validDate(targetDate))return false;
+      if(dateFrom&&targetDate<dateFrom)return false;
+      if(dateTo&&targetDate>dateTo)return false;
+    }
+    if(selectedStatusFilters.size && !selectedStatusFilters.has(String(r.status||"").trim()))return false;
     return (!d||r.division===d)&&(!c||r.center_name===c)&&(!o||r.owner_name===o)&&(!ch||r.channel===ch)&&(!job||r.job_type===job);
   });
 
@@ -746,6 +877,7 @@ function clearBulkSelection(){
 }
 
 function setupBulkOptions(){
+  setupBulkStatusOptions();
   const ownerSelect = $("bulkOwner");
   if(ownerSelect){
     const current = ownerSelect.value;
@@ -910,6 +1042,7 @@ function renderCandidates(){
   $("filterAllBtn").className=currentListFilter==="all"?"btn-primary":"btn-secondary";
   $("filterActionBtn").className=currentListFilter!=="all"?"btn-warning":"btn-secondary";
   updateSortButtons();
+  renderStatusFilterChips();
 
   const rows=filteredRows();
   setupBulkOptions();
@@ -1109,10 +1242,13 @@ async function loadCandidates(){
       sortMode = "appliedDesc";
       clearDashboardRangeFilter();
       dashboardContextActive = false;
-      ["filterYear","filterMonth","filterDivision","filterCenter","filterOwner","filterChannel"].forEach(id => {
+      ["filterYear","filterMonth","filterDivision","filterCenter","filterOwner","filterChannel","filterDateFrom","filterDateTo"].forEach(id => {
         const el = $(id);
         if(el) el.value = "";
       });
+      const latestDateType=$("filterDateType");
+      if(latestDateType)latestDateType.value="applied_date";
+      selectedStatusFilters.clear();
       localStorage.removeItem(STATE);
     }
 
@@ -1135,6 +1271,12 @@ async function loadCandidates(){
           const el=$(id);
           if(el)el.value=state[key]||"";
         });
+        setFilterValue("filterDateType",state.dateType||"applied_date");
+        const dateFromEl=$("filterDateFrom");
+        const dateToEl=$("filterDateTo");
+        if(dateFromEl)dateFromEl.value=state.dateFrom||"";
+        if(dateToEl)dateToEl.value=state.dateTo||"";
+        selectedStatusFilters=new Set(Array.isArray(state.statuses)?state.statuses.map(v=>String(v||"").trim()).filter(Boolean):[]);
       }
     }
 
@@ -1160,7 +1302,7 @@ async function loadCandidates(){
 async function initPageAfterLogin(){
   await loadCandidates();
 }
-["filterYear","filterMonth","filterDivision","filterCenter","filterOwner","filterChannel"].forEach(id=>{
+["filterYear","filterMonth","filterDivision","filterCenter","filterOwner","filterChannel","filterDateType","filterDateFrom","filterDateTo"].forEach(id=>{
   document.addEventListener("change",e=>{
     if(e.target&&e.target.id===id){
       if(dashboardContextActive){

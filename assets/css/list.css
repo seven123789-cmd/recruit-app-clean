@@ -264,3 +264,75 @@ tbody tr.action-missing td:first-child{
     justify-content:flex-start;
   }
 }
+
+/* ===== LIST status master filter ===== */
+.list-status-filter-panel{
+  padding:14px 16px;
+  border:1px solid #e2e8f0;
+  border-radius:18px;
+  background:linear-gradient(180deg,#ffffff,#f8fafc);
+}
+.list-status-filter-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+.list-filter-label{
+  display:block;
+  color:#0f172a;
+  font-size:13px;
+  font-weight:950;
+}
+.list-filter-note{
+  display:block;
+  margin-top:2px;
+  color:#64748b;
+  font-size:12px;
+  font-weight:700;
+}
+.list-status-clear{
+  padding:7px 12px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.status-filter-chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.status-filter-chip{
+  appearance:none;
+  border:1px solid var(--status-border,#cbd5e1);
+  background:#ffffff;
+  color:var(--status-color,#334155);
+  border-radius:999px;
+  padding:8px 12px;
+  font-size:12px;
+  font-weight:950;
+  line-height:1;
+  cursor:pointer;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.status-filter-chip:hover{
+  transform:translateY(-1px);
+  box-shadow:0 8px 18px rgba(15,23,42,.08);
+}
+.status-filter-chip.active{
+  background:var(--status-bg,#eff6ff);
+  box-shadow:0 0 0 3px rgba(37,99,235,.08);
+}
+.status-filter-empty{
+  color:#64748b;
+  font-size:13px;
+  font-weight:800;
+}
+@media(max-width:760px){
+  .list-status-filter-head{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+}
