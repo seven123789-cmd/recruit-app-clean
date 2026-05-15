@@ -30,8 +30,20 @@ async function getRole(userId){if(currentRole)return currentRole;try{const {data
 function showAuth(msg="未ログインです",type="info"){const a=$("authScreen"),b=$("appScreen");if(a)a.classList.remove("hidden");if(b)b.classList.add("hidden");currentUser=null;currentRole=null;setMsg("authMessage",msg,type);document.body.classList.remove("auth-checking")}
 async function showApp(){const user=await getUser();if(!user){showAuth();return false}await getRole(user.id);$("authScreen")?.classList.add("hidden");$("appScreen")?.classList.remove("hidden");document.body.classList.remove("auth-checking");return true}
 async function login(){const email=$("loginEmail")?.value.trim();const password=$("loginPassword")?.value;if(!email||!password){setMsg("authMessage","メールアドレスとパスワードを入力してください","error");return}try{const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;currentUser=null;currentRole=null;if(await showApp()) await initPageAfterLogin()}catch(e){setMsg("authMessage","ログイン失敗: "+(e.message||e),"error")}}
-async function logout(){try{await sb.auth.signOut()}catch(e){}showAuth("ログアウトしました","success")}
-sb.auth.onAuthStateChange((ev)=>{if(ev==="SIGNED_OUT")showAuth("ログアウトしました","success")});
+async function logout(){
+  if(window.RecruitAuth && typeof window.RecruitAuth.logoutToIndex === "function"){
+    await window.RecruitAuth.logoutToIndex();
+    return;
+  }
+  try{await sb.auth.signOut()}catch(e){}
+  window.location.replace("./index.html");
+}
+sb.auth.onAuthStateChange((ev)=>{
+  if(ev==="SIGNED_OUT"){
+    if(window.RecruitAuth && typeof window.RecruitAuth.isDirectLogout === "function" && window.RecruitAuth.isDirectLogout()) return;
+    showAuth("ログアウトしました","success");
+  }
+});
 async function authInit(){try{if(await showApp()) await initPageAfterLogin()}catch(e){console.error(e);showAuth("初期化に失敗しました","error")}finally{document.body.classList.remove("auth-checking")}}
 function setSelectOptions(id,values,blank="すべて"){const el=$(id);if(!el)return;const current=el.value;const list=[...new Set((values||[]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));el.innerHTML=`<option value="">${blank}</option>`;list.forEach(v=>{el.innerHTML+=`<option value="${esc(v)}">${esc(v)}</option>`});if(list.includes(current))el.value=current}
 function filtered(data){const f=$("from").value;const t=$("to").value;const d=$("divisionFilter").value;return (data||[]).filter(r=>!r.is_deleted).filter(r=>{if(!validDate(r.applied_date))return false;if(!hasDivision(r))return false;if(f&&r.applied_date<f)return false;if(t&&r.applied_date>t)return false;if(d&&r.division!==d)return false;return true})}

@@ -671,12 +671,12 @@ async function login(){
   }
 }
 async function logout(){
-  try { await sb.auth.signOut(); } catch(e) { console.error(e); }
-  finally {
-    currentUser = null;
-    currentRole = null;
-    showAuth("ログアウトしました", "success");
+  if(window.RecruitAuth && typeof window.RecruitAuth.logoutToIndex === "function"){
+    await window.RecruitAuth.logoutToIndex();
+    return;
   }
+  try { await sb.auth.signOut(); } catch(e) { console.error(e); }
+  window.location.replace("./index.html");
 }
 async function loadCenterMaster(){
 

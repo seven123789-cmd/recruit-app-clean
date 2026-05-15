@@ -123,19 +123,9 @@ async function getUser(){
 async function getRole(userId){
   if(currentRole)return currentRole;
   try{
-    if(window.RecruitAuth && typeof window.RecruitAuth.fetchCurrentRole === "function"){
-      currentRole = await window.RecruitAuth.fetchCurrentRole(true) || "editor";
-    }else{
-      let profile = null;
-      const byUserId = await sb.from("profiles").select("role,email,is_active,user_id").eq("user_id",userId).maybeSingle();
-      profile = byUserId.data || null;
-      if((!profile || byUserId.error) && currentUser?.email){
-        const byEmail = await sb.from("profiles").select("role,email,is_active,user_id").eq("email",currentUser.email).maybeSingle();
-        profile = byEmail.data || profile;
-      }
-      if(profile && profile.is_active===false){throw new Error("このアカウントは停止されています。管理者へ確認してください。")}
-      currentRole=profile?.role||"editor";
-    }
+    const {data}=await sb.from("profiles").select("role,email,is_active").eq("user_id",userId).single();
+    if(data && data.is_active===false){throw new Error("このアカウントは停止されています。管理者へ確認してください。")}
+    currentRole=data?.role||"editor";
     if(window.RecruitOpsGuard) window.RecruitOpsGuard.setRole(currentRole);
   }catch(e){currentRole="editor"}
   try{localStorage.setItem("recruit_user_role",currentRole||"editor")}catch(e){}
@@ -187,16 +177,17 @@ async function login(){
   }catch(e){setMsg("authMessage","ログイン失敗: "+(e.message||e),"error")}
 }
 async function logout(){
+  if(window.RecruitAuth && typeof window.RecruitAuth.logoutToIndex === "function"){
+    await window.RecruitAuth.logoutToIndex();
+    return;
+  }
   try{await sb.auth.signOut()}catch(e){}
-  try{localStorage.removeItem("recruit_user_role")}catch(e){}
-  location.replace("./index.html");
+  window.location.replace("./index.html");
 }
 sb.auth.onAuthStateChange((ev)=>{
   if(ev==="SIGNED_OUT"){
-    try{localStorage.removeItem("recruit_user_role")}catch(e){}
-    if((location.pathname.split("/").pop()||"index.html").toLowerCase()!=="index.html"){
-      location.replace("./index.html");
-    }
+    if(window.RecruitAuth && typeof window.RecruitAuth.isDirectLogout === "function" && window.RecruitAuth.isDirectLogout()) return;
+    showAuth("ログアウトしました","success");
   }
 });
 async function authInit(){

@@ -304,8 +304,12 @@ async function login(){
   }
 }
 async function logout(){
+  if(window.RecruitAuth && typeof window.RecruitAuth.logoutToIndex === "function"){
+    await window.RecruitAuth.logoutToIndex();
+    return;
+  }
   try{await sb.auth.signOut()}catch(e){}
-  showAuth("ログアウトしました","success");
+  window.location.replace("./index.html");
 }
 sb.auth.onAuthStateChange((ev)=>{
   if(ev==="SIGNED_OUT")showAuth("ログアウトしました","success");

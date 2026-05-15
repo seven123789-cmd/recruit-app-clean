@@ -275,9 +275,6 @@ function showApp(user, role){
   updateConnectionUi(true);
   updateRoleUi(role);
   document.body.classList.remove("auth-checking");
-  if(typeof window.renderDashboardSidebar === "function"){
-    window.renderDashboardSidebar();
-  }
 }
 async function getSessionUser(){
   if (currentUser) return currentUser;
@@ -288,19 +285,12 @@ async function getSessionUser(){
 }
 async function getCurrentRole(userId){
   if (currentRole) return currentRole;
-  if (window.RecruitAuth && typeof window.RecruitAuth.fetchCurrentRole === "function") {
-    currentRole = await window.RecruitAuth.fetchCurrentRole(true) || "editor";
+  const { data, error } = await sb.from("profiles").select("role").eq("user_id", userId).single();
+  if (error) {
+    currentRole = "editor";
     return currentRole;
   }
-  let profile = null;
-  const { data, error } = await sb.from("profiles").select("role,email,is_active,user_id").eq("user_id", userId).maybeSingle();
-  profile = data || null;
-  if ((!profile || error) && currentUser?.email) {
-    const byEmail = await sb.from("profiles").select("role,email,is_active,user_id").eq("email", currentUser.email).maybeSingle();
-    profile = byEmail.data || profile;
-  }
-  currentRole = profile?.role || "editor";
-  try { localStorage.setItem("recruit_user_role", currentRole); } catch(e) {}
+  currentRole = data?.role || "editor";
   return currentRole;
 }
 async function refreshAuthState(){
@@ -332,13 +322,12 @@ async function login(){
   }
 }
 async function logout(){
-  try { await sb.auth.signOut(); } catch(e) { console.error(e); }
-  finally {
-    currentUser = null;
-    currentRole = null;
-    try { localStorage.removeItem("recruit_user_role"); } catch(e) {}
-    location.replace("./index.html");
+  if(window.RecruitAuth && typeof window.RecruitAuth.logoutToIndex === "function"){
+    await window.RecruitAuth.logoutToIndex();
+    return;
   }
+  try { await sb.auth.signOut(); } catch(e) { console.error(e); }
+  window.location.replace("./index.html");
 }
 function calcRate(num, den){
   if (!den || den === 0) return "0.0%";

@@ -83,10 +83,19 @@ async function login(){
   }
 }
 async function logout(){
+  if(window.RecruitAuth && typeof window.RecruitAuth.logoutToIndex === "function"){
+    await window.RecruitAuth.logoutToIndex();
+    return;
+  }
   try{await sb.auth.signOut()}catch(e){}
-  showAuth("ログアウトしました","success");
+  window.location.replace("./index.html");
 }
-sb.auth.onAuthStateChange((ev)=>{if(ev==="SIGNED_OUT")showAuth("ログアウトしました","success")});
+sb.auth.onAuthStateChange((ev)=>{
+  if(ev==="SIGNED_OUT"){
+    if(window.RecruitAuth && typeof window.RecruitAuth.isDirectLogout === "function" && window.RecruitAuth.isDirectLogout()) return;
+    showAuth("ログアウトしました","success");
+  }
+});
 async function authInit(){
   try{if(await showApp()) await initPageAfterLogin();}
   catch(e){console.error(e);showAuth("初期化に失敗しました","error")}
