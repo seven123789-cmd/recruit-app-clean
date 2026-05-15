@@ -64,9 +64,11 @@
 .trend-card-title p{margin:4px 0 0;color:#64748b;font-size:12px;font-weight:800;}
 .trend-table-wrap{overflow:auto;border:1px solid #dbeafe;border-radius:16px;background:#fff;}
 .trend-table{min-width:760px;width:100%;border-collapse:collapse;}
-.trend-table th{position:sticky;top:0;background:#eef6ff;color:#1e3a8a;font-size:12px;font-weight:950;padding:11px 10px;border-bottom:1px solid #bfdbfe;text-align:left;white-space:nowrap;}
+.trend-table th{position:sticky;top:0;background:#eef6ff;color:#1e3a8a;font-size:12px;font-weight:950;padding:11px 10px;border-bottom:1px solid #bfdbfe;text-align:center;white-space:nowrap;}
+.trend-table th:first-child{text-align:left;}
 .trend-table td{padding:11px 10px;border-bottom:1px solid #edf2f7;font-size:13px;font-weight:760;vertical-align:top;}
-.trend-table td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:900;}
+.trend-table td:first-child{text-align:left;}
+.trend-table td.num{text-align:center;font-variant-numeric:tabular-nums;font-weight:900;}
 .trend-table .muted{color:#94a3b8;font-weight:800;}
 .trend-month-grid{display:grid;grid-template-columns:repeat(12,minmax(54px,1fr));gap:6px;min-width:820px;}
 .trend-month-cell{border:1px solid #e5e7eb;border-radius:12px;padding:8px 6px;background:#fff;text-align:center;}
