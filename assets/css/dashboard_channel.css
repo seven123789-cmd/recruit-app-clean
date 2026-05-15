@@ -64,7 +64,7 @@
 .channel-monthly-panel h3{margin:0;color:#0f172a;font-size:15px;font-weight:950;}
 .channel-monthly-panel .table-head span{color:#64748b;font-size:12px;font-weight:900;}
 .compact-table-wrap{max-height:360px;overflow:auto;border:1px solid #e2e8f0;border-radius:14px;}
-.compact-table-wrap table{width:100%;min-width:720px;border-collapse:collapse;table-layout:auto;}
+.compact-table-wrap table{width:100%;min-width:720px;border-collapse:collapse;table-layout:fixed;}
 .compact-table-wrap th{position:sticky;top:0;z-index:1;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:950;padding:9px;border-bottom:1px solid #dbeafe;white-space:nowrap;}
 .compact-table-wrap td{padding:9px;border-bottom:1px solid #e2e8f0;color:#0f172a;font-size:12px;font-weight:800;vertical-align:middle;}
 .compact-table-wrap td small{display:block;margin-top:3px;color:#64748b;font-size:10px;font-weight:850;white-space:nowrap;}
@@ -86,4 +86,50 @@
 .channel-monthly-tools select{min-width:132px;}
 @media(max-width:900px){
   .channel-monthly-tools{justify-content:flex-start;}
+}
+/* Dashboard table alignment fix */
+.analysis-table,
+.summary-table,
+.ranking-table,
+.kpi-table,
+.data-table{
+  border-collapse:collapse;
+  table-layout:fixed;
+}
+.analysis-table th,
+.analysis-table td,
+.summary-table th,
+.summary-table td,
+.ranking-table th,
+.ranking-table td,
+.kpi-table th,
+.kpi-table td,
+.data-table th,
+.data-table td{
+  vertical-align:middle;
+  font-variant-numeric:tabular-nums;
+}
+.analysis-table th:nth-child(1),
+.analysis-table td:nth-child(1),
+.summary-table th:nth-child(1),
+.summary-table td:nth-child(1),
+.ranking-table th:nth-child(1),
+.ranking-table td:nth-child(1),
+.kpi-table th:nth-child(1),
+.kpi-table td:nth-child(1),
+.data-table th:nth-child(1),
+.data-table td:nth-child(1){
+  text-align:left;
+}
+.analysis-table th:nth-child(n+2),
+.analysis-table td:nth-child(n+2),
+.summary-table th:nth-child(n+2),
+.summary-table td:nth-child(n+2),
+.ranking-table th:nth-child(n+2),
+.ranking-table td:nth-child(n+2),
+.kpi-table th:nth-child(n+2),
+.kpi-table td:nth-child(n+2),
+.data-table th:nth-child(n+2),
+.data-table td:nth-child(n+2){
+  text-align:center;
 }

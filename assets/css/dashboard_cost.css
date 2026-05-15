@@ -897,3 +897,49 @@
 }
 
 .cost-control-form input[type="date"]{width:100%;min-height:42px;border:1px solid #dbe3ee;border-radius:14px;background:#fff;padding:0 12px;color:#0f172a;font-weight:850;}
+/* Dashboard table alignment fix */
+.analysis-table,
+.summary-table,
+.ranking-table,
+.kpi-table,
+.data-table{
+  border-collapse:collapse;
+  table-layout:fixed;
+}
+.analysis-table th,
+.analysis-table td,
+.summary-table th,
+.summary-table td,
+.ranking-table th,
+.ranking-table td,
+.kpi-table th,
+.kpi-table td,
+.data-table th,
+.data-table td{
+  vertical-align:middle;
+  font-variant-numeric:tabular-nums;
+}
+.analysis-table th:nth-child(1),
+.analysis-table td:nth-child(1),
+.summary-table th:nth-child(1),
+.summary-table td:nth-child(1),
+.ranking-table th:nth-child(1),
+.ranking-table td:nth-child(1),
+.kpi-table th:nth-child(1),
+.kpi-table td:nth-child(1),
+.data-table th:nth-child(1),
+.data-table td:nth-child(1){
+  text-align:left;
+}
+.analysis-table th:nth-child(n+2),
+.analysis-table td:nth-child(n+2),
+.summary-table th:nth-child(n+2),
+.summary-table td:nth-child(n+2),
+.ranking-table th:nth-child(n+2),
+.ranking-table td:nth-child(n+2),
+.kpi-table th:nth-child(n+2),
+.kpi-table td:nth-child(n+2),
+.data-table th:nth-child(n+2),
+.data-table td:nth-child(n+2){
+  text-align:center;
+}

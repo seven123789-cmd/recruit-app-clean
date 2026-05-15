@@ -8,7 +8,7 @@
 .table-card table td,
 .auth-shell{max-width:520px;margin:48px auto 0}.auth-title{margin:0 0 8px;font-size:28px;color:#fff}.auth-sub{margin:0 0 20px;color:rgba(255,255,255,.82)}.auth-card{background:#fff;border:1px solid rgba(226,232,240,.9);border-radius:22px;box-shadow:var(--shadow);padding:24px}.auth-card h2{margin:0 0 8px;font-size:22px;color:#0f172a}.auth-note{margin:0 0 18px;color:var(--muted);font-size:13px}.auth-rule{margin:6px 0 0;color:#64748b;font-size:12px;line-height:1.6}.log-box{display:none;}
 @media(max-width:760px){.chart-box,.chart-box.compact{height:240px}}
-/* Monthly dashboard table layout */
+/* Dashboard table alignment fix */
 .table-card{
   overflow:hidden;
 }
@@ -20,42 +20,50 @@
 }
 .monthly-summary-table{
   width:100%;
-  border-collapse:separate;
-  border-spacing:0;
-  table-layout:auto;
+  border-collapse:collapse;
+  table-layout:fixed;
 }
 .monthly-summary-table th,
 .monthly-summary-table td{
-  padding:12px 14px;
+  padding:12px 10px;
   border-bottom:1px solid #dbeafe;
   vertical-align:middle;
   line-height:1.35;
   font-variant-numeric:tabular-nums;
+  white-space:nowrap;
 }
 .monthly-summary-table th{
   background:#eff6ff;
   color:#1e3a8a;
   font-size:12px;
   font-weight:950;
-  text-align:center;
-  white-space:nowrap;
 }
 .monthly-summary-table td{
   color:#0f172a;
   font-size:13px;
   font-weight:850;
-  text-align:center;
-  white-space:nowrap;
 }
-.monthly-summary-table th:first-child,
-.monthly-summary-table td:first-child{
-  width:104px;
+.monthly-summary-table th:nth-child(1),
+.monthly-summary-table td:nth-child(1){
+  width:12%;
   text-align:left;
   padding-left:16px;
 }
-.monthly-summary-table th:not(:first-child),
-.monthly-summary-table td:not(:first-child){
-  min-width:120px;
+.monthly-summary-table th:nth-child(2),
+.monthly-summary-table td:nth-child(2),
+.monthly-summary-table th:nth-child(3),
+.monthly-summary-table td:nth-child(3),
+.monthly-summary-table th:nth-child(4),
+.monthly-summary-table td:nth-child(4){
+  width:14%;
+  text-align:center;
+}
+.monthly-summary-table th:nth-child(5),
+.monthly-summary-table td:nth-child(5),
+.monthly-summary-table th:nth-child(6),
+.monthly-summary-table td:nth-child(6){
+  width:23%;
+  text-align:center;
 }
 .monthly-summary-table a,
 .monthly-summary-table .count-link{
