@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>帳票印刷｜採用管理</title>
+<link rel="stylesheet" href="./assets/css/print_report.css?v=20260515_rate_global_fix">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="./common.js"></script>
+</head>
+<body>
+<div class="screen-toolbar">
+  <div>
+    <h1 id="screenTitle">帳票プレビュー</h1>
+    <p>A4出力用プレビューです。</p>
+  </div>
+  <div class="screen-actions">
+    <button type="button" onclick="location.href='print_center.html'">帳票出力へ戻る</button>
+    <button type="button" class="primary" onclick="window.print()">印刷</button>
+  </div>
+</div>
+<main id="reportRoot" class="report-root"></main>
+<script>
+const sb = window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : window.sb;
+
+const REPORTS = {
+  applicant_list:{title:"応募者一覧", family:"list", actionOnly:false},
+  action_list:{title:"要対応一覧", family:"list", actionOnly:true},
+  summary_monthly:{title:"月次サマリーレポート", family:"summary", mode:"monthly"},
+  summary_trend:{title:"推移サマリーレポート", family:"summary", mode:"trend"},
+  summary_compare:{title:"比較サマリーレポート", family:"summary", mode:"compare"},
+  single_media_compare:{title:"媒体比較レポート", family:"single", mode:"compare", axis:"channel", label:"媒体"},
+  single_division_compare:{title:"本部比較レポート", family:"single", mode:"compare", axis:"division", label:"本部"},
+  single_owner_compare:{title:"担当比較レポート", family:"single", mode:"compare", axis:"owner", label:"担当者"},
+  single_job_compare:{title:"職種比較レポート", family:"single", mode:"compare", axis:"job", label:"職種"},
+  single_cost_compare:{title:"採用単価比較レポート", family:"single", mode:"compare", axis:"cost", label:"媒体費"},
+  single_media_trend:{title:"媒体推移レポート", family:"single", mode:"trend", axis:"channel", label:"媒体"},
+  single_division_trend:{title:"本部推移レポート", family:"single", mode:"trend", axis:"division", label:"本部"},
+  single_owner_trend:{title:"担当推移レポート", family:"single", mode:"trend", axis:"owner", label:"担当者"},
+  single_job_trend:{title:"職種推移レポート", family:"single", mode:"trend", axis:"job", label:"職種"},
+  single_cost_trend:{title:"採用単価推移レポート", family:"single", mode:"trend", axis:"cost", label:"採用単価"},
+  hq_media_job_flow:{title:"本部別 媒体・職種導線", family:"hq", mode:"monthly", label:"本部分析"}
+};
+
+function $(id){return document.getElementById(id)}
+function esc(v){return String(v ?? "").replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function getParam(k){return new URLSearchParams(location.search).get(k)||""}
+function readJsonParam(k){try{return JSON.parse(getParam(k)||"{}")}catch(e){return {}}}
+function normalizeConditions(c){const s=(c&&typeof c==="object")?c:{};return {periodMode:s.periodMode||"monthly",fiscalYear:normalizeFYLabel(s.fiscalYear||"今年度"),month:s.month||"全月",from:s.from||"",to:s.to||"",division:s.division||"すべて",center:s.center||"すべて",channel:s.channel||"すべて",owner:s.owner||"すべて",job:s.job||"すべて",view:s.view||"graph"}}
+function normalizeAll(v){const s=String(v||"").trim();return (!s||s==="すべて"||s==="全本部")?"":s}
+function validDate(v){return !!v && !String(v).startsWith("0000")}
+function fmtDate(v){return validDate(v)?String(v).slice(0,10):"-"}
+function yen(v){const n=Number(v||0);return n ? n.toLocaleString("ja-JP")+"円" : "0円"}
+function yenDash(v){const n=Number(v||0);return n ? n.toLocaleString("ja-JP")+"円" : "―"}
+function formatChartValue(value, key){return key==="cost"?yenDash(value):String(value||0)}
+function rateNum(a,b){return b ? Math.round((a/b)*1000)/10 : 0}
+function rate(a,b){return rateNum(a,b).toFixed(1)+"%"}
+function currentFY(){const d=new Date();return d.getMonth()+1>=4?d.getFullYear():d.getFullYear()-1}
+function normalizeFYLabel(label){const v=String(label||"").trim();if(!v||v==="今年度")return `${currentFY()}年度`;if(v==="前年度")return `${currentFY()-1}年度`;if(v==="全年度"||v==="全期間")return "全期間";const m=v.match(/(\d{4})/);return m?`${Number(m[1])}年度`:`${currentFY()}年度`}
+function targetFY(label){const v=normalizeFYLabel(label);if(v==="全期間")return null;const n=parseInt(v,10);return Number.isFinite(n)?n:null}
+function fiscalMonths(fy){return [4,5,6,7,8,9,10,11,12,1,2,3].map(m=>({month:m, ym:`${m>=4?fy:fy+1}-${String(m).padStart(2,"0")}`, label:`${String(m).padStart(2,"0")}月`}))}
+function getFY(v){if(!validDate(v))return null;const y=Number(String(v).slice(0,4));const m=Number(String(v).slice(5,7));return m>=4?y:y-1}
+function getMonth(v){return validDate(v)?Number(String(v).slice(5,7)):null}
+function inRange(r, cond){const mode=cond.periodMode||"monthly";const fy=targetFY(cond.fiscalYear);const m=cond.month==="全月"?null:Number(String(cond.month).replace("月",""));const d=fmtDate(r.applied_date);if(mode==="list"){if(cond.from && d<cond.from)return false;if(cond.to && d>cond.to)return false;return true}if(fy && getFY(r.applied_date)!==fy)return false;if(mode==="monthly"&&m&&getMonth(r.applied_date)!==m)return false;if(mode==="trend"){if(cond.from && d<cond.from)return false;if(cond.to && d>cond.to)return false}return true}
+function applyConditions(rows, cond, report){const div=normalizeAll(cond.division), center=normalizeAll(cond.center), ch=normalizeAll(cond.channel), owner=normalizeAll(cond.owner), job=normalizeAll(cond.job);return (rows||[]).filter(r=>{if(!inRange(r,cond))return false;if(div && !String(r.division||"").includes(div))return false;if(center && !String(r.center_name||"").includes(center))return false;if(ch && !String(r.channel||"").includes(ch) && !String(r.channel_detail||"").includes(ch))return false;if(owner && !String(r.owner_name||"").includes(owner))return false;if(job && !String(r.job_type||r.job||r.position||"").includes(job))return false;if(report?.actionOnly && !isActionRequired(r))return false;return true})}
+function periodLabel(cond){if(cond.periodMode==="list")return "一覧出力";if(cond.periodMode==="trend")return "推移集計";return "月次集計"}
+function rangeLabel(cond){const fiscal=normalizeFYLabel(cond.fiscalYear);if(cond.periodMode==="list")return `応募日：${cond.from||"指定なし"} ～ ${cond.to||"指定なし"}`;if(cond.periodMode==="trend"){const extra=(cond.from||cond.to)?` / 応募日：${cond.from||"指定なし"} ～ ${cond.to||"指定なし"}`:"";return `${fiscal==="全期間"?"全期間":fiscal+" 推移"}${extra}`}return `${fiscal} ${cond.month}`}
+function filterText(cond){const list=[];if(normalizeAll(cond.division))list.push(`本部：${cond.division}`);if(normalizeAll(cond.center))list.push(`営業所：${cond.center}`);if(normalizeAll(cond.channel))list.push(`媒体：${cond.channel}`);if(normalizeAll(cond.owner))list.push(`担当：${cond.owner}`);if(normalizeAll(cond.job))list.push(`職種：${cond.job}`);return list}
+function conditionText(cond){const filters=filterText(cond);return [`集計種別：${periodLabel(cond)}`,`集計範囲：${rangeLabel(cond)}`,filters.length?`詳細条件：${filters.join(" / ")}`:"詳細条件：指定なし"]}
+function printTableLimit(cond){return cond.view==="table"?{first:30,next:38}:{first:8,next:8}}
+function chunkForPrint(items, cond){const lim=printTableLimit(cond);const chunks=[];if(!items.length)return [[]];chunks.push(items.slice(0,lim.first));for(let i=lim.first;i<items.length;i+=lim.next)chunks.push(items.slice(i,i+lim.next));return chunks}
+function pageRangeLabel(idx, chunks, total, cond){if(!total)return "0件 / 全0件";const lim=printTableLimit(cond);const start=idx===0?1:lim.first+(idx-1)*lim.next+1;const end=Math.min(start+chunks[idx].length-1,total);return `${start}〜${end}件 / 全${total}件`}
+function isActionRequired(r){const today=new Date().toISOString().slice(0,10);const next=fmtDate(r.next_action_date);const st=String(r.status||"");return (next!=="-"&&next<=today)||st.includes("応募")||st.includes("アポ")||st.includes("面接設定")}
+function has(r,key){const s=String(r.status||"");if(key==="applied")return validDate(r.applied_date);if(key==="appointment")return validDate(r.appointment_date)||s.includes("アポ");if(key==="interview")return validDate(r.interview_done_date)||validDate(r.interview1_date)||s.includes("面接");if(key==="join")return validDate(r.join_date)||s.includes("採用")||s.includes("入社");return false}
+function count(rows,key){return rows.filter(r=>has(r,key)).length}
+function axisValue(r, axis){if(axis==="channel")return r.channel_detail||r.channel||"未設定";if(axis==="division")return r.division||"未設定";if(axis==="center")return r.center_name||"未設定";if(axis==="owner")return r.owner_name||"未設定";if(axis==="job")return r.job_type||r.job||r.position||"未設定";if(axis==="cost")return r.channel||r.channel_detail||"未設定";return "未設定"}
+function aggregate(rows, axis){const map=new Map();rows.forEach(r=>{const k=axisValue(r,axis);if(!map.has(k))map.set(k,{key:k,applied:0,appointment:0,interview:0,join:0,cost:0});const x=map.get(k);if(has(r,"applied"))x.applied++;if(has(r,"appointment"))x.appointment++;if(has(r,"interview"))x.interview++;if(has(r,"join"))x.join++});return [...map.values()].sort((a,b)=>b.applied-a.applied||b.join-a.join||String(a.key).localeCompare(String(b.key),"ja"))}
+function metric(label,value,sub){return `<div class="kpi-card"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(sub||"")}</small></div>`}
+function kpiStrip(rows, extra){const applied=count(rows,"applied"), interview=count(rows,"interview"), join=count(rows,"join");let html=metric("応募",applied,"対象条件内")+metric("面接",interview,`応募→面接 ${rate(interview,applied)}`)+metric("採用",join,`応募→採用 ${rate(join,applied)}`);if(extra)html+=extra;else html+=metric("確認軸","全体","レポート種別");return `<section class="kpi-strip">${html}</section>`}
+function safeCellValue(value){
+  if(value === undefined || value === null) return "―";
+  const s = String(value);
+  if(!s || s === "undefined" || s === "NaN" || s === "NaN%") return "―";
+  return value;
+}
+function table(headers, rows){
+  const body = rows.length
+    ? rows.map(r => `<tr>${(Array.isArray(r)?r:Object.values(r)).map(c => `<td>${safeCellValue(c)}</td>`).join("")}</tr>`).join("")
+    : `<tr><td colspan="${headers.length}" class="empty">表示するデータがありません</td></tr>`;
+  return `<div class="report-table"><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+function page(report, cond, body, subtitle){
+  const pageClass = cond.periodMode === "list" ? "list-report-page" : cond.view === "table" ? "table-report-page" : "graph-report-page";
+  return `<section class="report-page ${pageClass}"><header class="report-header"><div><p class="eyebrow">Recruit Report</p><h1>${esc(report.title)}</h1><p>${esc(subtitle||"採用状況を帳票用に整理しています。")}</p></div><div class="report-meta">${conditionText(cond).map(x=>`<span>${esc(x)}</span>`).join("")}<span>出力：${esc(new Date().toLocaleString("ja-JP"))}</span></div></header>${body}<footer class="report-footer"><span>採用管理システム</span><span>${esc(report.title)}</span></footer></section>`
+}
+function svgBar(items, valueKey="applied", label="応募", limit=8){const top=items.slice(0,limit);const max=Math.max(...top.map(x=>Number(x[valueKey]||0)),1);return `<div class="bar-chart">${top.map(x=>`<div class="chart-row"><div class="chart-label"><strong>${esc(x.key)}</strong><span>面接 ${x.interview||0}｜採用 ${x.join||0}｜率 ${rate(x.join||0,x.applied||0)}</span></div><div class="chart-track"><i style="width:${Math.max(3,Math.round((Number(x[valueKey]||0)/max)*100))}%"></i></div><b>${esc(formatChartValue(x[valueKey], valueKey))}</b></div>`).join("")}</div>`}
+function monthly(rows, cond){const fy=targetFY(cond.fiscalYear)||currentFY();return fiscalMonths(fy).map(m=>{const target=rows.filter(r=>String(r.applied_date||"").slice(0,7)===m.ym);const applied=count(target,"applied"), interview=count(target,"interview"), join=count(target,"join");return {key:m.label, ym:m.ym, applied, interview, join, interviewRate:rateNum(interview,applied), joinRate:rateNum(join,applied)}})}
+function svgLine(items, series, percent=false){const w=880,h=220,padL=46,padR=20,padT=18,padB=30;const vals=series.flatMap(s=>items.map(x=>Number(x[s.key]||0)));const max=percent?100:Math.max(1,...vals);const plotW=w-padL-padR, plotH=h-padT-padB;const colors=["#2563eb","#f59e0b","#16a34a","#7c3aed"];const x=i=>padL+(items.length<=1?0:(i/(items.length-1))*plotW);const y=v=>padT+plotH-(Number(v||0)/max)*plotH;const grid=[0,.25,.5,.75,1].map(t=>`<line x1="${padL}" y1="${padT+plotH*t}" x2="${padL+plotW}" y2="${padT+plotH*t}"/><text x="8" y="${padT+plotH*t+4}">${percent?Math.round((1-t)*100)+"%":Math.round((1-t)*max)}</text>`).join("");const labels=items.map((it,i)=>`<text x="${x(i)}" y="${h-8}" text-anchor="middle">${esc(it.key)}</text>`).join("");const lines=series.map((s,si)=>{const pts=items.map((it,i)=>`${x(i)},${y(it[s.key])}`).join(" ");const color=colors[si%colors.length];const dots=items.map((it,i)=>`<circle cx="${x(i)}" cy="${y(it[s.key])}" r="3" fill="#fff" stroke="${color}" stroke-width="2"/>`).join("");return `<g class="series series-${si}" fill="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${dots}</g>`}).join("");const legend=series.map((s,i)=>`<span class="legend-${i}">${esc(s.label)}</span>`).join("");return `<div class="svg-legend">${legend}</div><svg class="svg-line" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${grid}<line class="axis" x1="${padL}" y1="${padT+plotH}" x2="${padL+plotW}" y2="${padT+plotH}"/>${labels}${lines}</svg>`}
+function costChannel(row){return window.RecruitCost?.normalizeChannel ? window.RecruitCost.normalizeChannel(row.channel||row.media||row.channel_name) : (row.channel||row.media||row.channel_name||"未設定")}
+async function loadCosts(cond){try{const fy=targetFY(cond.fiscalYear);let q=sb.from("channel_costs").select("*");if(fy)q=q.eq("fiscal_year",fy);const {data,error}=await q;if(error)return [];return data||[]}catch(e){return []}}
+function costMap(costRows, cond){if(window.RecruitCost?.buildMap){return window.RecruitCost.buildMap(costRows,{fiscalYear:targetFY(cond.fiscalYear),month:cond.month==="全月"?null:Number(String(cond.month).replace("月",""))})}const m=new Map();costRows.forEach(r=>{const k=costChannel(r);m.set(k,(m.get(k)||0)+Number(r.cost_amount||r.amount||r.cost||0))});return m}
+function applyCost(items, costRows, cond){const cm=costMap(costRows,cond);cm.forEach((cost,k)=>{let x=items.find(i=>i.key===k);if(!x){x={key:k,applied:0,interview:0,join:0}}x.cost=cost;if(!items.includes(x))items.push(x)});items.forEach(x=>x.cost=Number(x.cost||0));return items}
+
+function stageCounts(rows){
+  const applied=count(rows,"applied"), interview=count(rows,"interview"), join=count(rows,"join");
+  return {applied,interview,join,interviewRate:rate(interview,applied),joinRate:rate(join,applied)};
+}
+function rowsByAxis(rows, axis){
+  return aggregate(rows, axis).map(x => ({...x, interviewRate:rate(x.interview,x.applied), joinRate:rate(x.join,x.applied)}));
+}
+function hqAxisValue(r, axis){
+  if(axis === "channel") return r.channel || r.channel_detail || "未設定";
+  if(axis === "division") return r.division || "未設定";
+  if(axis === "center") return r.center_name || "未設定";
+  if(axis === "owner") return r.owner_name || "未設定";
+  if(axis === "job") return r.job_type || r.job || r.position || "未設定";
+  return "未設定";
+}
+function hqAggregate(rows, axis){
+  const map = new Map();
+  (rows || []).forEach(r => {
+    const key = hqAxisValue(r, axis);
+    if(!map.has(key)) map.set(key,{key,applied:0,appointment:0,interview:0,join:0});
+    const x = map.get(key);
+    if(has(r,"applied")) x.applied++;
+    if(has(r,"appointment")) x.appointment++;
+    if(has(r,"interview")) x.interview++;
+    if(has(r,"join")) x.join++;
+  });
+  return [...map.values()].map(x=>({...x,interviewRate:rate(x.interview,x.applied),joinRate:rate(x.join,x.applied)})).sort((a,b)=>b.applied-a.applied||b.join-a.join||String(a.key).localeCompare(String(b.key),"ja"));
+}
+function hqFlowRows(rows, axis){
+  return hqAggregate(rows, axis).map(x => [
+    `<strong>${esc(x.key)}</strong>`,
+    Number(x.applied||0),
+    Number(x.interview||0),
+    Number(x.join||0),
+    x.interviewRate || rate(x.interview, x.applied),
+    x.joinRate || rate(x.join, x.applied)
+  ]);
+}
+function hqFlowPageTitle(cond){
+  const div = normalizeAll(cond.division) || "全本部";
+  const ch = normalizeAll(cond.channel) || "全媒体";
+  if(div === "全本部") return "全本部 合算";
+  if(ch === "全媒体") return `${div} 本部全体`;
+  return `${div} / ${ch}`;
+}
+function hqScopeChips(cond){
+  const div = normalizeAll(cond.division) || "全本部";
+  const ch = normalizeAll(cond.channel) || "全媒体";
+  return `<section class="hq-flow-scope">
+    <div><span>組織</span><strong>${esc(div)}</strong></div>
+    <b>→</b>
+    <div><span>媒体</span><strong>${esc(ch)}</strong></div>
+    <b>→</b>
+    <div><span>内訳</span><strong>職種別フロー</strong></div>
+  </section>`;
+}
+async function renderHqAnalysis(report, rows, cond){
+  const div = normalizeAll(cond.division);
+  const ch = normalizeAll(cond.channel);
+  const titleBase = hqFlowPageTitle(cond);
+  const allKpi = kpiStrip(rows, metric("分析単位", div ? (ch || "全媒体") : "全本部", div ? "本部分析" : "全社比較"));
+  const chips = hqScopeChips(cond);
+  let pages = [];
+
+  if(!div){
+    const divisionRows = hqFlowRows(rows, "division");
+    const mediaRows = hqFlowRows(rows, "channel").slice(0,12);
+    const body = allKpi + chips +
+      `<section class="detail-table hq-flow-table"><h2>全本部 合算 <small>本部別の応募→面接→採用</small></h2>${table(["本部","応募","面接","採用","面接率","採用率"], divisionRows)}</section>` +
+      `<section class="detail-table hq-flow-table"><h2>媒体別 合算 <small>上位媒体</small></h2>${table(["媒体","応募","面接","採用","面接率","採用率"], mediaRows)}</section>`;
+    pages.push(page({...report,title:"本部分析：全本部合算"},cond,body,"全本部の採用導線を確認。"));
+    const divisions = hqAggregate(rows,"division").slice(0,8).map(x=>x.key).filter(x=>x!=="未設定");
+    divisions.forEach((d, idx)=>{
+      const dRows = rows.filter(r => (r.division || "未設定") === d);
+      const dMedia = hqFlowRows(dRows,"channel").slice(0,14);
+      const dJob = hqFlowRows(dRows,"job").slice(0,14);
+      const body2 = kpiStrip(dRows, metric("本部", d, "媒体・職種内訳")) +
+        `<section class="two-columns hq-two-columns"><div><h2>媒体別</h2>${table(["媒体","応募","面接","採用","面接率","採用率"], dMedia)}</div><div><h2>職種別</h2>${table(["職種","応募","面接","採用","面接率","採用率"], dJob)}</div></section>`;
+      pages.push(page({...report,title:`本部分析：${d} ${idx+1}/${divisions.length}`},cond,body2,`${d}の媒体・職種別フロー。`));
+    });
+    return pages.join("");
+  }
+
+  if(div && !ch){
+    const mediaRows = hqFlowRows(rows,"channel");
+    const jobRows = hqFlowRows(rows,"job");
+    const body = allKpi + chips +
+      `<section class="detail-table hq-flow-table"><h2>${esc(div)} 媒体別 <small>応募→面接→採用</small></h2>${table(["媒体","応募","面接","採用","面接率","採用率"], mediaRows)}</section>` +
+      `<section class="detail-table hq-flow-table"><h2>${esc(div)} 職種別 <small>職種ごとの導線</small></h2>${table(["職種","応募","面接","採用","面接率","採用率"], jobRows)}</section>`;
+    pages.push(page({...report,title:`本部分析：${div}`},cond,body,`${div}全体の媒体・職種別フロー。`));
+    const topChannels = hqAggregate(rows,"channel").slice(0,8).map(x=>x.key).filter(x=>x!=="未設定");
+    topChannels.forEach((media, idx)=>{
+      const mediaRowsRaw = rows.filter(r => hqAxisValue(r,"channel") === media);
+      const jobFlow = hqFlowRows(mediaRowsRaw,"job");
+      const ownerFlow = hqFlowRows(mediaRowsRaw,"owner").slice(0,10);
+      const body2 = kpiStrip(mediaRowsRaw, metric("媒体", media, `${div}`)) +
+        `<section class="detail-table hq-flow-table"><h2>${esc(media)} 職種別 <small>${esc(div)}内訳</small></h2>${table(["職種","応募","面接","採用","面接率","採用率"], jobFlow)}</section>` +
+        `<section class="detail-table hq-flow-table"><h2>${esc(media)} 担当者別 <small>上位</small></h2>${table(["担当者","応募","面接","採用","面接率","採用率"], ownerFlow)}</section>`;
+      pages.push(page({...report,title:`本部分析：${div} / ${media} ${idx+1}/${topChannels.length}`},cond,body2,`${media}の職種別採用導線。`));
+    });
+    return pages.join("");
+  }
+
+  const jobRows = hqFlowRows(rows,"job");
+  const ownerRows = hqFlowRows(rows,"owner").slice(0,12);
+  const centerRows = hqFlowRows(rows,"center").slice(0,12);
+  const body = allKpi + chips +
+    `<section class="detail-table hq-flow-table"><h2>${esc(titleBase)} 職種別 <small>応募→面接→採用</small></h2>${table(["職種","応募","面接","採用","面接率","採用率"], jobRows)}</section>` +
+    `<section class="two-columns hq-two-columns"><div><h2>担当者別</h2>${table(["担当者","応募","面接","採用","面接率","採用率"], ownerRows)}</div><div><h2>営業所別</h2>${table(["営業所","応募","面接","採用","面接率","採用率"], centerRows)}</div></section>`;
+  return page({...report,title:`本部分析：${titleBase}`},cond,body,`${titleBase}の職種別採用導線。`);
+}
+
+async function renderSummary(report, rows, cond){
+  const applied=count(rows,"applied"), interview=count(rows,"interview"), join=count(rows,"join");
+  const months=monthly(rows,cond);
+  const media=aggregate(rows,"channel").slice(0,5);
+  const divs=aggregate(rows,"division").slice(0,5);
+  const monthlyRows=months.map(x=>[x.key,x.applied,x.interview,x.join,rate(x.interview,x.applied),rate(x.join,x.applied)]);
+  const lower=`<section class="two-columns"><div><h2>媒体 TOP5</h2>${table(["媒体","応募","面接","採用","採用率"],media.map(x=>[`<strong>${esc(x.key)}</strong>`,x.applied,x.interview,x.join,rate(x.join,x.applied)]))}</div><div><h2>本部 TOP5</h2>${table(["本部","応募","面接","採用","採用率"],divs.map(x=>[`<strong>${esc(x.key)}</strong>`,x.applied,x.interview,x.join,rate(x.join,x.applied)]))}</div></section>`;
+  let main="";
+  if(cond.view==="table"){
+    main=`<section class="detail-table report-focus-table"><h2>月別集計表</h2>${table(["月","応募","面接","採用","面接率","採用率"],monthlyRows)}</section>`;
+  }else if(report.mode==="monthly"||report.mode==="trend"){
+    main=`<section class="main-visual"><h2>月別推移</h2>${svgLine(months,[{key:"applied",label:"応募"},{key:"interview",label:"面接"},{key:"join",label:"採用"}])}</section>`;
+  }else{
+    main=`<section class="main-visual"><h2>主要比較</h2>${svgBar(media,"applied","応募",5)}</section>`;
+  }
+  return page(report,cond,kpiStrip(rows,metric("応募→採用",rate(join,applied),"採用率"))+main+lower,"月次状況を要約。");
+}
+async function renderSingle(report, rows, cond){
+  const costRows=report.axis==="cost"?await loadCosts(cond):[];
+  let items=aggregate(rows,report.axis==="cost"?"channel":report.axis);
+  if(report.axis==="cost")items=applyCost(items,costRows,cond).sort((a,b)=>b.cost-a.cost||b.applied-a.applied);
+  const extra=report.axis==="cost"?metric("総費用",yen(items.reduce((s,x)=>s+x.cost,0)),"対象媒体費"):metric("区分数",items.length,report.label);
+  let visual="";
+  if(cond.view!=="table"){
+    if(report.mode==="trend"){
+      const months=monthly(rows,cond);
+      visual=`<section class="main-visual large"><h2>${esc(report.label)}推移</h2>${svgLine(months,[{key:"applied",label:"応募"},{key:"interview",label:"面接"},{key:"join",label:"採用"}])}</section>`;
+    }else if(report.axis==="cost"){
+      visual=`<section class="main-visual large"><h2>媒体費・応募単価比較</h2>${svgBar(items,"cost","費用",8)}</section>`;
+    }else{
+      visual=`<section class="main-visual large"><h2>${esc(report.label)}別比較</h2>${svgBar(items,"applied","応募",8)}</section>`;
+    }
+  }
+  const headers=report.axis==="cost"?["区分","費用","応募","採用","応募単価","採用単価"]:[report.label,"応募","面接","採用","面接率","採用率"];
+  const toRow=x=>report.axis==="cost"?[`<strong>${esc(x.key)}</strong>`,yenDash(x.cost),x.applied,x.join,x.applied?yenDash(Math.round(x.cost/x.applied)):"―",x.join?yenDash(Math.round(x.cost/x.join)):"―"]:[`<strong>${esc(x.key)}</strong>`,x.applied,x.interview,x.join,rate(x.interview,x.applied),rate(x.join,x.applied)];
+  if(cond.view==="table"){
+    const chunks=chunkForPrint(items,cond);
+    return chunks.map((chunk,idx)=>{
+      const title=chunks.length>1?`${report.title} ${idx+1}/${chunks.length}`:report.title;
+      const countText=pageRangeLabel(idx,chunks,items.length,cond);
+      const tableBody=`<section class="detail-table report-focus-table"><h2>確認表 <small>${countText}</small></h2>${table(headers,chunk.map(toRow))}</section>`;
+      return page({...report,title},cond,(idx===0?kpiStrip(rows,extra):"")+tableBody,"確認表中心。");
+    }).join("");
+  }
+  const limit=printTableLimit(cond).first;
+  const rowsData=items.slice(0,limit).map(toRow);
+  const detail=`<section class="detail-table"><h2>詳細一覧 <small>上位${Math.min(limit,items.length)}件 / 全${items.length}件</small></h2>${table(headers,rowsData)}</section>`;
+  return page(report,cond,kpiStrip(rows,extra)+visual+detail,"単体分析。");
+}
+function renderList(report, rows, cond){const per=39;const pages=[];for(let i=0;i<rows.length;i+=per)pages.push(rows.slice(i,i+per));if(!pages.length)pages.push([]);return pages.map((chunk,idx)=>page({title:`${report.title} ${idx+1}/${pages.length}`},cond,`<section class="detail-table list-table"><h2>${esc(report.title)} <small>${rows.length}件</small></h2>${table(["氏名","応募日","ステータス","本部","営業所","媒体","媒体詳細","担当","次回対応"],chunk.map(r=>[`<strong>${esc(r.name||"")}</strong>`,fmtDate(r.applied_date),esc(r.status||""),esc(r.division||""),esc(r.center_name||""),esc(r.channel||""),esc(r.channel_detail||""),esc(r.owner_name||""),fmtDate(r.next_action_date)]))}</section>`,"")).join("")}
+function isTruthyFlag(v){
+  if(v === true || v === 1) return true;
+  const s = String(v ?? "").trim().toLowerCase();
+  return ["true","1","yes","y","deleted","削除","削除済み"].includes(s);
+}
+function isTestCandidateRow(r){
+  const name = String(r?.name || "").trim();
+  const memo = String(r?.memo || r?.action_memo || r?.evaluation_comment || "").trim();
+  const marker = `${name} ${memo}`.toLowerCase();
+  if(isTruthyFlag(r?.is_test) || isTruthyFlag(r?.test_data) || isTruthyFlag(r?.is_dummy)) return true;
+  return marker.includes("テスト") || marker.includes("test") || marker.includes("dummy") || marker.includes("sample");
+}
+function isActiveReportRow(r){
+  if(!r) return false;
+  if(isTruthyFlag(r.is_deleted) || r.deleted_at || r.deleted_by) return false;
+  if(isTestCandidateRow(r)) return false;
+  return true;
+}
+async function loadRows(){
+  const {data,error}=await sb.from("candidates").select("*").order("applied_date",{ascending:false});
+  if(error)throw error;
+  return (data||[]).filter(isActiveReportRow);
+}
+async function init(){const rawCond=readJsonParam("conditions");const cond=normalizeConditions(rawCond);const key=getParam("report")||"summary_monthly";const report=REPORTS[key]||REPORTS.summary_monthly;if(!rawCond.periodMode){cond.periodMode=report.family==="list"?"list":report.mode==="trend"?"trend":"monthly";}$("screenTitle").textContent=report.title+" プレビュー";document.title=report.title+" 印刷";try{const all=await loadRows();const rows=applyConditions(all,cond,report);let html="";if(report.family==="list")html=renderList(report,rows,cond);else if(report.family==="summary")html=await renderSummary(report,rows,cond);else if(report.family==="hq")html=await renderHqAnalysis(report,rows,cond);else html=await renderSingle(report,rows,cond);$("reportRoot").innerHTML=html;if(getParam("print")==="1")setTimeout(()=>window.print(),500)}catch(e){$("reportRoot").innerHTML=`<section class="report-page"><div class="empty big">帳票データの取得に失敗しました。<br>${esc(e.message||e)}</div></section>`}}
+document.addEventListener("DOMContentLoaded",init);
+</script>
+</body>
+</html>

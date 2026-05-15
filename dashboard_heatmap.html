@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ヒートマップ分析</title>
+<link href="./assets/css/common.css" rel="stylesheet"/>
+<link href="./assets/css/header.css" rel="stylesheet"/>
+<link href="./assets/css/sidebar.css?v=20260508_sidebar2" rel="stylesheet"/>
+<link href="./assets/css/dashboard_heatmap.css" rel="stylesheet"/>
+<script src="./common.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/audit_utils.js"></script>
+<script src="assets/js/ops_guard.js"></script>
+<script src="assets/js/safe_utils.js"></script>
+<script src="./sidebar.js?v=20260513_compare_graph"></script>
+<link href="./assets/css/dashboard_ui.css" rel="stylesheet"/>
+</head>
+<body class="auth-checking">
+<div class="container hidden" id="authScreen">
+<div class="auth-shell">
+<h1 class="auth-title">ヒートマップ分析</h1>
+<p class="auth-sub">ログイン後に画面を表示します。</p>
+<div class="auth-card">
+<h2>ログイン</h2>
+<div class="form-grid">
+<div class="col-12">
+<label for="loginEmail">メールアドレス</label>
+<input id="loginEmail" placeholder="example@sline.co.jp" type="email"/>
+</div>
+<div class="col-12">
+<label for="loginPassword">パスワード</label>
+<input id="loginPassword" placeholder="パスワード" type="password"/>
+</div>
+<div class="col-12">
+<button class="btn-primary" onclick="login()" type="button">ログイン</button>
+</div>
+<div class="col-12">
+<div class="message-box message-info" id="authMessage">未ログインです</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="hidden" id="appScreen">
+<div class="app-layout">
+<aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+<main class="main-content">
+<header class="page-header dashboard-page-header"><div class="dashboard-title-line"><h1>ヒートマップ分析</h1><div aria-label="集計状態" class="dashboard-header-meta"><span class="dashboard-header-chip">対象年度：<span id="sideFiscalYear">-</span></span><span class="dashboard-header-chip">対象件数：<span id="sideRows">0</span></span><span class="dashboard-header-chip">対象本部：<span id="sideDivision">すべて</span></span><span class="dashboard-header-chip">対象営業所：<span id="sideCenter">すべて</span></span><span class="dashboard-header-chip">危険セル：<span id="sideDangerCount">0</span></span><span class="dashboard-header-chip">注意セル：<span id="sideWarningCount">0</span></span><span class="dashboard-header-chip">対象期間：<span id="sidePeriod">-</span></span></div></div></header>
+<section class="heatmap-control-card analysis-control-card">
+<div class="heatmap-control-copy analysis-control-copy">
+<p>分析条件</p>
+<h2>危険箇所を色で確認</h2>
+</div>
+<div class="heatmap-control-form analysis-control-form analysis-control-form--4">
+<div class="analysis-field">
+<label for="fy">対象年度</label>
+<select id="fy" onchange="handleFilterChange()">
+<option value="current"></option>
+<option value="previous"></option>
+<option value="all">全期間</option>
+</select>
+</div>
+<div class="analysis-field">
+<label for="division">対象本部</label>
+<select id="division" onchange="handleDivisionChange()"><option value="">すべて</option></select>
+</div>
+<div class="analysis-field">
+<label for="center">対象営業所</label>
+<select id="center" onchange="handleFilterChange()"><option value="">すべて</option></select>
+</div>
+<div class="analysis-field">
+<label for="viewMode">表示方針</label>
+<select id="viewMode" onchange="handleFilterChange()">
+<option value="main">主要3軸を常時表示</option>
+<option value="all">詳細分析も表示</option>
+</select>
+</div>
+<button class="btn-primary" onclick="loadAnalysis()" type="button">更新</button>
+<div class="period-text analysis-period" id="periodText">対象期間：-</div>
+</div>
+<input id="from" type="hidden"/>
+<input id="to" type="hidden"/>
+</section>
+<section class="card">
+<h2>サマリー</h2>
+<div class="grid-5 summary-grid">
+<div aria-label="応募者一覧で応募者を確認" class="metric-card kpi-applied heatmap-summary-link" data-heat-summary-filter="applied" role="button" tabindex="0"><div class="label">応募</div><div class="value" id="sumApplied">0</div><div class="sub">対象期間内の応募数</div></div>
+<div aria-label="応募者一覧で面接実施者を確認" class="metric-card kpi-interview heatmap-summary-link" data-heat-summary-filter="interview_done" role="button" tabindex="0"><div class="label">面接実施</div><div class="value" id="sumInterview">0</div><div class="sub">面接まで進んだ人数</div></div>
+<div aria-label="応募者一覧で採用者を確認" class="metric-card kpi-hired heatmap-summary-link" data-heat-summary-filter="hired" role="button" tabindex="0"><div class="label">採用</div><div class="value" id="sumJoin">0</div><div class="sub">入社日または採用結果</div></div>
+<div aria-label="応募者一覧で面接未到達者を確認" class="metric-card kpi-rate-interview heatmap-summary-link" data-heat-summary-filter="heat_interview_gap" role="button" tabindex="0"><div class="label">危険セル</div><div class="value" id="sumDanger">0</div><div class="sub">赤判定の項目数</div></div>
+<div aria-label="応募者一覧で対象者を確認" class="metric-card kpi-rate-hired heatmap-summary-link" data-heat-summary-filter="all" role="button" tabindex="0"><div class="label">参考値</div><div class="value" id="sumReference">0</div><div class="sub">応募5件未満の行数</div></div>
+</div>
+</section>
+<section class="insight-card" id="heatmapInsight">
+<div class="insight-title">重点確認</div>
+<div class="insight-body">読込中です</div>
+</section>
+<section class="legend-card">
+<div class="legend-item"><span class="legend-dot good"></span><strong>良好</strong><em>基準以上</em></div>
+<div class="legend-item"><span class="legend-dot warning"></span><strong>注意</strong><em>改善余地あり</em></div>
+<div class="legend-item"><span class="legend-dot danger"></span><strong>危険</strong><em>優先確認</em></div>
+<div class="legend-item"><span class="legend-dot neutral"></span><strong>参考値</strong><em>応募5件未満</em></div>
+</section>
+<section class="card heatmap-section" id="divisionSection">
+<div class="table-head">
+<h2>本部別ヒートマップ</h2>
+<span>本部単位で、面接率・採用率・辞退率・不通率を確認します。</span>
+</div>
+<div class="heatmap-table-wrap">
+<table>
+<thead id="divisionHead"></thead>
+<tbody id="divisionBody"><tr><td class="empty">読込中です</td></tr></tbody>
+</table>
+</div>
+</section>
+<section class="card heatmap-section" id="channelSection">
+<div class="table-head">
+<h2>媒体別ヒートマップ</h2>
+<span>応募数に対して、面接到達と離脱が悪い媒体を確認します。</span>
+</div>
+<div class="heatmap-table-wrap">
+<table>
+<thead id="channelHead"></thead>
+<tbody id="channelBody"><tr><td class="empty">読込中です</td></tr></tbody>
+</table>
+</div>
+</section>
+<section class="card heatmap-section" id="ownerSection">
+<div class="table-head">
+<h2>担当者別ヒートマップ</h2>
+<span>担当者ごとの面接率・採用率・不通率・放置件数を確認します。</span>
+</div>
+<div class="heatmap-table-wrap">
+<table>
+<thead id="ownerHead"></thead>
+<tbody id="ownerBody"><tr><td class="empty">読込中です</td></tr></tbody>
+</table>
+</div>
+<div class="heatmap-more-wrap hidden" id="ownerToggleWrap">
+<button aria-expanded="false" class="heatmap-more-btn" id="ownerToggle" type="button">担当者をすべて表示</button>
+</div>
+</section>
+<section class="card heatmap-section optional-section" id="centerSection">
+<div class="table-head">
+<h2>営業所別ヒートマップ</h2>
+<span>営業所単位でボトルネックを確認します。</span>
+</div>
+<div class="heatmap-table-wrap">
+<table>
+<thead id="centerHead"></thead>
+<tbody id="centerBody"><tr><td class="empty">読込中です</td></tr></tbody>
+</table>
+</div>
+</section>
+<section class="card heatmap-section optional-section" id="jobSection">
+<div class="table-head">
+<h2>職種別ヒートマップ</h2>
+<span>職種ごとの面接到達・採用転換・離脱傾向を確認します。</span>
+</div>
+<div class="heatmap-table-wrap">
+<table>
+<thead id="jobHead"></thead>
+<tbody id="jobBody"><tr><td class="empty">読込中です</td></tr></tbody>
+</table>
+</div>
+</section>
+<div class="message-box message-info hidden" id="pageMessage"></div>
+</main>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+/* === Heatmap axis folding enhancement : 2026-05-07 === */
+const HEATMAP_PRIMARY_TITLES = new Set([
+  "本部別ヒートマップ",
+  "媒体別ヒートマップ",
+  "担当者別ヒートマップ"
+]);
+
+function normalizeAxisTitle(title){
+  return String(title || "").replace(/\s+/g, "").trim();
+}
+
+function isPrimaryHeatmapSection(section){
+  const title = section.querySelector("h2,h3,.section-title,.card-title")?.textContent || "";
+  const normalized = normalizeAxisTitle(title);
+  return ["本部別ヒートマップ","媒体別ヒートマップ","担当者別ヒートマップ"].some(v => normalizeAxisTitle(v) === normalized);
+}
+
+function enhanceHeatmapAxisLayout(){
+  const main = document.querySelector("main") || document.body;
+  const cards = Array.from(document.querySelectorAll(".heatmap-card,.analysis-card,.section-card,.card"))
+    .filter(card => {
+      const title = card.querySelector("h2,h3,.section-title,.card-title")?.textContent || "";
+      return title.includes("ヒートマップ");
+    });
+
+  if (!cards.length) return;
+  if (document.querySelector(".heatmap-axis-primary")) return;
+
+  const primary = [];
+  const detail = [];
+
+  cards.forEach(card => {
+    if (isPrimaryHeatmapSection(card)) {
+      primary.push(card);
+    } else if ((card.querySelector("h2,h3,.section-title,.card-title")?.textContent || "").includes("ヒートマップ")) {
+      detail.push(card);
+    }
+  });
+
+  if (!primary.length || !detail.length) return;
+
+  const primaryWrap = document.createElement("section");
+  primaryWrap.className = "heatmap-axis-primary";
+  primaryWrap.innerHTML = `
+    <div class="axis-group-head">
+      <div>
+        <h2>主要3軸を常時表示</h2>
+        <p>まず本部・媒体・担当者の3軸で、危険箇所を確認します。</p>
+      </div>
+      <span class="axis-count">常時表示</span>
+    </div>
+  `;
+
+  const detailWrap = document.createElement("details");
+  detailWrap.className = "heatmap-axis-details";
+  const openState = localStorage.getItem("heatmap_detail_axes_open");
+  if (openState === "1") detailWrap.open = true;
+
+  detailWrap.innerHTML = `
+    <summary>
+      <span class="summary-left">
+        <span class="summary-icon">▶</span>
+        <span>
+          <strong>詳細分析を開く</strong>
+          <small>職種・センター・月別など、補助軸は必要な時だけ確認します。</small>
+        </span>
+      </span>
+      <span class="summary-count">${detail.length}軸</span>
+    </summary>
+    <div class="heatmap-axis-detail-body"></div>
+  `;
+
+  detailWrap.addEventListener("toggle", () => {
+    localStorage.setItem("heatmap_detail_axes_open", detailWrap.open ? "1" : "0");
+  });
+
+  const first = primary[0];
+  first.parentNode.insertBefore(primaryWrap, first);
+  primary.forEach(card => primaryWrap.appendChild(card));
+
+  const lastPrimary = primary[primary.length - 1];
+  primaryWrap.parentNode.insertBefore(detailWrap, primaryWrap.nextSibling);
+  const detailBody = detailWrap.querySelector(".heatmap-axis-detail-body");
+  detail.forEach(card => detailBody.appendChild(card));
+}
+
+const originalRenderAllHeatmaps = window.renderAllHeatmaps;
+if (typeof originalRenderAllHeatmaps === "function") {
+  window.renderAllHeatmaps = async function(...args){
+    const result = await originalRenderAllHeatmaps.apply(this, args);
+    enhanceHeatmapAxisLayout();
+    return result;
+  };
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(enhanceHeatmapAxisLayout, 300);
+});
+
+</script>
+<script>
+const sb = window.getRecruitSupabaseClient();
+
+let currentUser=null;
+let currentRole=null;
+let CENTER_MASTER={};
+let rows=[];
+let lastSummary={danger:0,warning:0,reference:0};
+document.body.dataset.ownerExpanded="false";
+
+const ACTIVE_STATUSES=["応募","アポ取得","面接設定","面接実施"];
+
+function $(id){return document.getElementById(id)}
+
+function setText(id,value){const el=$(id);if(el)el.textContent=value}
+function setMsg(id,msg,type="info"){const el=$(id);if(!el)return;if(!msg){el.textContent="";el.className="message-box message-info hidden";return}el.textContent=msg;el.className="message-box message-"+type}
+function validDate(s){if(!s)return false;const y=Number(String(s).slice(0,4));return y>=2000}
+function todayStr(){return new Date().toISOString().slice(0,10)}
+function daysBetween(a,b){if(!a||!b)return null;return Math.floor((new Date(b+"T00:00:00")-new Date(a+"T00:00:00"))/86400000)}
+
+function rateNum(n,d){return !d?0:Number(((n/d)*100).toFixed(1))}
+function rate(n,d){return !d?"0.0%":rateNum(n,d).toFixed(1)+"%"}
+function normalize(v,fallback="未設定"){const s=String(v||"").trim();return s||fallback}
+function buildAnalysisUrl(axis,key){
+  const value=String(key??"").trim();
+  const params=new URLSearchParams();
+  params.set("from", $("from")?.value || "");
+  params.set("to", $("to")?.value || "");
+  const fy=$("fy")?.value || "";
+  if(fy)params.set("fy",fy);
+  if(axis==="本部"){
+    if(value&&value!=="未設定本部")params.set("division",value);
+    return "./dashboard_division.html?"+params.toString();
+  }
+  if(axis==="媒体"){
+    if(value&&value!=="未設定媒体")params.set("channel",value);
+    return "./dashboard_channel.html?"+params.toString();
+  }
+  if(axis==="担当者"){
+    if(value&&value!=="未設定担当")params.set("owner",value);
+    return "./dashboard_owner.html?"+params.toString();
+  }
+  if(axis==="営業所"){
+    if(value&&value!=="未設定営業所")params.set("center",value);
+    return "./dashboard_division.html?"+params.toString();
+  }
+  if(axis==="職種"){
+    if(value&&value!=="未設定職種")params.set("job",value);
+    return "./dashboard_job.html?"+params.toString();
+  }
+  return "#";
+}
+function buildListUrl(axis,key,filter="all"){
+  const value=String(key??"").trim();
+  const params=new URLSearchParams();
+  params.set("source","dashboard");
+  params.set("filter",filter||"all");
+  const from=$("from")?.value||"";
+  const to=$("to")?.value||"";
+  if(from)params.set("from",from);
+  if(to)params.set("to",to);
+  if(axis==="本部"&&value&&value!=="未設定本部")params.set("division",value);
+  if(axis==="媒体"&&value&&value!=="未設定媒体")params.set("channel",value);
+  if(axis==="担当者"&&value&&value!=="未設定担当")params.set("owner",value);
+  if(axis==="営業所"&&value&&value!=="未設定営業所")params.set("center",value);
+  if(axis==="職種"&&value&&value!=="未設定職種")params.set("job",value);
+  return "./list.html?"+params.toString();
+}
+function goHeatmapList(axis,key,filter="all"){
+  window.location.href=buildListUrl(axis,key,filter);
+}
+function keyLink(axis,key){
+  const href=buildAnalysisUrl(axis,key);
+  return `<a class="heatmap-key-link" href="${esc(href)}">${esc(key)}</a>`;
+}
+function isHired(r){return r.hiring_result==="採用"||validDate(r.join_date)}
+function isDeclined(r){return r.status==="辞退"||String(r.decline_reason||"").trim()!==""}
+function isNoContact(r){return r.status==="不通"}
+function isFinal(r){return ["入社","辞退","不通"].includes(r.status)||r.hiring_result==="不採用"||isHired(r)}
+function isActionRequired(r){
+  const st=String(r.status||"").trim();
+  if(st==="面接実施"&&(r.hiring_result==="採用"||r.hiring_result==="不採用"))return false;
+  if(!ACTIVE_STATUSES.includes(st))return false;
+  if(!r.next_action_date)return true;
+  return daysBetween(todayStr(),r.next_action_date)<=1;
+}
+function isDormant(r){
+  if(!validDate(r.applied_date)||validDate(r.appointment_date)||validDate(r.interview1_date)||isFinal(r))return false;
+  const days=daysBetween(r.applied_date,todayStr());
+  return days!==null&&days>=3;
+}
+function fiscalRange(type){
+  const fy=fiscalYear();
+  if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};
+  if(type==="all")return {fy:null,label:"全期間",from:"",to:""};
+  return {fy,label:fy+"年度",from:fy+"-04-01",to:(fy+1)+"-03-31"};
+}
+function applyFy(){
+  const range=fiscalRange($("fy")?.value||"current");
+  $("from").value=range.from;
+  $("to").value=range.to;
+  const period=range.from&&range.to ? `${range.from} ～ ${range.to}` : "全期間";
+  setText("periodText","対象期間："+period);
+  setText("sideFiscalYear",range.label);
+  setText("sidePeriod",period);
+}
+function handleFilterChange(){applyFy();loadAnalysis()}
+function handleDivisionChange(){updateCenterOptions();handleFilterChange()}
+
+async function getUser(){
+  if(currentUser)return currentUser;
+  const {data:{session}}=await sb.auth.getSession();
+  currentUser=session?.user||null;
+  return currentUser;
+}
+async function getRole(userId){
+  if(currentRole)return currentRole;
+  try{
+    const {data}=await sb.from("profiles").select("role").eq("user_id",userId).single();
+    currentRole=data?.role||"editor";
+  }catch(e){currentRole="editor"}
+  return currentRole;
+}
+function showAuth(msg="未ログインです",type="info"){
+  const a=$("authScreen"),b=$("appScreen");
+  if(a)a.classList.remove("hidden");
+  if(b)b.classList.add("hidden");
+  currentUser=null;
+  currentRole=null;
+  setMsg("authMessage",msg,type);
+  document.body.classList.remove("auth-checking");
+}
+async function showApp(){
+  const user=await getUser();
+  if(!user){showAuth();return false}
+  await getRole(user.id);
+  $("authScreen")?.classList.add("hidden");
+  $("appScreen")?.classList.remove("hidden");
+  document.body.classList.remove("auth-checking");
+  return true;
+}
+async function login(){
+  const email=$("loginEmail")?.value.trim();
+  const password=$("loginPassword")?.value;
+  if(!email||!password){setMsg("authMessage","メールアドレスとパスワードを入力してください","error");return}
+  try{
+    const {error}=await sb.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    currentUser=null;
+    currentRole=null;
+    if(await showApp())await initPageAfterLogin();
+  }catch(e){setMsg("authMessage","ログイン失敗: "+(e.message||e),"error")}
+}
+async function logout(){try{await sb.auth.signOut()}catch(e){}showAuth("ログアウトしました","success")}
+sb.auth.onAuthStateChange((ev)=>{if(ev==="SIGNED_OUT")showAuth("ログアウトしました","success")});
+async function authInit(){
+  try{if(await showApp())await initPageAfterLogin()}
+  catch(e){console.error(e);showAuth("初期化に失敗しました","error")}
+  finally{document.body.classList.remove("auth-checking")}
+}
+
+async function loadMasterDivisionCenterOptions(){
+
+  if(window.RecruitMaster && typeof window.RecruitMaster.divisionCenter === "function"){
+    const master = await window.RecruitMaster.divisionCenter();
+    return { divisions: master.divisions || [], centersByDivision: master.centersByDivision || {} };
+  }
+  return { divisions:[], centersByDivision:{} };
+}
+async function loadCenterMaster(){
+
+  const master = window.RecruitMaster ? await window.RecruitMaster.divisionCenter() : { centersByDivision:{}, centers:[] };
+  CENTER_MASTER = master.centersByDivision || {};
+  return master.centers || [];
+}
+function setSelectOptions(id,values,blank="すべて"){
+  const el=$(id);if(!el)return;
+  const current=el.value;
+  const list=[...new Set((values||[]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));
+  el.innerHTML=`<option value="">${blank}</option>`;
+  list.forEach(v=>{el.innerHTML+=`<option value="${esc(v)}">${esc(v)}</option>`});
+  if(list.includes(current))el.value=current;
+}
+function bindMasters(data){
+  const divisions=Object.keys(CENTER_MASTER).length ? Object.keys(CENTER_MASTER) : data.map(r=>r.division);
+  setSelectOptions("division",divisions);
+  updateCenterOptions(data);
+}
+function updateCenterOptions(sourceRows=rows){
+  const div=$("division")?.value||"";
+  let centers=[];
+  if(div&&CENTER_MASTER[div])centers=CENTER_MASTER[div];
+  else centers=(sourceRows||[]).filter(r=>!div||r.division===div).map(r=>r.center_name);
+  setSelectOptions("center",centers);
+}
+function filtered(data){
+  const f=$("from").value,t=$("to").value,d=$("division").value,c=$("center").value;
+  return (data||[]).filter(r=>!r.is_deleted).filter(r=>{
+    if(!validDate(r.applied_date))return false;
+    if(f&&r.applied_date<f)return false;
+    if(t&&r.applied_date>t)return false;
+    if(d&&r.division!==d)return false;
+    if(c&&r.center_name!==c)return false;
+    return true;
+  });
+}
+function makeEmpty(key){
+  return {key,applied:0,appointment:0,set:0,interview:0,offer:0,join:0,decline:0,noContact:0,todo:0,dormant:0};
+}
+function groupBy(data,field,fallback="未設定"){
+  const m=new Map();
+  data.forEach(r=>{
+    const key=normalize(typeof field==="function"?field(r):r[field],fallback);
+    if(!m.has(key))m.set(key,makeEmpty(key));
+    const x=m.get(key);
+    x.applied++;
+    if(validDate(r.appointment_date))x.appointment++;
+    if(validDate(r.interview1_date))x.set++;
+    if(validDate(r.interview_done_date))x.interview++;
+    if(validDate(r.offer_date))x.offer++;
+    if(isHired(r))x.join++;
+    if(isDeclined(r))x.decline++;
+    if(isNoContact(r))x.noContact++;
+    if(isActionRequired(r))x.todo++;
+    if(isDormant(r))x.dormant++;
+  });
+  return [...m.values()].sort((a,b)=>b.applied-a.applied||String(a.key).localeCompare(String(b.key),"ja"));
+}
+function judgeLowGood(value,goodMax,warnMax,count){
+  if(count<5)return {cls:"neutral",label:"参考"};
+  if(value<=goodMax)return {cls:"good",label:"良好"};
+  if(value<=warnMax)return {cls:"warning",label:"注意"};
+  return {cls:"danger",label:"危険"};
+}
+function judgeHighGood(value,goodMin,warnMin,count){
+  if(count<5)return {cls:"neutral",label:"参考"};
+  if(value>=goodMin)return {cls:"good",label:"良好"};
+  if(value>=warnMin)return {cls:"warning",label:"注意"};
+  return {cls:"danger",label:"危険"};
+}
+function judgeCount(value,warnMin,dangerMin,count){
+  if(count<5)return {cls:"neutral",label:"参考"};
+  if(value>=dangerMin)return {cls:"danger",label:"危険"};
+  if(value>=warnMin)return {cls:"warning",label:"注意"};
+  return {cls:"good",label:"良好"};
+}
+function heatAttrs(axis,key,filter,label){
+  if(!axis||!key)return "";
+  return `data-heat-axis="${escAttr(axis)}" data-heat-key="${escAttr(key)}" data-heat-filter="${escAttr(filter||"all")}" title="${escAttr(label||"対象者を確認")}"`;
+}
+function statusCell(value,judge,suffix="%",axis="",key="",filter="all",label="対象者を確認"){
+  const clickable=axis&&key;
+  return `<td class="heat-cell ${judge.cls} ${clickable?"is-clickable":""}" ${heatAttrs(axis,key,filter,label)}><strong>${esc(value)}${suffix}</strong><span>${esc(judge.label)}</span></td>`;
+}
+function countCell(value,judge,axis="",key="",filter="all",label="対象者を確認"){
+  const clickable=axis&&key;
+  return `<td class="heat-cell ${judge.cls} ${clickable?"is-clickable":""}" ${heatAttrs(axis,key,filter,label)}><strong>${esc(value)}</strong><span>${esc(judge.label)}</span></td>`;
+}
+function escAttr(v){
+  return String(v??"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function bindHeatmapClicks(scope){
+  if(!scope)return;
+  scope.querySelectorAll("[data-heat-axis]").forEach(el=>{
+    el.addEventListener("click",()=>{
+      goHeatmapList(el.dataset.heatAxis||"",el.dataset.heatKey||"",el.dataset.heatFilter||"all");
+    });
+  });
+  scope.querySelectorAll("[data-heat-summary-filter]").forEach(el=>{
+    const move=()=>goHeatmapList("","",el.dataset.heatSummaryFilter||"all");
+    el.addEventListener("click",move);
+    el.addEventListener("keydown",e=>{
+      if(e.key==="Enter"||e.key===" "){
+        e.preventDefault();
+        move();
+      }
+    });
+  });
+}
+function rowScore(x){
+  const i=rateNum(x.interview,x.applied);
+  const j=rateNum(x.join,x.applied);
+  const d=rateNum(x.decline,x.applied);
+  const n=rateNum(x.noContact,x.applied);
+  return (50-i)+(12-j)*2+d+n+x.todo*4+x.dormant*3;
+}
+function rowLevel(x){
+  const cells=[
+    judgeHighGood(rateNum(x.interview,x.applied),50,35,x.applied),
+    judgeHighGood(rateNum(x.join,x.applied),12,8,x.applied),
+    judgeLowGood(rateNum(x.decline,x.applied),10,20,x.applied),
+    judgeLowGood(rateNum(x.noContact,x.applied),10,20,x.applied)
+  ];
+  if(cells.some(c=>c.cls==="danger"))return "danger";
+  if(cells.some(c=>c.cls==="warning"))return "warning";
+  if(cells.every(c=>c.cls==="neutral"))return "neutral";
+  return "good";
+}
+function levelBadge(level){
+  const map={good:"良好",warning:"注意",danger:"危険",neutral:"参考値"};
+  return `<span class="mini-status ${level}">${map[level]||"確認"}</span>`;
+}
+function levelRank(level){
+  return {danger:0,warning:1,good:2,neutral:3}[level]??9;
+}
+function sortHeatmapItems(items){
+  return [...items].sort((a,b)=>{
+    const ar=levelRank(rowLevel(a));
+    const br=levelRank(rowLevel(b));
+    if(ar!==br)return ar-br;
+    const aRef=a.applied<5?1:0;
+    const bRef=b.applied<5?1:0;
+    if(aRef!==bRef)return aRef-bRef;
+    return rowScore(b)-rowScore(a);
+  });
+}
+function renderHeatmap(headId,bodyId,items,label,options={}){
+  const head=$(headId),body=$(bodyId);
+  if(!head||!body)return {danger:0,warning:0,reference:0};
+  const headers=[label,"応募","面接率","採用率","辞退率","不通率","要対応","放置3日+","判定"];
+  head.innerHTML="<tr>"+headers.map(h=>"<th>"+h+"</th>").join("")+"</tr>";
+  const toggleWrap=options.toggleWrapId?$(options.toggleWrapId):null;
+  const toggleBtn=options.toggleId?$(options.toggleId):null;
+  if(toggleWrap)toggleWrap.classList.add("hidden");
+  if(!items.length){body.innerHTML='<tr><td class="empty" colspan="9">データがありません</td></tr>';return {danger:0,warning:0,reference:0}}
+  const list=sortHeatmapItems(items);
+  const limit=Number(options.limit||0);
+  const hiddenCount=limit>0?Math.max(0,list.length-limit):0;
+  const expanded=options.toggleId?document.body.dataset.ownerExpanded==="true":true;
+  const visibleList=limit>0&&!expanded?list.slice(0,limit):list;
+  let danger=0,warning=0,reference=0;
+  const rowsHtml=list.map((x,index)=>{
+    const interview=rateNum(x.interview,x.applied);
+    const join=rateNum(x.join,x.applied);
+    const decline=rateNum(x.decline,x.applied);
+    const noContact=rateNum(x.noContact,x.applied);
+    const jInterview=judgeHighGood(interview,50,35,x.applied);
+    const jJoin=judgeHighGood(join,12,8,x.applied);
+    const jDecline=judgeLowGood(decline,10,20,x.applied);
+    const jNoContact=judgeLowGood(noContact,10,20,x.applied);
+    const jTodo=judgeCount(x.todo,3,6,x.applied);
+    const jDormant=judgeCount(x.dormant,2,4,x.applied);
+    [jInterview,jJoin,jDecline,jNoContact,jTodo,jDormant].forEach(j=>{if(j.cls==="danger")danger++;if(j.cls==="warning")warning++});
+    if(x.applied<5)reference++;
+    const level=rowLevel(x);
+    const isHidden=limit>0&&!expanded&&index>=limit;
+    return `<tr class="${isHidden?"is-extra-row hidden":""}">
+      <td class="key-cell"><strong>${keyLink(label,x.key)}</strong><span>${x.applied<5?"応募5件未満":"通常判定"}</span></td>
+      <td class="count-col is-clickable" ${heatAttrs(label,x.key,"applied","応募者一覧で確認")}>${x.applied}</td>
+      ${statusCell(interview.toFixed(1),jInterview,"%",label,x.key,"heat_interview_gap","面接未到達・未実施の対象者を確認")}
+      ${statusCell(join.toFixed(1),jJoin,"%",label,x.key,"heat_hire_gap","採用未到達の対象者を確認")}
+      ${statusCell(decline.toFixed(1),jDecline,"%",label,x.key,"decline","辞退対象者を確認")}
+      ${statusCell(noContact.toFixed(1),jNoContact,"%",label,x.key,"no_contact","不通対象者を確認")}
+      ${countCell(x.todo,jTodo,label,x.key,"action","要対応者を確認")}
+      ${countCell(x.dormant,jDormant,label,x.key,"dormant","放置3日以上を確認")}
+      <td class="level-col is-clickable" ${heatAttrs(label,x.key,"all","対象者一覧で確認")}>${levelBadge(level)}</td>
+    </tr>`;
+  }).join("");
+  body.innerHTML=rowsHtml;
+  bindHeatmapClicks(body);
+  if(toggleWrap&&toggleBtn&&hiddenCount>0){
+    toggleWrap.classList.remove("hidden");
+    toggleBtn.textContent=expanded?"担当者を上位5件に戻す":`担当者をすべて表示（残り${hiddenCount}件）`;
+    toggleBtn.setAttribute("aria-expanded",expanded?"true":"false");
+    toggleBtn.onclick=()=>{
+      document.body.dataset.ownerExpanded=expanded?"false":"true";
+      renderHeatmap(headId,bodyId,items,label,options);
+    };
+  }
+  return {danger,warning,reference};
+}
+function updateSummary(data,stats){
+  const applied=data.length;
+  const interview=data.filter(r=>validDate(r.interview_done_date)).length;
+  const join=data.filter(isHired).length;
+  setText("sumApplied",applied);
+  setText("sumInterview",interview);
+  setText("sumJoin",join);
+  setText("sumDanger",stats.danger);
+  setText("sumReference",stats.reference);
+  setText("sideRows",data.length);
+  setText("sideDivision",$("division").value||"すべて");
+  setText("sideCenter",$("center").value||"すべて");
+  setText("sideDangerCount",stats.danger);
+  setText("sideWarningCount",stats.warning);
+}
+function updateInsight(groups){
+  const box=$("heatmapInsight");if(!box)return;
+  const candidates=groups.flatMap(g=>g.items.map(x=>({axis:g.label,item:x,level:rowLevel(x),score:rowScore(x)}))).filter(x=>x.item.applied>=5);
+  const top=candidates.sort((a,b)=>{
+    const ar={danger:0,warning:1,good:2,neutral:3}[a.level]??9;
+    const br={danger:0,warning:1,good:2,neutral:3}[b.level]??9;
+    if(ar!==br)return ar-br;
+    return b.score-a.score;
+  })[0];
+  if(!top){box.className="insight-card neutral";box.innerHTML='<div class="insight-title">重点確認</div><div class="insight-body">通常判定できる母数のデータがありません。</div>';return}
+  const x=top.item;
+  const level=top.level;
+  const action=level==="danger"?"不通率・辞退率・初動遅れを優先確認してください。":level==="warning"?"悪化している指標を確認してください。":"大きな危険箇所はありません。";
+  box.className="insight-card "+level;
+  box.innerHTML=`<div class="insight-title">重点確認</div><div class="insight-body">${esc(top.axis)}：${esc(x.key)}（応募 ${x.applied} / 採用率 ${rate(x.join,x.applied)} / 不通率 ${rate(x.noContact,x.applied)}）<span>${esc(action)}</span></div>`;
+}
+function toggleOptionalSections(){
+  const showAll=$("viewMode")?.value==="all";
+  document.querySelectorAll(".optional-section").forEach(el=>el.classList.toggle("hidden",!showAll));
+}
+async function loadAnalysis(){
+  try{
+    setMsg("pageMessage","","info");
+    toggleOptionalSections();
+    const {data,error}=await sb.from("candidates").select("*").order("id",{ascending:false});
+    if(error)throw error;
+    rows=data||[];
+    bindMasters(rows);
+    const data2=filtered(rows);
+
+    const divisionItems=groupBy(data2,"division","未設定本部");
+    const channelItems=groupBy(data2,"channel","未設定媒体");
+    const ownerItems=groupBy(data2,"owner_name","未設定担当");
+    const centerItems=groupBy(data2,"center_name","未設定営業所");
+    const jobItems=groupBy(data2,"job_type","未設定職種");
+
+    const s1=renderHeatmap("divisionHead","divisionBody",divisionItems,"本部");
+    const s2=renderHeatmap("channelHead","channelBody",channelItems,"媒体");
+    const s3=renderHeatmap("ownerHead","ownerBody",ownerItems,"担当者",{limit:5,toggleWrapId:"ownerToggleWrap",toggleId:"ownerToggle"});
+    const s4=renderHeatmap("centerHead","centerBody",centerItems,"営業所");
+    const s5=renderHeatmap("jobHead","jobBody",jobItems,"職種");
+    lastSummary={danger:s1.danger+s2.danger+s3.danger+s4.danger+s5.danger,warning:s1.warning+s2.warning+s3.warning+s4.warning+s5.warning,reference:s1.reference+s2.reference+s3.reference+s4.reference+s5.reference};
+    updateSummary(data2,lastSummary);
+    updateInsight([
+      {label:"本部",items:divisionItems},
+      {label:"媒体",items:channelItems},
+      {label:"担当者",items:ownerItems},
+      {label:"営業所",items:centerItems},
+      {label:"職種",items:jobItems}
+    ]);
+  }catch(e){
+    setMsg("pageMessage","読込失敗: "+(e.message||e),"error");
+    console.error(e);
+  }
+}
+async function initPageAfterLogin(){
+  await loadCenterMaster();
+  applyFy();
+  await loadAnalysis();
+}
+authInit();
+</script>
+<script src="dashboard_summary_links.js"></script>
+</body>
+</html>

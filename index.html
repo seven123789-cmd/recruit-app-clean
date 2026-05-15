@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>採用管理アプリ｜応募者登録</title>
+
+<link rel="stylesheet" href="./assets/css/common.css">
+<link rel="stylesheet" href="./assets/css/header.css">
+<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260508_sidebar2">
+<link rel="stylesheet" href="./assets/css/index.css">
+
+<style>
+/* index.html temporary page-level layout adjustment */
+/* INDEXは応募時点の最小登録に絞る */
+.entry-intro{
+  margin:6px 0 20px;
+  color:#64748b;
+  font-size:14px;
+  line-height:1.7;
+}
+.entry-section{
+  border:1px solid #e5edf7;
+  border-radius:18px;
+  background:#ffffff;
+  padding:18px;
+  margin-top:16px;
+}
+.entry-section:first-of-type{
+  margin-top:0;
+}
+.entry-section-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:0 0 14px;
+  color:#0f172a;
+  font-size:15px;
+  font-weight:900;
+}
+.entry-section-title::before{
+  content:"";
+  width:7px;
+  height:18px;
+  border-radius:999px;
+  background:#2563eb;
+  display:inline-block;
+}
+.entry-actions{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-top:18px;
+}
+.entry-message{
+  margin-top:14px;
+}
+.post-register-actions{
+  display:grid;
+  gap:10px;
+}
+.post-register-main{
+  width:100%;
+  justify-content:center;
+  min-height:46px;
+  font-weight:900;
+}
+.post-register-sub{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.modal-btn.ghost{
+  background:#ffffff;
+  color:#334155;
+  border:1px solid #cbd5e1;
+}
+.modal-btn.ghost:hover{
+  background:#f8fafc;
+}
+
+.choice-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  margin-top:14px;
+}
+.choice-card{
+  border:1px solid #e5edf7;
+  border-radius:16px;
+  background:#f8fbff;
+  padding:14px;
+}
+.choice-card label{
+  display:block;
+  margin-bottom:10px;
+}
+.choice-button-wrap{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.choice-pill{
+  border:1px solid #bfdbfe;
+  background:#eff6ff;
+  color:#1d4ed8;
+  border-radius:999px;
+  padding:10px 16px;
+  font-size:14px;
+  font-weight:900;
+  cursor:pointer;
+  box-shadow:0 8px 18px rgba(37,99,235,.08);
+}
+.choice-pill:hover{
+  transform:translateY(-1px);
+}
+.choice-pill.is-active{
+  background:#2563eb;
+  border-color:#2563eb;
+  color:#ffffff;
+  box-shadow:0 10px 22px rgba(37,99,235,.24);
+}
+.choice-free-input{
+  margin-top:10px;
+}
+.choice-free-input.hidden{
+  display:none;
+}
+.applicant-main-grid{
+  display:grid;
+  grid-template-columns:minmax(340px,2fr) minmax(96px,.42fr) minmax(220px,1.2fr) minmax(220px,1.2fr);
+  gap:14px;
+  align-items:end;
+}
+.applicant-main-grid > div{
+  min-width:0;
+}
+.applicant-main-grid > div:nth-child(3){
+  grid-column:3;
+}
+.choice-card{
+  min-height:118px;
+}
+.post-register-actions{
+  display:grid;
+  gap:12px;
+}
+.post-register-main{
+  width:100%;
+  justify-content:center;
+  min-height:48px;
+}
+.post-register-sub{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.modal-btn.ghost{
+  background:#ffffff;
+  color:#334155;
+  border:1px solid #cbd5e1;
+}
+.modal-btn.ghost:hover{
+  background:#f8fafc;
+}
+.other-input-row{
+  grid-column:1 / -1;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  align-items:end;
+}
+.other-input-row.hidden{
+  display:none;
+}
+.other-input-slot.hidden{
+  display:none;
+}
+#divisionFreeWrap{
+  grid-column:1;
+}
+#entryCenterFreeWrap{
+  grid-column:2;
+}
+#channelFreeWrap{
+  grid-column:1;
+}
+@media (max-width:900px){
+  .other-input-row{
+    grid-template-columns:1fr;
+  }
+}
+@media (max-width:900px){
+  .entry-section{
+    padding:14px;
+  }
+  .entry-actions{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .post-register-sub{
+    grid-template-columns:1fr;
+  }
+  .choice-grid{
+    grid-template-columns:1fr;
+  }
+  .applicant-main-grid{
+    grid-template-columns:1fr;
+  }
+  .applicant-main-grid > div:nth-child(3){
+    grid-column:auto;
+  }
+  #divisionFreeWrap,
+  #entryCenterFreeWrap,
+  #channelFreeWrap{
+    grid-column:auto;
+  }
+}
+</style>
+<script src="./common.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/candidate_utils.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/audit_utils.js"></script>
+<script src="assets/js/ops_guard.js"></script>
+<script src="assets/js/safe_utils.js"></script>
+</head>
+<body class="auth-checking">
+
+<div id="authScreen" class="container hidden">
+  <div class="auth-page">
+    <section class="auth-brand-panel">
+      <div class="auth-logo-row">
+        <div class="auth-logo-mark">採</div>
+        <div>
+          <div class="auth-product-name">Recruit Management</div>
+          <div class="auth-product-sub">採用管理システム</div>
+        </div>
+      </div>
+
+      <div class="auth-copy">
+        <p class="auth-kicker">社内採用オペレーション</p>
+        <h1 class="auth-title">応募から採用までを<br>一画面で管理</h1>
+        <p class="auth-sub">候補者登録、一覧確認、分析、帳票出力までを統一した業務用ダッシュボードです。</p>
+      </div>
+
+      <div class="auth-feature-grid" aria-label="機能概要">
+        <div class="auth-feature-card">
+          <span>01</span>
+          <strong>候補者管理</strong>
+          <small>応募・面接・採用状況を一元管理</small>
+        </div>
+        <div class="auth-feature-card">
+          <span>02</span>
+          <strong>分析レポート</strong>
+          <small>本部・媒体・担当者別に可視化</small>
+        </div>
+        <div class="auth-feature-card">
+          <span>03</span>
+          <strong>帳票出力</strong>
+          <small>A4印刷・PDF保存に対応</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="auth-card">
+      <div class="auth-card-head">
+        <div>
+          <p class="auth-kicker">LOGIN</p>
+          <h2>ログイン</h2>
+        </div>
+        <span class="auth-secure-pill">社内専用</span>
+      </div>
+
+      <p class="auth-note">社内担当者のみ利用します。新規登録は @sline.co.jp のメールのみです。</p>
+
+      <div class="form-grid auth-form-grid">
+        <div class="col-12">
+          <label for="loginEmail">メールアドレス</label>
+          <input id="loginEmail" type="email" placeholder="example@sline.co.jp" autocomplete="email">
+        </div>
+
+        <div class="col-12">
+          <label for="loginPassword">パスワード</label>
+          <input id="loginPassword" type="password" placeholder="パスワード" autocomplete="current-password">
+          <p class="auth-rule">8文字以上、大文字・小文字・数字を各1文字以上含めてください。</p>
+        </div>
+
+        <div class="col-12">
+          <div class="auth-actions">
+            <button class="btn-primary auth-login-btn" type="button" onclick="login()">ログイン</button>
+            <button class="btn-secondary auth-signup-btn" type="button" onclick="signup()">新規登録</button>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div id="authMessage" class="message-box message-info auth-message">未ログインです</div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="appScreen" class="hidden">
+  <div class="app-layout">
+        <aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+
+  <main class="main-content">
+      <div class="topbar">
+        <div class="topbar-row">
+          <div>
+            <h1>採用管理アプリ</h1>
+          </div>
+        </div>
+      </div>
+
+
+      <section class="card">
+        <h2>新規登録</h2>
+
+        <div class="entry-section">
+          <h3 class="entry-section-title">応募者情報</h3>
+          <div class="applicant-main-grid">
+            <div>
+              <label for="name">氏名</label>
+              <input id="name" placeholder="例：山田 太郎">
+            </div>
+
+            <div>
+              <label for="age">年齢</label>
+              <input id="age" type="number" placeholder="30">
+            </div>
+
+            <div>
+              <label for="appliedDate">応募日</label>
+              <input id="appliedDate" type="date">
+            </div>
+          </div>
+
+          <div class="choice-grid">
+            <div class="choice-card">
+              <label>職種</label>
+              <input id="jobType" type="hidden">
+              <div class="choice-button-wrap" id="jobTypeChoiceWrap">
+                <button class="choice-pill" type="button" disabled>職種マスタ読込中</button>
+              </div>
+              <input id="jobTypeFree" class="choice-free-input hidden" placeholder="職種を入力">
+            </div>
+
+            <div class="choice-card">
+              <label>担当者</label>
+              <input id="ownerName" type="hidden">
+              <div class="choice-button-wrap" id="ownerChoiceWrap">
+                <button class="choice-pill" type="button" disabled>担当者マスタ読込中</button>
+              </div>
+              <input id="ownerNameFree" class="choice-free-input hidden" placeholder="担当者名を入力">
+            </div>
+          </div>
+        </div>
+
+        <div class="entry-section">
+          <h3 class="entry-section-title">所属・応募経路</h3>
+          <div class="form-grid quick-row">
+            <div class="col-6">
+              <label for="division">本部</label>
+              <select id="division" onchange="updateEntryCenterOptions(); toggleDivisionFreeInput();">
+                <option value="">選択</option>
+              </select>
+            </div>
+
+            <div class="col-6">
+              <label for="centerName">営業所</label>
+              <select id="centerName" onchange="toggleEntryCenterFreeInput();">
+                <option value="">本部を選択してください</option>
+              </select>
+            </div>
+
+            <div class="other-input-row hidden" id="divisionCenterOtherRow">
+              <div class="other-input-slot hidden" id="divisionFreeWrap">
+                <label for="divisionFree">本部名（手入力）</label>
+                <input id="divisionFree" placeholder="新設本部などを入力">
+              </div>
+
+              <div class="other-input-slot hidden" id="entryCenterFreeWrap">
+                <label for="centerNameFree">営業所名（手入力）</label>
+                <input id="centerNameFree" placeholder="新設営業所などを入力">
+              </div>
+            </div>
+
+            <div class="col-6">
+              <label for="channel">媒体</label>
+              <select id="channel" onchange="toggleChannelFreeInput();">
+                <option value="">媒体マスタ読込中</option>
+              </select>
+            </div>
+
+            <div class="col-6">
+              <label for="channelDetail">媒体詳細</label>
+              <input id="channelDetail" list="channelDetailList" placeholder="候補から選択、または媒体詳細を入力（例：Indeed / doda / エン転職）">
+              <datalist id="channelDetailList"></datalist>
+            </div>
+
+            <div class="other-input-row hidden" id="channelOtherRow">
+              <div class="other-input-slot hidden" id="channelFreeWrap">
+                <label for="channelFree">媒体名（手入力）</label>
+                <input id="channelFree" placeholder="媒体名を入力">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <input id="entryStatus" type="hidden" value="応募">
+
+        <div class="entry-actions">
+          <button class="btn-primary" type="button" onclick="addData()">登録する</button>
+          <button class="btn-clear" type="button" onclick="clearEntryFields()">入力欄クリア</button>
+        </div>
+
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="modal-overlay" id="centerModal">
+  <div class="modal">
+    <div class="modal-head info" id="centerModalHead">確認</div>
+    <div class="modal-body" id="centerModalBody">内容</div>
+    <div class="modal-actions" id="centerModalActions">
+      <button class="modal-btn cancel" type="button" id="centerModalCancel">キャンセル</button>
+      <button class="modal-btn ok info" type="button" id="centerModalOk">OK</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const sb = window.getRecruitSupabaseClient();
+
+let currentUser = null;
+let currentRole = null;
+let isInitializing = false;
+let CENTER_MASTER = {};
+let DIVISION_OPTIONS = [];
+let JOB_TYPE_OPTIONS = [];
+let CHANNEL_OPTIONS = [];
+let CHANNEL_DETAIL_OPTIONS = [];
+
+
+function updateConnectionUi(connected){
+  const status = document.getElementById("connectionStatus");
+  if (!status) return;
+  if (connected) {
+    status.innerHTML = '<span class="status-dot"></span>接続済み';
+    status.style.background = "#dcfce7";
+    status.style.color = "#15803d";
+  } else {
+    status.innerHTML = '<span class="status-dot"></span>未ログイン';
+    status.style.background = "#eff6ff";
+    status.style.color = "#1d4ed8";
+  }
+}
+function updateRoleUi(role){
+  const badge = document.getElementById("roleBadge");
+  if (!badge) return;
+  badge.textContent = "権限：" + (role || "editor");
+}
+function isAllowedEmailDomain(email){
+  return /^[A-Za-z0-9._%+-]+@sline\.co\.jp$/i.test(email);
+}
+function validatePassword(password){
+  if (password.length < 8) return "パスワードは8文字以上にしてください";
+  if (!/[A-Z]/.test(password)) return "パスワードに大文字を1文字以上含めてください";
+  if (!/[a-z]/.test(password)) return "パスワードに小文字を1文字以上含めてください";
+  if (!/[0-9]/.test(password)) return "パスワードに数字を1文字以上含めてください";
+  return null;
+}
+function resetCenterModalActions(){
+  const actions = document.getElementById("centerModalActions");
+  if (!actions) return;
+  actions.className = "modal-actions";
+  actions.innerHTML = `
+    <button class="modal-btn cancel" type="button" id="centerModalCancel">キャンセル</button>
+    <button class="modal-btn ok info" type="button" id="centerModalOk">OK</button>
+  `;
+}
+function showCenterModal({title, message, variant = "info", okText = "OK", cancelText = "", showCancel = false}){
+  return new Promise((resolve) => {
+    resetCenterModalActions();
+
+    const overlay = document.getElementById("centerModal");
+    const head = document.getElementById("centerModalHead");
+    const body = document.getElementById("centerModalBody");
+    const okBtn = document.getElementById("centerModalOk");
+    const cancelBtn = document.getElementById("centerModalCancel");
+
+    head.textContent = title;
+    head.className = "modal-head " + variant;
+    body.textContent = message;
+    okBtn.textContent = okText;
+    okBtn.className = "modal-btn ok " + variant;
+    cancelBtn.textContent = cancelText || "キャンセル";
+    cancelBtn.style.display = showCancel ? "inline-flex" : "none";
+    overlay.classList.add("show");
+
+    const close = (result) => {
+      overlay.classList.remove("show");
+      okBtn.onclick = null;
+      cancelBtn.onclick = null;
+      resolve(result);
+    };
+
+    okBtn.onclick = () => close(true);
+    cancelBtn.onclick = () => close(false);
+  });
+}
+function showPostRegisterModal(candidateId){
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("centerModal");
+    const head = document.getElementById("centerModalHead");
+    const body = document.getElementById("centerModalBody");
+    const actions = document.getElementById("centerModalActions");
+
+    head.textContent = "登録完了";
+    head.className = "modal-head info";
+    body.textContent = "登録が完了しました";
+    actions.className = "modal-actions post-register-actions";
+    actions.innerHTML = `
+      <button class="modal-btn ok info post-register-main" type="button" id="postOpenDetail">この応募者の詳細を開く</button>
+      <div class="post-register-sub">
+        <button class="modal-btn cancel" type="button" id="postContinue">続けて登録</button>
+        <button class="modal-btn ghost" type="button" id="postOpenList">応募者一覧へ</button>
+      </div>
+    `;
+
+    overlay.classList.add("show");
+
+    const close = (result) => {
+      overlay.classList.remove("show");
+      resolve(result);
+    };
+
+    document.getElementById("postOpenDetail").onclick = () => close({ action:"detail", candidateId });
+    document.getElementById("postContinue").onclick = () => close({ action:"continue", candidateId });
+    document.getElementById("postOpenList").onclick = () => close({ action:"list", candidateId });
+  });
+}
+async function showErrorModal(message, title = "エラー"){
+  await showCenterModal({ title, message, variant:"error", okText:"閉じる", showCancel:false });
+}
+async function showWarningConfirm(message, title = "確認"){
+  return await showCenterModal({ title, message, variant:"warning", okText:"このまま保存", cancelText:"やめる", showCancel:true });
+}
+function showAuth(message = "未ログインです", type = "info"){
+  document.getElementById("authScreen").classList.remove("hidden");
+  document.getElementById("appScreen").classList.add("hidden");
+  const pw = document.getElementById("loginPassword");
+  if (pw) pw.value = "";
+  currentUser = null;
+  currentRole = null;
+  updateConnectionUi(false);
+  setAuthMessage(message, type);
+  document.body.classList.remove("auth-checking");
+}
+function showApp(user, role){
+  document.getElementById("authScreen").classList.add("hidden");
+  document.getElementById("appScreen").classList.remove("hidden");
+  currentUser = user;
+  currentRole = role;
+  updateConnectionUi(true);
+  updateRoleUi(role);
+  document.body.classList.remove("auth-checking");
+}
+async function getSessionUser(){
+  if (currentUser) return currentUser;
+  const { data:{ session }, error } = await sb.auth.getSession();
+  if (error || !session?.user) return null;
+  currentUser = session.user;
+  return currentUser;
+}
+async function getCurrentRole(userId){
+  if (currentRole) return currentRole;
+  const { data, error } = await sb.from("profiles").select("role").eq("user_id", userId).single();
+  if (error) {
+    currentRole = "editor";
+    return currentRole;
+  }
+  currentRole = data?.role || "editor";
+  return currentRole;
+}
+async function refreshAuthState(){
+  const user = await getSessionUser();
+  if (!user) {
+    showAuth("未ログインです", "info");
+    return false;
+  }
+  const role = await getCurrentRole(user.id);
+  showApp(user, role);
+  return true;
+}
+async function signup(){
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  if (!email || !password) {
+    setAuthMessage("メールアドレスとパスワードを入力してください", "error");
+    return;
+  }
+  if (!isAllowedEmailDomain(email)) {
+    setAuthMessage("@sline.co.jp のメールアドレスのみ登録できます", "error");
+    return;
+  }
+  const pwError = validatePassword(password);
+  if (pwError) {
+    setAuthMessage(pwError, "error");
+    return;
+  }
+  try {
+    const { error } = await sb.auth.signUp({ email, password });
+    if (error) throw error;
+    setAuthMessage("新規登録しました。初回は editor で作成されます。必要に応じて管理者へ権限変更を依頼してください。", "success");
+  } catch (e) {
+    setAuthMessage("新規登録失敗: " + (e.message || e), "error");
+  }
+}
+async function login(){
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  if (!email || !password) {
+    setAuthMessage("メールアドレスとパスワードを入力してください", "error");
+    return;
+  }
+  try {
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    currentUser = null;
+    currentRole = null;
+    await refreshAuthState();
+    setPageMessage("ログインしました", "success");
+  } catch (e) {
+    setAuthMessage("ログイン失敗: " + (e.message || e), "error");
+  }
+}
+async function logout(){
+  try { await sb.auth.signOut(); } catch(e) { console.error(e); }
+  finally {
+    currentUser = null;
+    currentRole = null;
+    showAuth("ログアウトしました", "success");
+  }
+}
+async function loadCenterMaster(){
+
+  const master = window.RecruitMaster ? await window.RecruitMaster.divisionCenter() : { centersByDivision:{}, centers:[] };
+  CENTER_MASTER = master.centersByDivision || {};
+  return master.centers || [];
+}
+
+async function fetchMasterOptionRows(tableName){
+  const map = {
+    master_job_types:"jobTypes",
+    master_channels:"channels",
+    master_channel_details:"channelDetails",
+    master_statuses:"statuses",
+    master_decline_reasons:"declineReasons",
+    master_reject_reasons:"rejectReasons",
+    master_owners:"owners"
+  };
+  const key = map[tableName];
+  if (key && window.RecruitMaster && typeof window.RecruitMaster.list === "function") {
+    return await window.RecruitMaster.list(key);
+  }
+  // RecruitMaster がまだ起動していない時だけ既存DBへフォールバック。
+  // 通常画面では直接 master_* を読まず、common.js の RecruitMaster を入口にする。
+  try {
+    const { data, error } = await sb
+      .from(tableName)
+      .select("name, display_order, is_active")
+      .eq("is_active", true)
+      .order("display_order", { ascending:true })
+      .order("name", { ascending:true });
+    if (error) throw error;
+    return (data || []).map(row => String(row.name || "").trim()).filter(Boolean);
+  } catch (e) {
+    console.warn(tableName + " 読込失敗", e);
+    return [];
+  }
+}
+
+async function loadOptionMasters(){
+  const masters = window.RecruitMaster && typeof window.RecruitMaster.load === "function"
+    ? await window.RecruitMaster.load(false)
+    : null;
+
+  if (masters) {
+    JOB_TYPE_OPTIONS = normalizeMasterOptions(masters.jobTypes);
+    CHANNEL_OPTIONS = normalizeMasterOptions(masters.channels);
+    CHANNEL_DETAIL_OPTIONS = normalizeMasterOptions(masters.channelDetails);
+  } else {
+    const [jobTypes, channels, channelDetails] = await Promise.all([
+      fetchMasterOptionRows("master_job_types"),
+      fetchMasterOptionRows("master_channels"),
+      fetchMasterOptionRows("master_channel_details")
+    ]);
+    JOB_TYPE_OPTIONS = normalizeMasterOptions(jobTypes);
+    CHANNEL_OPTIONS = normalizeMasterOptions(channels);
+    CHANNEL_DETAIL_OPTIONS = normalizeMasterOptions(channelDetails);
+  }
+
+  renderJobTypeOptions();
+  renderChannelOptions();
+  renderChannelDetailOptions();
+  if (window.RecruitMaster && typeof window.RecruitMaster.applyToPage === "function" && masters) {
+    window.RecruitMaster.applyToPage(masters);
+  }
+}
+
+function normalizeMasterOptions(values){
+  return [...new Set((values || []).map(v => String(v || "").trim()).filter(Boolean))];
+}
+
+function renderJobTypeOptions(){
+  const wrap = document.getElementById("jobTypeChoiceWrap");
+  if (!wrap) return;
+  wrap.innerHTML = JOB_TYPE_OPTIONS.map(name => {
+    return '<button class="choice-pill" type="button" data-job-type="' + escapeAttr(name) + '" onclick="setJobType(\'' + escapeAttr(name) + '\')">' + escapeHtml(name) + '</button>';
+  }).join("");
+}
+
+function renderChannelOptions(){
+  const select = document.getElementById("channel");
+  if (!select) return;
+  const current = select.dataset.currentValue || select.value || "";
+  select.innerHTML = '<option value="">選択</option>' + CHANNEL_OPTIONS.map(name => '<option value="' + escapeAttr(name) + '">' + escapeHtml(name) + '</option>').join("");
+  select.value = current && CHANNEL_OPTIONS.includes(current) ? current : "";
+  delete select.dataset.currentValue;
+  toggleChannelFreeInput();
+}
+
+function renderChannelDetailOptions(){
+  const list = document.getElementById("channelDetailList");
+  if (!list) return;
+  list.innerHTML = CHANNEL_DETAIL_OPTIONS.map(name => '<option value="' + escapeAttr(name) + '">').join("");
+}
+
+function syncOtherInputRow(rowId){
+  const row = document.getElementById(rowId);
+  if (!row) return;
+
+  const hasVisibleInput = Array.from(row.children).some(child => !child.classList.contains("hidden"));
+  row.classList.toggle("hidden", !hasVisibleInput);
+}
+
+
+function updateEntryCenterOptions(){
+  const division = document.getElementById("division")?.value || "";
+  const centerSelect = document.getElementById("centerName");
+  if (!centerSelect) return;
+
+  const currentCenter = centerSelect.dataset.currentValue || centerSelect.value || "";
+
+  if (!division || !CENTER_MASTER[division]) {
+    centerSelect.innerHTML = '<option value="">本部を選択してください</option>';
+  } else {
+    centerSelect.innerHTML = '<option value="">選択</option>';
+    CENTER_MASTER[division].forEach(center => {
+      centerSelect.innerHTML += '<option value="' + escapeAttr(center) + '">' + escapeHtml(center) + '</option>';
+    });
+    centerSelect.value = currentCenter && CENTER_MASTER[division].includes(currentCenter) ? currentCenter : "";
+  }
+
+  delete centerSelect.dataset.currentValue;
+  toggleDivisionFreeInput();
+  toggleEntryCenterFreeInput();
+}
+function toggleDivisionFreeInput(){
+  const wrap = document.getElementById("divisionFreeWrap");
+  if (wrap) wrap.classList.add("hidden");
+  syncOtherInputRow("divisionCenterOtherRow");
+}
+function toggleEntryCenterFreeInput(){
+  const wrap = document.getElementById("entryCenterFreeWrap");
+  if (wrap) wrap.classList.add("hidden");
+  syncOtherInputRow("divisionCenterOtherRow");
+}
+function toggleChannelFreeInput(){
+  const wrap = document.getElementById("channelFreeWrap");
+  if (wrap) wrap.classList.add("hidden");
+  syncOtherInputRow("channelOtherRow");
+}
+function clearValidationHighlights(){
+  document.querySelectorAll(".field-error,.field-warning").forEach(el => {
+    el.classList.remove("field-error","field-warning");
+  });
+}
+function highlightField(id, cls){
+  const el = document.getElementById(id);
+  if (el) el.classList.add(cls);
+}
+function getTodayValue(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return y + "-" + m + "-" + day;
+}
+function setDefaultAppliedDate(){
+  const el = document.getElementById("appliedDate");
+  if (el && !el.value) el.value = getTodayValue();
+}
+
+
+function loadEntryMemory(){
+  const owner = localStorage.getItem("recruit_entry_owner_name") || "";
+  if (!owner) return;
+
+  if (["三浦","楠本","伊藤"].includes(owner)) {
+    setOwner(owner);
+  } else {
+    setOwner("その他");
+    const free = document.getElementById("ownerNameFree");
+    if (free) free.value = owner;
+  }
+}
+function saveEntryMemory(){
+  const owner = getSelectedOwnerName();
+  if (owner) localStorage.setItem("recruit_entry_owner_name", owner);
+}
+
+
+function clearEntryFields(){
+  const keepOwner = getSelectedOwnerName();
+
+  ["name","age","appliedDate","divisionFree","centerNameFree","channelDetail","channelFree","jobTypeFree","ownerNameFree"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+
+  document.getElementById("division").value = "";
+  document.getElementById("centerName").innerHTML = '<option value="">本部を選択してください</option>';
+  document.getElementById("channel").value = "";
+  document.getElementById("divisionFreeWrap").classList.add("hidden");
+  document.getElementById("entryCenterFreeWrap").classList.add("hidden");
+  document.getElementById("divisionCenterOtherRow").classList.add("hidden");
+  document.getElementById("channelFreeWrap").classList.add("hidden");
+  document.getElementById("channelOtherRow").classList.add("hidden");
+  document.getElementById("entryStatus").value = "応募";
+  setJobType("");
+
+  if (["三浦","楠本","伊藤"].includes(keepOwner)) {
+    setOwner(keepOwner);
+  } else if (keepOwner) {
+    setOwner("その他");
+    const free = document.getElementById("ownerNameFree");
+    if (free) free.value = keepOwner;
+  } else {
+    setOwner("");
+  }
+
+  setDefaultAppliedDate();
+  clearValidationHighlights();
+  setPageMessage("入力欄をクリアしました", "info");
+
+  setTimeout(() => {
+    const nameInput = document.getElementById("name");
+    if (nameInput) nameInput.focus();
+  }, 50);
+}
+function setupEnterMoveForEntryForm(){
+  const entryIds = [
+    "name","age","appliedDate",
+    "jobTypeFree","ownerNameFree",
+    "division","divisionFree","centerName","centerNameFree",
+    "channel","channelFree","channelDetail"
+  ];
+
+  entryIds.forEach((id, index) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    el.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+
+      const nextId = entryIds.slice(index + 1).find(nextId => {
+        const nextEl = document.getElementById(nextId);
+        if (!nextEl) return false;
+        if (nextEl.disabled) return false;
+        if (nextEl.offsetParent === null) return false;
+        return true;
+      });
+
+      if (nextId) document.getElementById(nextId).focus();
+      else {
+        const addButton = document.querySelector('button[onclick="addData()"]');
+        if (addButton) addButton.focus();
+      }
+    });
+  });
+}
+function validateEntry(payload, centerRaw, divisionRaw, channelRaw){
+  clearValidationHighlights();
+
+  const errors = [];
+  const warnings = [];
+
+  if (!payload.name) {
+    errors.push("氏名を入力してください。");
+    highlightField("name","field-error");
+  }
+  if (!payload.appliedDate) {
+    errors.push("応募日を入力してください。");
+    highlightField("appliedDate","field-error");
+  }
+  if (divisionRaw === "__OTHER__" && !payload.division) {
+    errors.push("本部名（手入力）を入力してください。");
+    highlightField("divisionFree","field-error");
+  }
+  if (centerRaw === "__OTHER__" && !payload.centerName) {
+    errors.push("営業所名（手入力）を入力してください。");
+    highlightField("centerNameFree","field-error");
+  }
+  if (channelRaw === "その他" && !payload.channel) {
+    errors.push("媒体名（手入力）を入力してください。");
+    highlightField("channelFree","field-error");
+  }
+
+  if (!payload.division) {
+    warnings.push("本部が未入力です。分析時に分類できません。");
+    highlightField("division","field-warning");
+  }
+  if (!payload.centerName) {
+    warnings.push("営業所が未入力です。分析時に分類できません。");
+    highlightField("centerName","field-warning");
+  }
+  if (!payload.channel) {
+    warnings.push("媒体が未入力です。分析時に分類できません。");
+    highlightField("channel","field-warning");
+  }
+  if (!payload.ownerName) {
+    warnings.push("担当者が未入力です。担当者別KPIに反映できません。");
+    highlightField("ownerName","field-warning");
+  }
+  if (!payload.jobType) {
+    warnings.push("職種が未入力です。職種別分析に反映できません。");
+    highlightField("jobType","field-warning");
+  }
+
+  return { errors, warnings };
+}
+async function addData(){
+  if(window.RecruitOpsGuard && !window.RecruitOpsGuard.requireWrite(currentRole)) return;
+  const user = await getSessionUser();
+  if (!user) {
+    showAuth("未ログインです。再度ログインしてください", "error");
+    return;
+  }
+
+  const divisionRaw = document.getElementById("division").value;
+  const centerRaw = document.getElementById("centerName").value;
+  const channelRaw = document.getElementById("channel").value;
+  const payload = {
+    name: (window.normalizePersonName ? window.normalizePersonName(document.getElementById("name").value) : document.getElementById("name").value.trim()),
+    age: document.getElementById("age").value.trim(),
+    appliedDate: document.getElementById("appliedDate").value,
+    division: getSelectedDivision(),
+    centerName: getSelectedCenterName(),
+    channel: getSelectedChannel(),
+    channelDetail: document.getElementById("channelDetail").value.trim(),
+    ownerName: getSelectedOwnerName(),
+    jobType: getSelectedJobType(),
+    status: "応募"
+  };
+
+  const check = validateEntry(payload, centerRaw, divisionRaw, channelRaw);
+
+  if (check.errors.length > 0) {
+    await showErrorModal("保存できません。次を修正してください。\n\n・" + check.errors.join("\n・"), "保存できません");
+    setPageMessage("入力エラーがあります", "error");
+    return;
+  }
+
+  if (check.warnings.length > 0) {
+    const ok = await showWarningConfirm("確認してください。このまま保存するか選んでください。\n\n・" + check.warnings.join("\n・"), "確認");
+    if (!ok) return;
+  }
+
+  try {
+    saveEntryMemory();
+    setPageMessage("登録中です", "info");
+
+    const { data, error } = await sb.from("candidates").insert([{
+      name: payload.name,
+      age: payload.age ? Number(payload.age) : null,
+      division: payload.division || null,
+      center_name: payload.centerName || null,
+      channel: payload.channel || null,
+      channel_detail: payload.channelDetail || null,
+      owner_name: payload.ownerName || null,
+      job_type: payload.jobType || null,
+
+      applied_date: payload.appliedDate || null,
+      appointment_date: null,
+      interview1_date: null,
+      interview_done_date: null,
+      offer_date: null,
+      join_date: null,
+
+      status: "応募",
+      hiring_result: null,
+      reject_reason: null,
+      decline_reason: null,
+      last_action_date: null,
+      next_action_date: null,
+      evaluation: null,
+      evaluation_comment: null,
+      action_memo: null,
+      is_deleted: false,
+      created_by: user.id,
+      updated_by: user.id
+    }]).select("*").single();
+
+    if (error) throw error;
+
+    const candidateId = data?.id || "";
+
+    if (window.RecruitAudit && window.RecruitAudit.candidateCreate) {
+      await window.RecruitAudit.candidateCreate(data, { source: "manual" });
+    } else if (window.writeRecruitAuditLog) {
+      await window.writeRecruitAuditLog("candidate_create", "candidates", candidateId, {
+        name: data?.name || payload.name || null,
+        status: data?.status || "応募",
+        source: "manual",
+        division: data?.division || payload.division || null,
+        center_name: data?.center_name || payload.centerName || null,
+        channel: data?.channel || payload.channel || null,
+        channel_detail: data?.channel_detail || payload.channelDetail || null,
+        job_type: data?.job_type || payload.jobType || null
+      });
+    }
+
+    const nextAction = await showPostRegisterModal(candidateId);
+
+    clearEntryFields();
+    setPageMessage("登録しました", "success");
+
+    if (nextAction?.action === "detail" && candidateId) {
+      window.location.href = "./detail.html?id=" + encodeURIComponent(candidateId);
+      return;
+    }
+
+    if (nextAction?.action === "list") {
+      window.location.href = "./list.html";
+      return;
+    }
+
+    setTimeout(() => {
+      const nameInput = document.getElementById("name");
+      if (nameInput) nameInput.focus();
+    }, 100);
+  } catch (e) {
+    await showErrorModal("登録に失敗しました。\n" + (e.message || e), "登録失敗");
+    setPageMessage("登録失敗: " + (e.message || e), "error");
+  }
+}
+
+
+function opsFiscalYearFromDate(dateStr){
+  if(!opsValidDate(dateStr))return "";
+  const d=new Date(String(dateStr)+"T00:00:00");
+  return String(d.getMonth()+1>=4?d.getFullYear():d.getFullYear()-1);
+}
+sb.auth.onAuthStateChange((event) => {
+  if (event === "SIGNED_OUT") {
+    currentUser = null;
+    currentRole = null;
+    showAuth("ログアウトしました", "success");
+  }
+});
+(async function init(){
+  if (isInitializing) return;
+  isInitializing = true;
+  try {
+    await Promise.all([loadCenterMaster(), loadOptionMasters()]);
+    setDefaultAppliedDate();
+    setJobType("");
+    setOwner("");
+    loadEntryMemory();
+    setupEnterMoveForEntryForm();
+    const ok = await refreshAuthState();
+    if (ok) {
+      // 登録画面では要対応チップを表示しない
+    }
+  } catch (e) {
+    console.error(e);
+    showAuth("初期化に失敗しました", "error");
+  } finally {
+    isInitializing = false;
+    document.body.classList.remove("auth-checking");
+  }
+})();
+</script>
+<script src="./sidebar.js?v=20260513_compare_graph"></script>
+</body>
+</html>

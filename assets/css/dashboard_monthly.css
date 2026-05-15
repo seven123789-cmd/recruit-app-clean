@@ -1,0 +1,10 @@
+/* dashboard_monthly.css : 月次分析 page specific only */
+#appScreen:not(.hidden){display:block;}
+.dashboard-side-summary{margin-top:18px;padding-top:16px;border-top:1px solid #e2e8f0;}
+.side-summary-card{min-height:40px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;padding:10px 12px;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff;}
+.side-summary-card span{color:#64748b;font-size:11px;font-weight:900;}.side-summary-card strong{color:#0f172a;font-size:14px;font-weight:950;text-align:right;}.side-summary-card.side-summary-wide{display:block}.side-summary-card.side-summary-wide span{display:block;margin-bottom:4px}.side-summary-card.side-summary-wide strong{display:block;color:#334155;font-size:12px;line-height:1.45;text-align:left;}
+.section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;}.section-head h2{margin:0 0 4px}.section-head p{margin:0;color:#64748b;font-size:12px;font-weight:750;}
+.chart-box{height:300px;padding:14px;border:1px solid #dbeafe;border-radius:18px;background:#fff;}.chart-box.compact{height:260px;}
+.table-card{overflow:hidden}.table-card .table-head{padding-bottom:8px}.table-card table th{background:#eff6ff;color:#1e3a8a;font-size:12px;font-weight:950}.table-card table td,.table-card table th{padding:10px 12px;white-space:nowrap}.table-card table td{font-size:13px}.zero-month td{color:#94a3b8;background:#fbfdff}.empty{color:#64748b;font-weight:800;text-align:center;}
+.auth-shell{max-width:520px;margin:48px auto 0}.auth-title{margin:0 0 8px;font-size:28px;color:#fff}.auth-sub{margin:0 0 20px;color:rgba(255,255,255,.82)}.auth-card{background:#fff;border:1px solid rgba(226,232,240,.9);border-radius:22px;box-shadow:var(--shadow);padding:24px}.auth-card h2{margin:0 0 8px;font-size:22px;color:#0f172a}.auth-note{margin:0 0 18px;color:var(--muted);font-size:13px}.auth-rule{margin:6px 0 0;color:#64748b;font-size:12px;line-height:1.6}.log-box{display:none;}
+@media(max-width:760px){.chart-box,.chart-box.compact{height:240px}}

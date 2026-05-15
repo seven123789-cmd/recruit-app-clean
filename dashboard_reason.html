@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>辞退・不通分析</title>
+<link href="./assets/css/common.css" rel="stylesheet"/>
+<link href="./assets/css/header.css" rel="stylesheet"/>
+<link href="./assets/css/sidebar.css?v=20260508_sidebar2" rel="stylesheet"/>
+<link href="./assets/css/dashboard_reason.css" rel="stylesheet"/>
+<script src="./common.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/audit_utils.js"></script>
+<script src="assets/js/ops_guard.js"></script>
+<script src="assets/js/safe_utils.js"></script>
+<script src="./sidebar.js?v=20260513_compare_graph"></script>
+<link href="./assets/css/dashboard_ui.css" rel="stylesheet"/>
+</head>
+<body class="auth-checking">
+<div class="container hidden" id="authScreen">
+<div class="auth-shell">
+<h1 class="auth-title">辞退・不通分析</h1>
+<p class="auth-sub">ログイン後に画面を表示します。</p>
+<div class="auth-card">
+<h2>ログイン</h2>
+<div class="form-grid">
+<div class="col-12">
+<label for="loginEmail">メールアドレス</label>
+<input id="loginEmail" placeholder="example@sline.co.jp" type="email"/>
+</div>
+<div class="col-12">
+<label for="loginPassword">パスワード</label>
+<input id="loginPassword" placeholder="パスワード" type="password"/>
+</div>
+<div class="col-12">
+<button class="btn-primary" onclick="login()" type="button">ログイン</button>
+</div>
+<div class="col-12">
+<div class="message-box message-info" id="authMessage">未ログインです</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="hidden" id="appScreen">
+<div class="app-layout">
+<aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+<main class="main-content">
+<header class="page-header dashboard-page-header"><div class="dashboard-title-line"><h1>辞退・不通分析</h1><div aria-label="集計状態" class="dashboard-header-meta"><span class="dashboard-header-chip">対象年度：<span id="sideFiscalYear">-</span></span><span class="dashboard-header-chip">対象件数：<span id="sideRows">0</span></span><span class="dashboard-header-chip">辞退率：<span id="sideDeclineRate">0.0%</span></span><span class="dashboard-header-chip">不通率：<span id="sideNoContactRate">0.0%</span></span><span class="dashboard-header-chip">対象期間：<span id="sidePeriod">-</span></span></div></div></header>
+<section class="reason-control-card analysis-control-card">
+<div class="reason-control-copy analysis-control-copy">
+<p>分析条件</p>
+<h2>辞退・不通の発生状況を確認</h2>
+</div>
+<div class="reason-control-form analysis-control-form analysis-control-form--4">
+<div class="analysis-field">
+<label for="fy">対象年度</label>
+<select id="fy" onchange="handleFilterChange()">
+<option value="current"></option>
+<option value="previous"></option>
+<option value="all">全期間</option>
+</select>
+</div>
+<div class="analysis-field">
+<label for="division">対象本部</label>
+<select id="division" onchange="handleDivisionChange()">
+<option value="">すべて</option>
+</select>
+</div>
+<div class="analysis-field">
+<label for="center">対象営業所</label>
+<select id="center" onchange="handleFilterChange()">
+<option value="">すべて</option>
+</select>
+</div>
+<div class="analysis-field">
+<label for="channel">対象媒体</label>
+<select id="channel" onchange="handleFilterChange()">
+<option value="">すべて</option>
+</select>
+</div>
+<button class="btn-primary" onclick="loadAnalysis()" type="button">更新</button>
+<div class="period-text analysis-period" id="periodText">対象期間：-</div>
+</div>
+<input id="from" type="hidden"/>
+<input id="to" type="hidden"/>
+</section>
+<section class="card">
+<h2>サマリー</h2>
+<div class="grid-5 summary-grid">
+<div class="metric-card kpi-danger">
+<div class="label">辞退</div>
+<div class="value" id="kpiDecline">0</div>
+<div class="sub" id="subDecline">辞退</div>
+</div>
+<div class="metric-card kpi-interview">
+<div class="label">不通</div>
+<div class="value" id="kpiNoContact">0</div>
+<div class="sub" id="subNoContact">不通</div>
+</div>
+<div class="metric-card kpi-applied">
+<div class="label">面接前辞退率</div>
+<div class="value" id="kpiBeforeDeclineRate">0.0%</div>
+<div class="sub" id="subBeforeDecline">面接前</div>
+</div>
+<div class="metric-card kpi-rate-interview">
+<div class="label">面接後辞退率</div>
+<div class="value" id="kpiAfterDeclineRate">0.0%</div>
+<div class="sub" id="subAfterDecline">面接後</div>
+</div>
+<div class="metric-card kpi-rate-hired">
+<div class="label">不通率</div>
+<div class="value" id="kpiNoContactRate">0.0%</div>
+<div class="sub" id="subNoContactRate">不通率</div>
+</div>
+</div>
+</section>
+<section class="insight-card" id="reasonInsight">
+<div class="insight-title">重点確認</div>
+<div class="insight-body">読込中です</div>
+</section>
+<section class="card">
+<div class="section-head">
+<div>
+<h2>辞退理由ランキング</h2>
+</div>
+</div>
+<div class="reason-rank-grid" id="declineReasonGrid">
+<div class="empty-box">読込中です</div>
+</div>
+</section>
+<section class="card">
+<div class="section-head">
+<div>
+<h2>辞退理由分類</h2>
+</div>
+</div>
+<div class="reason-category-grid" id="declineCategoryGrid">
+<div class="empty-box">読込中です</div>
+</div>
+</section>
+<section class="card">
+<div class="section-head">
+<div>
+<h2>不通発生状況</h2>
+</div>
+</div>
+<div class="reason-rank-grid" id="noContactGrid">
+<div class="empty-box">読込中です</div>
+</div>
+</section>
+<section class="card">
+<div class="section-head">
+<div>
+<h2>辞退タイミング分析</h2>
+</div>
+</div>
+<div class="timing-grid">
+<article class="timing-card">
+<span>応募直後</span>
+<strong id="timingApply">0</strong>
+<em>応募段階の辞退</em>
+</article>
+<article class="timing-card">
+<span>面接前</span>
+<strong id="timingBefore">0</strong>
+<em>面接実施前の辞退</em>
+</article>
+<article class="timing-card">
+<span>面接後</span>
+<strong id="timingAfter">0</strong>
+<em>面接後</em>
+</article>
+<article class="timing-card">
+<span>内定後</span>
+<strong id="timingOffer">0</strong>
+<em>内定後の辞退</em>
+</article>
+</div>
+</section>
+<section class="card">
+<div class="section-head">
+<div>
+<h2>媒体別 離脱状況</h2>
+</div>
+</div>
+<div class="bottleneck-grid" id="channelLostGrid">
+<div class="empty-box">読込中です</div>
+</div>
+</section>
+<section class="card table-card">
+<div class="table-head">
+<h2>対象者一覧</h2>
+</div>
+<div class="table-wrap">
+<table>
+<thead id="tableHead"></thead>
+<tbody id="tableBody">
+<tr><td class="empty">読込中です</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<div class="message-box message-info hidden" id="pageMessage"></div>
+</main>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const sb = window.getRecruitSupabaseClient();
+
+let currentUser=null;
+let currentRole=null;
+let CENTER_MASTER={};
+let rows=[];
+let reasonMasterChannels=[];
+
+function $(id){return document.getElementById(id)}
+
+function setText(id,value){const el=$(id);if(el)el.textContent=value}
+function setMsg(id,msg,type="info"){const el=$(id);if(!el)return;if(!msg){el.textContent="";el.className="message-box message-info hidden";return}el.textContent=msg;el.className="message-box message-"+type}
+function validDate(s){if(!s)return false;const y=Number(String(s).slice(0,4));return y>=2000}
+function rate(n,d){return !d ? "0.0%" : ((n/d)*100).toFixed(1)+"%"}
+function rateNum(n,d){return !d ? 0 : Number(((n/d)*100).toFixed(1))}
+
+function normalizeText(v){return String(v||"").trim()}
+function isHired(r){return r.hiring_result==="採用"||validDate(r.join_date)}
+function fiscalRange(type){
+  const fy=fiscalYear();
+  if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};
+  if(type==="all")return {fy:null,label:"全期間",from:"",to:""};
+  return {fy,label:fy+"年度",from:fy+"-04-01",to:(fy+1)+"-03-31"};
+}
+function applyFy(){
+  const range=fiscalRange($("fy")?.value||"current");
+  $("from").value=range.from;
+  $("to").value=range.to;
+
+  const period=range.from&&range.to ? `${range.from} ～ ${range.to}` : "全期間";
+  setText("periodText","対象期間："+period);
+  setText("sideFiscalYear",range.label);
+  setText("sidePeriod",period);
+}
+function handleFilterChange(){
+  applyFy();
+  loadAnalysis();
+}
+function handleDivisionChange(){
+  updateCenterOptions();
+  handleFilterChange();
+}
+
+function isDecline(r){
+  return normalizeText(r.status)==="辞退" || !!normalizeText(r.decline_reason);
+}
+function isNoContact(r){
+  const status=normalizeText(r.status);
+  const text=[r.status,r.decline_reason,r.reject_reason,r.action_memo,r.hiring_result].map(v=>normalizeText(v)).join(" ");
+  return status==="不通" || text.includes("不通") || text.includes("連絡取れず") || text.includes("連絡不能") || text.includes("連絡不通");
+}
+function isBeforeInterviewDecline(r){
+  return isDecline(r)&&!validDate(r.interview_done_date);
+}
+function isAfterInterviewDecline(r){
+  return isDecline(r)&&validDate(r.interview_done_date);
+}
+function isLost(r){
+  return isDecline(r)||isNoContact(r);
+}
+function reasonText(r){
+  if(isNoContact(r)){
+    return normalizeText(r.decline_reason)||normalizeText(r.reject_reason)||"連絡不通";
+  }
+  return normalizeText(r.decline_reason)||normalizeText(r.reject_reason)||"理由未設定";
+}
+function categorizeDeclineReason(reason){
+  const text=normalizeText(reason);
+
+  if(!text||text==="理由未設定")return {key:"未設定",label:"理由未設定",cls:"neutral",action:"理由入力ルールを確認"};
+  if(text.includes("応募"))return {key:"応募段階",label:"応募段階の辞退",cls:"warning",action:"応募後の初回連絡・条件提示を確認"};
+  if(text.includes("面接①")||text.includes("面接1")||text.includes("一次"))return {key:"一次面接",label:"一次面接前後の辞退",cls:"danger",action:"日程調整・面接前フォローを確認"};
+  if(text.includes("面接②")||text.includes("面接2")||text.includes("二次"))return {key:"二次面接",label:"二次面接前後の辞退",cls:"warning",action:"選考間隔と条件説明を確認"};
+  if(text.includes("内定"))return {key:"内定後",label:"内定後の辞退",cls:"danger",action:"条件提示・クロージングを確認"};
+  if(text.includes("給与")||text.includes("賃金")||text.includes("時給")||text.includes("条件"))return {key:"条件不一致",label:"条件不一致",cls:"warning",action:"求人票と実条件のズレを確認"};
+  if(text.includes("勤務地")||text.includes("距離")||text.includes("通勤")||text.includes("場所"))return {key:"勤務地",label:"勤務地・通勤条件",cls:"warning",action:"勤務地説明と配属候補を確認"};
+  if(text.includes("時間")||text.includes("シフト")||text.includes("休日")||text.includes("勤務"))return {key:"勤務条件",label:"勤務時間・休日条件",cls:"warning",action:"勤務条件の事前説明を確認"};
+  if(text.includes("他社")||text.includes("他決")||text.includes("決定"))return {key:"他社決定",label:"他社決定",cls:"danger",action:"初動速度とクロージングを確認"};
+  if(text.includes("連絡")||text.includes("不通"))return {key:"連絡不通",label:"連絡不通",cls:"danger",action:"連絡手段・初回接触速度を確認"};
+
+  return {key:"その他",label:"その他",cls:"neutral",action:"理由の分類ルールを追加確認"};
+}
+function declineCategory(r){
+  return categorizeDeclineReason(reasonText(r));
+}
+function lostType(r){
+  if(isNoContact(r))return "不通";
+  if(isDecline(r))return "辞退";
+  return "-";
+}
+
+async function getUser(){
+  if(currentUser)return currentUser;
+  const {data:{session}}=await sb.auth.getSession();
+  currentUser=session?.user||null;
+  return currentUser;
+}
+async function getRole(userId){
+  if(currentRole)return currentRole;
+  try{
+    const {data}=await sb.from("profiles").select("role").eq("user_id",userId).single();
+    currentRole=data?.role||"editor";
+  }catch(e){
+    currentRole="editor";
+  }
+  return currentRole;
+}
+function showAuth(msg="未ログインです",type="info"){
+  const a=$("authScreen");
+  const b=$("appScreen");
+  if(a)a.classList.remove("hidden");
+  if(b)b.classList.add("hidden");
+  currentUser=null;
+  currentRole=null;
+  setMsg("authMessage",msg,type);
+  document.body.classList.remove("auth-checking");
+}
+async function showApp(){
+  const user=await getUser();
+  if(!user){showAuth();return false}
+  await getRole(user.id);
+  $("authScreen")?.classList.add("hidden");
+  $("appScreen")?.classList.remove("hidden");
+  document.body.classList.remove("auth-checking");
+  return true;
+}
+async function login(){
+  const email=$("loginEmail")?.value.trim();
+  const password=$("loginPassword")?.value;
+  if(!email||!password){
+    setMsg("authMessage","メールアドレスとパスワードを入力してください","error");
+    return;
+  }
+  try{
+    const {error}=await sb.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    currentUser=null;
+    currentRole=null;
+    if(await showApp())await initPageAfterLogin();
+  }catch(e){
+    setMsg("authMessage","ログイン失敗: "+(e.message||e),"error");
+  }
+}
+async function logout(){
+  try{await sb.auth.signOut()}catch(e){}
+  showAuth("ログアウトしました","success");
+}
+sb.auth.onAuthStateChange((ev)=>{if(ev==="SIGNED_OUT")showAuth("ログアウトしました","success")});
+async function authInit(){
+  try{
+    if(await showApp())await initPageAfterLogin();
+  }catch(e){
+    console.error(e);
+    showAuth("初期化に失敗しました","error");
+  }finally{
+    document.body.classList.remove("auth-checking");
+  }
+}
+
+async function loadMasterDivisionCenterOptions(){
+
+  if(window.RecruitMaster && typeof window.RecruitMaster.divisionCenter === "function"){
+    const master = await window.RecruitMaster.divisionCenter();
+    return { divisions: master.divisions || [], centersByDivision: master.centersByDivision || {} };
+  }
+  return { divisions:[], centersByDivision:{} };
+}
+async function loadCenterMaster(){
+
+  const master = window.RecruitMaster ? await window.RecruitMaster.divisionCenter() : { centersByDivision:{}, centers:[] };
+  CENTER_MASTER = master.centersByDivision || {};
+  return master.centers || [];
+}
+function setSelectOptions(id,values,blank="すべて"){
+  const el=$(id);
+  if(!el)return;
+  const current=el.value;
+  const list=[...new Set((values||[]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));
+  el.innerHTML=`<option value="">${blank}</option>`;
+  list.forEach(v=>{el.innerHTML+=`<option value="${esc(v)}">${esc(v)}</option>`});
+  if(list.includes(current))el.value=current;
+}
+
+async function loadReasonMasterChannels(){
+
+  try{
+    reasonMasterChannels = window.RecruitMaster ? await window.RecruitMaster.list("channels") : [];
+  }catch(e){
+    console.warn("媒体マスタ読込失敗", e);
+    reasonMasterChannels = [];
+  }
+}
+function getReasonChannelOptions(data=[]){
+  const master=[...new Set((reasonMasterChannels||[]).filter(Boolean))];
+  if(master.length)return master;
+  return [...new Set((data||[]).map(r=>String(r.channel||"").trim()).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));
+}
+
+function bindMasters(data){
+  const divisions=Object.keys(CENTER_MASTER).length ? Object.keys(CENTER_MASTER) : data.map(r=>r.division);
+  setSelectOptions("division",divisions);
+  updateCenterOptions(data);
+  loadReasonMasterChannels().then(()=>setSelectOptions("channel",getReasonChannelOptions(data)));
+}
+function updateCenterOptions(sourceRows=rows){
+  const div=$("division")?.value||"";
+  let centers=[];
+  if(div&&CENTER_MASTER[div]){
+    centers=CENTER_MASTER[div];
+  }else{
+    centers=(sourceRows||[]).filter(r=>!div||r.division===div).map(r=>r.center_name);
+  }
+  setSelectOptions("center",centers);
+}
+function filtered(data){
+  const f=$("from").value;
+  const t=$("to").value;
+  const d=$("division").value;
+  const c=$("center").value;
+  const ch=$("channel").value;
+
+  return (data||[])
+    .filter(r=>!r.is_deleted)
+    .filter(r=>{
+      if(!validDate(r.applied_date))return false;
+      if(f&&r.applied_date<f)return false;
+      if(t&&r.applied_date>t)return false;
+      if(d&&r.division!==d)return false;
+      if(c&&r.center_name!==c)return false;
+      if(ch&&r.channel!==ch)return false;
+      return true;
+    });
+}
+function countBy(list,keyFn){
+  const m=new Map();
+  list.forEach(item=>{
+    const key=keyFn(item)||"未設定";
+    m.set(key,(m.get(key)||0)+1);
+  });
+  return [...m.entries()].map(([key,count])=>({key,count})).sort((a,b)=>b.count-a.count||String(a.key).localeCompare(String(b.key),"ja"));
+}
+function groupLostByChannel(data){
+  const m=new Map();
+  data.forEach(r=>{
+    const key=normalizeText(r.channel)||"未設定";
+    if(!m.has(key))m.set(key,{key,applied:0,decline:0,noContact:0,lost:0});
+    const x=m.get(key);
+    if(validDate(r.applied_date))x.applied++;
+    if(isDecline(r))x.decline++;
+    if(isNoContact(r))x.noContact++;
+    if(isLost(r))x.lost++;
+  });
+  return [...m.values()].filter(x=>x.applied>0).sort((a,b)=>rateNum(b.lost,b.applied)-rateNum(a.lost,a.applied)||b.lost-a.lost);
+}
+function updateSummary(data){
+  const applied=data.filter(r=>validDate(r.applied_date)).length;
+  const interview=data.filter(r=>validDate(r.interview_done_date)).length;
+  const decline=data.filter(isDecline);
+  const noContact=data.filter(isNoContact);
+  const beforeDecline=data.filter(isBeforeInterviewDecline);
+  const afterDecline=data.filter(isAfterInterviewDecline);
+  const lost=data.filter(isLost);
+
+  setText("kpiDecline",decline.length);
+  setText("kpiNoContact",noContact.length);
+  setText("kpiBeforeDeclineRate",rate(beforeDecline.length,applied));
+  setText("kpiAfterDeclineRate",rate(afterDecline.length,interview));
+  setText("kpiNoContactRate",rate(noContact.length,applied));
+
+  setText("subDecline",`${rate(decline.length,applied)}`);
+  setText("subNoContact",`${rate(noContact.length,applied)}`);
+  setText("subBeforeDecline",`${beforeDecline.length}件`);
+  setText("subAfterDecline",`${afterDecline.length}件`);
+  setText("subNoContactRate",`${noContact.length}件`);
+
+  const applyDecline=decline.filter(r=>{
+    const reason=reasonText(r);
+    return reason.includes("応募") || (!validDate(r.interview_done_date)&&!validDate(r.interview1_date));
+  });
+  const beforeDeclineForTiming=decline.filter(r=>!validDate(r.interview_done_date)&&validDate(r.interview1_date));
+  const afterDeclineForTiming=decline.filter(r=>validDate(r.interview_done_date)&&!validDate(r.offer_date));
+  const offerDecline=decline.filter(r=>validDate(r.offer_date));
+
+  setText("timingApply",applyDecline.length);
+  setText("timingBefore",beforeDeclineForTiming.length);
+  setText("timingAfter",afterDeclineForTiming.length);
+  setText("timingOffer",offerDecline.length);
+
+  setText("sideRows",data.length);
+  setText("sideDeclineRate",rate(decline.length,applied));
+  setText("sideNoContactRate",rate(noContact.length,applied));
+}
+function updateInsight(data){
+  const box=$("reasonInsight");
+  if(!box)return;
+
+  const applied=data.filter(r=>validDate(r.applied_date)).length;
+  const decline=data.filter(isDecline);
+  const noContact=data.filter(isNoContact);
+  const beforeDecline=data.filter(isBeforeInterviewDecline);
+  const noContactRate=rateNum(noContact.length,applied);
+  const beforeRate=rateNum(beforeDecline.length,applied);
+
+  if(!applied){
+    box.className="insight-card neutral";
+    box.innerHTML='<div class="insight-title">重点確認</div><div class="insight-body">対象データがありません。</div>';
+    return;
+  }
+
+  if(noContactRate>=15){
+    box.className="insight-card danger";
+    box.innerHTML=`<div class="insight-title">重点確認</div><div class="insight-body">不通率 ${rate(noContact.length,applied)}<span>応募後の初回連絡速度を確認</span></div>`;
+    return;
+  }
+
+  if(beforeRate>=15){
+    box.className="insight-card warning";
+    box.innerHTML=`<div class="insight-title">重点確認</div><div class="insight-body">面接前辞退率 ${rate(beforeDecline.length,applied)}<span>条件説明・日程提示の早さを確認</span></div>`;
+    return;
+  }
+
+  if(decline.length||noContact.length){
+    box.className="insight-card warning";
+    box.innerHTML=`<div class="insight-title">重点確認</div><div class="insight-body">離脱 ${decline.length+noContact.length}件<span>理由未設定を優先して確認</span></div>`;
+    return;
+  }
+
+  box.className="insight-card success";
+  box.innerHTML='<div class="insight-title">重点確認</div><div class="insight-body">大きな離脱はありません。<span>現行運用を維持</span></div>';
+}
+function renderDeclineReasonRanking(data){
+  const box=$("declineReasonGrid");
+  if(!box)return;
+
+  const decline=data.filter(isDecline);
+  const list=countBy(decline,reasonText).slice(0,6);
+
+  if(!list.length){
+    box.innerHTML='<div class="empty-box">辞退理由データがありません</div>';
+    return;
+  }
+
+  box.innerHTML=list.map((x,i)=>`
+    <article class="reason-rank-card">
+      <span class="rank-no">${i+1}</span>
+      <div>
+        <strong>${esc(x.key)}</strong>
+        <em>${x.count}件 / ${rate(x.count,decline.length)}</em>
+      </div>
+    </article>
+  `).join("");
+}
+function renderDeclineCategoryRanking(data){
+  const box=$("declineCategoryGrid");
+  if(!box)return;
+
+  const decline=data.filter(isDecline);
+  const categoryMap=new Map();
+
+  decline.forEach(r=>{
+    const c=declineCategory(r);
+    if(!categoryMap.has(c.key)){
+      categoryMap.set(c.key,{key:c.key,label:c.label,cls:c.cls,action:c.action,count:0});
+    }
+    categoryMap.get(c.key).count++;
+  });
+
+  const list=[...categoryMap.values()].sort((a,b)=>b.count-a.count||String(a.key).localeCompare(String(b.key),"ja"));
+
+  if(!list.length){
+    box.innerHTML='<div class="empty-box">辞退理由分類データがありません</div>';
+    return;
+  }
+
+  box.innerHTML=list.map(x=>`
+    <article class="reason-category-card ${x.cls}">
+      <div>
+        <strong>${esc(x.label)}</strong>
+        <span>${x.count}件 / ${rate(x.count,decline.length)}</span>
+      </div>
+      <small>${esc(x.action)}</small>
+    </article>
+  `).join("");
+}
+function renderNoContactRanking(data){
+  const box=$("noContactGrid");
+  if(!box)return;
+
+  const noContact=data.filter(isNoContact);
+  const list=countBy(noContact,r=>normalizeText(r.channel)||"媒体未設定").slice(0,6);
+
+  if(!list.length){
+    box.innerHTML='<div class="empty-box">不通データがありません</div>';
+    return;
+  }
+
+  box.innerHTML=list.map((x,i)=>`
+    <article class="reason-rank-card no-contact compact-rank">
+      <span class="rank-no">${i+1}</span>
+      <div class="rank-main">
+        <strong>${esc(x.key)}</strong>
+        <div class="rank-stats">
+          <b>${x.count}件</b>
+          <em>${rate(x.count,noContact.length)}</em>
+        </div>
+      </div>
+    </article>
+  `).join("");
+}
+
+function buildAnalysisUrl(page,params={}){
+  const q=new URLSearchParams();
+  const fy=$("fy")?.value;
+  if(fy)q.set("fy",fy);
+  const division=$("division")?.value;
+  const center=$("center")?.value;
+  const channel=$("channel")?.value;
+  if(division)q.set("division",division);
+  if(center)q.set("center",center);
+  if(channel)q.set("channel",channel);
+  Object.entries(params).forEach(([k,v])=>{if(v!==undefined&&v!==null&&String(v).trim()!=="")q.set(k,String(v).trim())});
+  const qs=q.toString();
+  return qs?`${page}?${qs}`:page;
+}
+function analysisLink(text,page,params={}){
+  const value=normalizeText(text)||"-";
+  if(value==="-")return "-";
+  return `<a class="analysis-link" href="${esc(buildAnalysisUrl(page,params))}">${esc(value)}</a>`;
+}
+function candidateLink(r){
+  const name=normalizeText(r.name)||"-";
+  if(!r.id)return esc(name);
+  return `<a class="analysis-link strong" href="./detail.html?id=${encodeURIComponent(r.id)}">${esc(name)}</a>`;
+}
+
+function renderChannelLost(data){
+  const box=$("channelLostGrid");
+  if(!box)return;
+
+  const list=groupLostByChannel(data).slice(0,6);
+  if(!list.length){
+    box.innerHTML='<div class="empty-box">データがありません</div>';
+    return;
+  }
+
+  box.innerHTML=list.map(x=>{
+    const lostRate=rateNum(x.lost,x.applied);
+    const cls=lostRate>=30?"danger":lostRate>=18?"warning":"success";
+    const label=lostRate>=30?"重点確認":lostRate>=18?"注意確認":"良好";
+
+    return `<div class="bottleneck-card ${cls}">
+      <div>
+        <strong>${analysisLink(x.key,"./dashboard_channel.html",{channel:x.key})}</strong>
+        <span>離脱率 ${lostRate.toFixed(1)}%</span>
+      </div>
+      <p>応募 ${x.applied}・辞退 ${x.decline}・不通 ${x.noContact}</p>
+      <small>${label}</small>
+    </div>`;
+  }).join("");
+}
+function renderTable(data){
+  const target=data.filter(isLost).sort((a,b)=>String(b.applied_date||"").localeCompare(String(a.applied_date||"")));
+  const head=["氏名","応募日","本部","営業所","媒体","担当者","区分","分類","理由"];
+  $("tableHead").innerHTML="<tr>"+head.map(h=>"<th>"+h+"</th>").join("")+"</tr>";
+
+  if(!target.length){
+    $("tableBody").innerHTML='<tr><td class="empty" colspan="9">データがありません</td></tr>';
+    return;
+  }
+
+  $("tableBody").innerHTML=target.map(r=>{
+    const c=isDecline(r)?declineCategory(r):{label:"連絡不通",cls:"danger"};
+    return `
+    <tr>
+      <td><strong>${candidateLink(r)}</strong></td>
+      <td>${esc(r.applied_date||"-")}</td>
+      <td>${analysisLink(r.division,"./dashboard_division.html",{division:r.division})}</td>
+      <td>${esc(r.center_name||"-")}</td>
+      <td>${analysisLink(r.channel,"./dashboard_channel.html",{channel:r.channel})}</td>
+      <td>${analysisLink(r.owner_name,"./dashboard_owner.html",{owner:r.owner_name})}</td>
+      <td><span class="mini-status ${lostType(r)==="不通"?"danger":"warning"}">${esc(lostType(r))}</span></td>
+      <td><span class="mini-status ${c.cls}">${esc(c.label)}</span></td>
+      <td class="reason-text">${esc(reasonText(r))}</td>
+    </tr>`;
+  }).join("");
+}
+
+function applyInboundParamsOnce(){
+  if(window.__inboundParamsApplied)return;
+  window.__inboundParamsApplied=true;
+  const params=new URLSearchParams(window.location.search);
+  const setSelect=(id,names)=>{
+    const el=$(id);
+    if(!el)return;
+    const keys=Array.isArray(names)?names:[names];
+    const raw=keys.map(k=>params.get(k)).find(v=>v!==null&&v!=="");
+    if(!raw)return;
+    const value=raw.trim();
+    if(!value)return;
+    if(![...el.options].some(o=>o.value===value)){
+      const option=document.createElement("option");
+      option.value=value;
+      option.textContent=value;
+      el.appendChild(option);
+    }
+    el.value=value;
+  };
+  const fy=params.get("fy");
+  if(fy&&$("fy"))$("fy").value=fy;
+  setSelect("division",["division","divisionFilter"]);
+  setSelect("divisionFilter",["division","divisionFilter"]);
+  setSelect("center",["center","centerFilter"]);
+  setSelect("centerFilter",["center","centerFilter"]);
+  setSelect("channel",["channel","channelFilter"]);
+  setSelect("ownerFilter",["owner","ownerFilter"]);
+  setSelect("jobType",["job","jobType"]);
+  if($("fy"))applyFy();
+}
+
+async function loadAnalysis(){
+  try{
+    setMsg("pageMessage","","info");
+
+    const {data,error}=await sb.from("candidates").select("*").order("id",{ascending:false});
+    if(error)throw error;
+
+    rows=data||[];
+    bindMasters(rows);
+
+    const data2=filtered(rows);
+    updateSummary(data2);
+    updateInsight(data2);
+    renderDeclineReasonRanking(data2);
+    renderDeclineCategoryRanking(data2);
+    renderNoContactRanking(data2);
+    renderChannelLost(data2);
+    renderTable(data2);
+  }catch(e){
+    setMsg("pageMessage","読込失敗: "+(e.message||e),"error");
+    console.error(e);
+  }
+}
+async function initPageAfterLogin(){
+  await loadCenterMaster();
+  applyFy();
+  await loadAnalysis();
+}
+
+authInit();
+</script>
+<script src="dashboard_summary_links.js"></script>
+</body>
+</html>

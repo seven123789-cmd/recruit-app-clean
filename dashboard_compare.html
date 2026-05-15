@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>比較分析</title>
+<link href="./assets/css/common.css" rel="stylesheet">
+<link href="./assets/css/header.css" rel="stylesheet">
+<link href="./assets/css/sidebar.css?v=20260513_compare_graph" rel="stylesheet">
+<link href="./assets/css/dashboard_ui.css" rel="stylesheet">
+<link href="./assets/css/dashboard_compare.css" rel="stylesheet">
+<script src="./common.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/safe_utils.js"></script>
+<script src="./sidebar.js?v=20260513_compare_graph"></script>
+</head>
+<body class="auth-checking">
+<div class="container hidden" id="authScreen">
+  <div class="auth-shell">
+    <h1 class="auth-title">比較分析</h1>
+    <p class="auth-sub">ログイン後に画面を表示します。</p>
+    <div class="auth-card">
+      <h2>ログイン</h2>
+      <div class="form-grid">
+        <div class="col-12"><label for="loginEmail">メールアドレス</label><input id="loginEmail" type="email"></div>
+        <div class="col-12"><label for="loginPassword">パスワード</label><input id="loginPassword" type="password"></div>
+        <div class="col-12"><button class="btn-primary" onclick="login()" type="button">ログイン</button></div>
+        <div class="col-12"><div class="message-box message-info" id="authMessage">未ログインです</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="hidden" id="appScreen">
+  <div class="app-layout">
+    <aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+    <main class="main-content">
+      <header class="page-header dashboard-page-header">
+        <div class="dashboard-title-line">
+          <h1>比較分析</h1>
+          <div aria-label="集計状態" class="dashboard-header-meta">
+            <span class="dashboard-header-chip">対象年度：<span id="headYear">-</span></span>
+            <span class="dashboard-header-chip">対象件数：<span id="headRows">0</span></span>
+            <span class="dashboard-header-chip">対象期間：<span id="headPeriod">-</span></span>
+          </div>
+        </div>
+      </header>
+
+      <section class="analysis-control-card">
+        <div class="analysis-control-copy">
+          <p>分析条件</p>
+          <h2>媒体・本部・担当・職種を横比較</h2>
+        </div>
+        <div class="analysis-control-form analysis-control-form--4">
+          <div class="analysis-field"><label for="fy">対象年度</label><select id="fy"><option value="current"></option><option value="previous"></option><option value="all">全期間</option></select></div>
+          <div class="analysis-field"><label for="division">対象本部</label><select id="division"><option value="">すべて</option></select></div>
+          <div class="analysis-field"><label for="center">対象営業所</label><select id="center"><option value="">すべて</option></select></div>
+          <div class="analysis-field"><label for="owner">対象担当</label><select id="owner"><option value="">すべて</option></select></div>
+          <button class="btn-primary" onclick="loadAnalysis()" type="button">更新</button>
+          <div class="period-text analysis-period" id="periodText">対象期間：-</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="compare-tabs" role="tablist" aria-label="比較分析タブ">
+          <button class="compare-tab active" type="button" data-tab="media">媒体比較</button>
+          <button class="compare-tab" type="button" data-tab="division">本部比較</button>
+          <button class="compare-tab" type="button" data-tab="owner">担当比較</button>
+          <button class="compare-tab" type="button" data-tab="job">職種比較</button>
+          <button class="compare-tab" type="button" data-tab="cost">採用単価比較</button>
+        </div>
+        <div class="compare-kpi-grid" id="compareKpis"></div>
+        <div class="compare-note" id="compareNote">読込中です。</div>
+      </section>
+
+      <section class="card compare-section" id="sectionMedia">
+        <div class="compare-card-title"><div><h3>媒体比較</h3><p>媒体または媒体詳細ごとに応募・面接・採用を比較します。</p></div></div>
+        <div class="compare-toolbar">
+          <div class="analysis-field"><label for="mediaMode">集計単位</label><select id="mediaMode"><option value="detail">媒体詳細</option><option value="channel">媒体</option></select></div>
+          <div class="analysis-field"><label for="mediaLimit">表示件数</label><select id="mediaLimit"><option value="10">上位10件</option><option value="15">上位15件</option><option value="20">上位20件</option></select></div>
+        </div>
+        <div class="compare-layout">
+          <div><div class="compare-card-title"><div><h3>応募・面接・採用グラフ</h3><p>上位媒体の量と到達状況</p></div></div><div class="compare-chart-box"><canvas id="mediaCountChart"></canvas></div></div>
+          <div><div class="compare-card-title"><div><h3>転換率グラフ</h3><p>応募→面接 / 応募→採用</p></div></div><div class="compare-chart-box"><canvas id="mediaRateChart"></canvas></div></div>
+        </div>
+        <div class="compare-table-wrap" style="margin-top:16px"><table class="compare-table"><thead id="mediaHead"></thead><tbody id="mediaBody"></tbody></table></div>
+      </section>
+
+      <section class="card compare-section hidden" id="sectionDivision">
+        <div class="compare-card-title"><div><h3>本部比較</h3><p>本部ごとの応募・面接・採用を比較します。</p></div></div>
+        <div class="compare-layout">
+          <div><div class="compare-chart-box"><canvas id="divisionCountChart"></canvas></div></div>
+          <div><div class="compare-chart-box"><canvas id="divisionRateChart"></canvas></div></div>
+        </div>
+        <div class="compare-table-wrap" style="margin-top:16px"><table class="compare-table"><thead id="divisionHead"></thead><tbody id="divisionBody"></tbody></table></div>
+      </section>
+
+      <section class="card compare-section hidden" id="sectionOwner">
+        <div class="compare-card-title"><div><h3>担当比較</h3><p>担当者ごとの応募・面接・採用を比較します。</p></div></div>
+        <div class="compare-layout">
+          <div><div class="compare-chart-box"><canvas id="ownerCountChart"></canvas></div></div>
+          <div><div class="compare-chart-box"><canvas id="ownerRateChart"></canvas></div></div>
+        </div>
+        <div class="compare-table-wrap" style="margin-top:16px"><table class="compare-table"><thead id="ownerHead"></thead><tbody id="ownerBody"></tbody></table></div>
+      </section>
+
+      <section class="card compare-section hidden" id="sectionJob">
+        <div class="compare-card-title"><div><h3>職種比較</h3><p>職種ごとの応募・面接・採用を比較します。</p></div></div>
+        <div class="compare-layout">
+          <div><div class="compare-chart-box"><canvas id="jobCountChart"></canvas></div></div>
+          <div><div class="compare-chart-box"><canvas id="jobRateChart"></canvas></div></div>
+        </div>
+        <div class="compare-table-wrap" style="margin-top:16px"><table class="compare-table"><thead id="jobHead"></thead><tbody id="jobBody"></tbody></table></div>
+      </section>
+
+      <section class="card compare-section hidden" id="sectionCost">
+        <div class="compare-card-title"><div><h3>採用単価比較</h3><p>媒体費に対する応募単価・採用単価を比較します。</p></div></div>
+        <div class="compare-toolbar">
+          <div class="analysis-field"><label for="costMode">集計単位</label><select id="costMode"><option value="channel">媒体</option><option value="detail">媒体詳細</option></select></div>
+          <div class="analysis-field"><label for="costLimit">表示件数</label><select id="costLimit"><option value="10">上位10件</option><option value="15">上位15件</option><option value="20">上位20件</option></select></div>
+        </div>
+        <div class="compare-layout">
+          <div><div class="compare-card-title"><div><h3>費用・応募数</h3><p>費用と応募数の比較</p></div></div><div class="compare-chart-box"><canvas id="costAmountChart"></canvas></div></div>
+          <div><div class="compare-card-title"><div><h3>単価比較</h3><p>応募単価・採用単価</p></div></div><div class="compare-chart-box"><canvas id="costUnitChart"></canvas></div></div>
+        </div>
+        <div class="compare-table-wrap" style="margin-top:16px"><table class="compare-table"><thead id="costHead"></thead><tbody id="costBody"></tbody></table></div>
+      </section>
+      <div class="message-box message-info hidden" id="pageMessage"></div>
+    </main>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const sb = window.getRecruitSupabaseClient();
+let currentUser=null;
+let currentRole=null;
+let rows=[];
+let costRows=[];
+let filteredRows=[];
+let CENTER_MASTER={};
+let currentTab="media";
+let charts={};
+
+function $(id){return document.getElementById(id)}
+function esc(v){return String(v ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}
+function setText(id,value){const el=$(id);if(el)el.textContent=value}
+function setMsg(id,msg,type="info"){const el=$(id);if(!el)return;if(!msg){el.textContent="";el.className="message-box message-info hidden";return}el.textContent=msg;el.className="message-box message-"+type}
+function validDate(s){if(!s)return false;const y=Number(String(s).slice(0,4));return y>=2000}
+function isHired(r){return r.hiring_result==="採用"||validDate(r.join_date)}
+function isInterview(r){return validDate(r.interview1_date)||validDate(r.interview_done_date)||String(r.status||"").includes("面接実施")||String(r.status||"").includes("内定")||String(r.status||"").includes("入社")||isHired(r)}
+function fiscalYear(){const d=new Date();const y=d.getFullYear();return d.getMonth()+1>=4?y:y-1}
+function rateNum(n,d){return !d?0:Math.round((n/d)*1000)/10}
+function rate(n,d){return rateNum(n,d).toFixed(1)+"%"}
+function yen(n){return Number(n||0).toLocaleString("ja-JP")+"円"}
+function fiscalRange(type){const fy=fiscalYear();if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};if(type==="all")return {fy:null,label:"全期間",from:"",to:""};return {fy,label:fy+"年度",from:fy+"-04-01",to:(fy+1)+"-03-31"}}
+function applyFy(){const range=fiscalRange($("fy").value);const period=range.from&&range.to?`${range.from} ～ ${range.to}`:"全期間";setText("periodText","対象期間："+period);setText("headYear",range.label);setText("headPeriod",period);return range}
+function setSelectOptions(id,values,blank="すべて"){const el=$(id);if(!el)return;const current=el.value;const list=[...new Set((values||[]).map(v=>String(v||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ja"));el.innerHTML=`<option value="">${blank}</option>`+list.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");if(list.includes(current))el.value=current}
+async function loadCenterMaster(){try{const master=window.RecruitMaster?await window.RecruitMaster.divisionCenter():{centersByDivision:{},centers:[]};CENTER_MASTER=master.centersByDivision||{};return master.centers||[]}catch(e){CENTER_MASTER={};return []}}
+function updateCenterOptions(){const div=$("division")?.value||"";const centers=div&&CENTER_MASTER[div]?CENTER_MASTER[div]:Object.values(CENTER_MASTER).flat();setSelectOptions("center",centers.length?centers:rows.map(r=>r.center_name))}
+function bindMasters(){const divisions=Object.keys(CENTER_MASTER).length?Object.keys(CENTER_MASTER):rows.map(r=>r.division);setSelectOptions("division",divisions);updateCenterOptions();setSelectOptions("owner",rows.map(r=>r.owner_name))}
+function filterRows(){const range=applyFy();const d=$("division").value;const c=$("center").value;const o=$("owner").value;filteredRows=(rows||[]).filter(r=>!r.is_deleted).filter(r=>{if(!validDate(r.applied_date))return false;if(range.from&&r.applied_date<range.from)return false;if(range.to&&r.applied_date>range.to)return false;if(d&&r.division!==d)return false;if(c&&r.center_name!==c)return false;if(o&&r.owner_name!==o)return false;return true});setText("headRows",filteredRows.length)}
+function metrics(list){const applied=list.length;const interview=list.filter(isInterview).length;const join=list.filter(isHired).length;return {applied,interview,join,interviewRate:rate(interview,applied),joinRate:rate(join,applied),interviewRateNum:rateNum(interview,applied),joinRateNum:rateNum(join,applied)}}
+function groupBy(list,keyFn){const map=new Map();list.forEach(r=>{const key=keyFn(r)||"未設定";if(!map.has(key))map.set(key,[]);map.get(key).push(r)});return [...map.entries()].map(([key,items])=>({key,items,...metrics(items)})).sort((a,b)=>b.applied-a.applied||String(a.key).localeCompare(String(b.key),"ja"))}
+function costMonth(row){return window.RecruitCost?.monthKey ? window.RecruitCost.monthKey(row) : String(row?.target_month||"").slice(0,7)}
+function costAmount(row){return window.RecruitCost?.amount ? window.RecruitCost.amount(row) : Number(row?.cost_amount||row?.amount||row?.cost||0)}
+function costKey(row){return window.RecruitCost?.normalizeChannel ? window.RecruitCost.normalizeChannel(row?.channel||row?.media||row?.channel_name) : (String(row?.channel||row?.media||row?.channel_name||"未設定").trim()||"未設定")}
+function rowKeyByTab(tab){if(tab==="media"){return $("mediaMode").value==="channel"?(r=>r.channel||"未設定"):(r=>r.channel_detail||r.channel||"未設定")}if(tab==="division")return r=>r.division||"未設定";if(tab==="owner")return r=>r.owner_name||"未設定";if(tab==="job")return r=>r.job_type||"未設定";return r=>r.channel||"未設定"}
+function tabLabel(tab){return {media:"媒体",division:"本部",owner:"担当",job:"職種",cost:"採用単価"}[tab]||"比較"}
+function renderKpis(){const m=metrics(filteredRows);$("compareKpis").innerHTML=`
+  <div class="compare-mini-card"><span>応募</span><strong>${m.applied}</strong><small>対象条件内</small></div>
+  <div class="compare-mini-card"><span>面接実施</span><strong>${m.interview}</strong><small>応募→面接 ${m.interviewRate}</small></div>
+  <div class="compare-mini-card"><span>採用</span><strong>${m.join}</strong><small>応募→採用 ${m.joinRate}</small></div>
+  <div class="compare-mini-card"><span>比較軸</span><strong>${tabLabel(currentTab)}</strong><small>タブで切替</small></div>`
+}
+function destroyChart(id){if(charts[id]){charts[id].destroy();charts[id]=null}}
+function makeBarChart(id,labels,datasets,stacked=false){const canvas=$(id);if(!canvas||typeof Chart==="undefined")return;destroyChart(id);charts[id]=new Chart(canvas,{type:"bar",data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,indexAxis:"y",plugins:{legend:{position:"top",labels:{boxWidth:10,font:{size:11,weight:"700"}}},tooltip:{mode:"index",intersect:false}},scales:{x:{beginAtZero:true,stacked,grid:{color:"#eef2ff"},ticks:{color:"#64748b",font:{size:11,weight:"700"}}},y:{stacked,grid:{display:false},ticks:{color:"#334155",font:{size:11,weight:"800"}}}}}})}
+function makeRateChart(id,labels,items){const datasets=[{label:"応募→面接",data:items.map(x=>x.interviewRateNum),borderWidth:2,barPercentage:.72,categoryPercentage:.68},{label:"応募→採用",data:items.map(x=>x.joinRateNum),borderWidth:2,barPercentage:.72,categoryPercentage:.68}];const canvas=$(id);if(!canvas||typeof Chart==="undefined")return;destroyChart(id);charts[id]=new Chart(canvas,{type:"bar",data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,indexAxis:"y",plugins:{legend:{position:"top",labels:{boxWidth:10,font:{size:11,weight:"700"}}},tooltip:{callbacks:{label:(ctx)=>`${ctx.dataset.label}: ${ctx.parsed.x}%`}}},scales:{x:{beginAtZero:true,suggestedMax:100,ticks:{callback:v=>v+"%",color:"#64748b",font:{size:11,weight:"700"}},grid:{color:"#eef2ff"}},y:{grid:{display:false},ticks:{color:"#334155",font:{size:11,weight:"800"}}}}}})}
+function renderCompareTable(items,headId,bodyId){$(headId).innerHTML="<tr><th>順位</th><th>区分</th><th>応募</th><th>面接実施</th><th>採用</th><th>応募→面接</th><th>応募→採用</th></tr>";$(bodyId).innerHTML=items.map((x,i)=>`<tr><td><span class="compare-rank-pill">${i+1}</span></td><td><strong>${esc(x.key)}</strong></td><td class="num">${x.applied}</td><td class="num">${x.interview}</td><td class="num">${x.join}</td><td class="num">${x.interviewRate}</td><td class="num">${x.joinRate}</td></tr>`).join("")||'<tr><td class="empty" colspan="7">データがありません</td></tr>'}
+function renderAxis(tab,chartPrefix,headId,bodyId,limit=12){const items=groupBy(filteredRows,rowKeyByTab(tab)).slice(0,limit);const labels=items.map(x=>x.key);makeBarChart(chartPrefix+"CountChart",labels,[{label:"応募",data:items.map(x=>x.applied),borderWidth:1},{label:"面接実施",data:items.map(x=>x.interview),borderWidth:1},{label:"採用",data:items.map(x=>x.join),borderWidth:1}]);makeRateChart(chartPrefix+"RateChart",labels,items);renderCompareTable(items,headId,bodyId);$("compareNote").textContent=`${tabLabel(tab)}比較では、対象条件内の応募数・面接数・採用数と転換率を横比較できます。`}
+function buildCostItems(){
+  const mode=$("costMode")?.value||"channel";
+  const keyFn=mode==="detail"?(r=>r.channel_detail||r.channel||"未設定"):(r=>r.channel||"未設定");
+  const groups=groupBy(filteredRows,keyFn);
+  const range=applyFy();
+  const options={from:range.from,to:range.to,channelForGroup:g=>mode==="channel"?g.key:(g.items[0]?.channel||g.key)};
+  return (window.RecruitCost?.enrichGroups
+    ? window.RecruitCost.enrichGroups(groups,costRows,options)
+    : groups.map(g=>({...g,cost:0,cpa:0,cph:0}))
+  ).sort((a,b)=>b.cost-a.cost||b.applied-a.applied);
+}
+function renderCost(){const limit=Number($("costLimit")?.value||10);const items=buildCostItems().slice(0,limit);const labels=items.map(x=>x.key);makeBarChart("costAmountChart",labels,[{label:"費用",data:items.map(x=>x.cost),borderWidth:1},{label:"応募",data:items.map(x=>x.applied),borderWidth:1}],false);makeBarChart("costUnitChart",labels,[{label:"応募単価",data:items.map(x=>x.cpa),borderWidth:1},{label:"採用単価",data:items.map(x=>x.cph),borderWidth:1}],false);$("costHead").innerHTML="<tr><th>順位</th><th>区分</th><th>費用</th><th>応募</th><th>採用</th><th>応募単価</th><th>採用単価</th></tr>";$("costBody").innerHTML=items.map((x,i)=>`<tr><td><span class="compare-rank-pill">${i+1}</span></td><td><strong>${esc(x.key)}</strong></td><td class="num">${yen(x.cost)}</td><td class="num">${x.applied}</td><td class="num">${x.join}</td><td class="num">${x.cpa?yen(x.cpa):"-"}</td><td class="num">${x.cph?yen(x.cph):"-"}</td></tr>`).join("")||'<tr><td class="empty" colspan="7">データがありません</td></tr>';$("compareNote").textContent="採用単価比較では、媒体費・応募数・採用数から応募単価と採用単価を比較できます。"}
+function renderCurrentTab(){if(currentTab==="media")renderAxis("media","media","mediaHead","mediaBody",Number($("mediaLimit")?.value||10));if(currentTab==="division")renderAxis("division","division","divisionHead","divisionBody",12);if(currentTab==="owner")renderAxis("owner","owner","ownerHead","ownerBody",12);if(currentTab==="job")renderAxis("job","job","jobHead","jobBody",12);if(currentTab==="cost")renderCost()}
+function setActiveTab(tab){currentTab=tab;document.querySelectorAll(".compare-tab").forEach(btn=>btn.classList.toggle("active",btn.dataset.tab===tab));document.querySelectorAll(".compare-section").forEach(sec=>sec.classList.add("hidden"));const map={media:"sectionMedia",division:"sectionDivision",owner:"sectionOwner",job:"sectionJob",cost:"sectionCost"};$(map[tab])?.classList.remove("hidden");renderKpis();setTimeout(renderCurrentTab,30)}
+async function getUser(){if(currentUser)return currentUser;const {data:{session}}=await sb.auth.getSession();currentUser=session?.user||null;return currentUser}
+async function getRole(userId){if(currentRole)return currentRole;try{const {data}=await sb.from("profiles").select("role").eq("user_id",userId).single();currentRole=data?.role||"editor";localStorage.setItem("recruit_user_role",currentRole)}catch(e){currentRole="editor"}return currentRole}
+function showAuth(msg="未ログインです",type="info"){$("authScreen")?.classList.remove("hidden");$("appScreen")?.classList.add("hidden");currentUser=null;currentRole=null;setMsg("authMessage",msg,type);document.body.classList.remove("auth-checking")}
+async function showApp(){const user=await getUser();if(!user){showAuth();return false}await getRole(user.id);$("authScreen")?.classList.add("hidden");$("appScreen")?.classList.remove("hidden");document.body.classList.remove("auth-checking");return true}
+async function login(){const email=$("loginEmail")?.value.trim();const password=$("loginPassword")?.value;if(!email||!password){setMsg("authMessage","メールアドレスとパスワードを入力してください","error");return}try{const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;currentUser=null;currentRole=null;if(await showApp()) await initPageAfterLogin()}catch(e){setMsg("authMessage","ログイン失敗: "+(e.message||e),"error")}}
+async function logout(){try{await sb.auth.signOut()}catch(e){}showAuth("ログアウトしました","success")}
+sb.auth.onAuthStateChange((ev)=>{if(ev==="SIGNED_OUT")showAuth("ログアウトしました","success")});
+async function loadAnalysis(){try{setMsg("pageMessage","","info");applyFy();await loadCenterMaster();const {data,error}=await sb.from("candidates").select("*").order("applied_date",{ascending:true});if(error)throw error;rows=data||[];try{const costRes=await sb.from("channel_costs").select("*");costRows=costRes.error?[]:(costRes.data||[])}catch(e){costRows=[]}bindMasters();filterRows();renderKpis();renderCurrentTab()}catch(e){console.error(e);setMsg("pageMessage","読込失敗: "+(e.message||e),"error")}}
+async function initPageAfterLogin(){applyFy();await loadAnalysis()}
+async function authInit(){try{if(await showApp()) await initPageAfterLogin()}catch(e){console.error(e);showAuth("初期化に失敗しました","error")}finally{document.body.classList.remove("auth-checking")}}
+["fy","division","center","owner"].forEach(id=>document.addEventListener("change",e=>{if(e.target&&e.target.id===id){if(id==="division")updateCenterOptions();filterRows();renderKpis();renderCurrentTab()}}));
+["mediaMode","mediaLimit","costMode","costLimit"].forEach(id=>document.addEventListener("change",e=>{if(e.target&&e.target.id===id)renderCurrentTab()}));
+document.addEventListener("click",e=>{const btn=e.target.closest(".compare-tab");if(btn)setActiveTab(btn.dataset.tab)});
+authInit();
+</script>
+</body>
+</html>

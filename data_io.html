@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>データ連携｜採用管理</title>
+<link rel="stylesheet" href="./assets/css/common.css">
+<link rel="stylesheet" href="./assets/css/header.css">
+<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260508_sidebar2">
+<link rel="stylesheet" href="./assets/css/data_io.css?v=20260514_io_compact1">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/audit_utils.js"></script>
+<script src="assets/js/ops_guard.js"></script>
+<script src="assets/js/safe_utils.js"></script>
+<script src="./common.js"></script>
+</head>
+<body>
+<div id="appScreen">
+  <div class="app-layout">
+    <aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+    <main class="main-content data-io-main">
+      <header class="page-header">
+        <h1>データ連携</h1>
+      </header>
+
+      <section class="io-hero">
+        <div class="io-hero-copy">
+          <span class="io-kicker">Data Operations</span>
+          <h1>応募者データ管理</h1>
+          <p>CSV取込・出力・復元をまとめて管理します。</p>
+        </div>
+      </section>
+
+      <section class="io-overview-grid" aria-label="データ連携の状態">
+        <article class="io-overview-card active">
+          <span>IMPORT</span>
+          <strong>CSV取込</strong>
+          <p>確認して登録</p>
+        </article>
+        <article class="io-overview-card">
+          <span>EXPORT</span>
+          <strong>CSV出力</strong>
+          <p>条件を指定して出力</p>
+        </article>
+        <article class="io-overview-card caution">
+          <span>UNDO</span>
+          <strong>自動バックアップ</strong>
+          <p>取込前に保存</p>
+        </article>
+      </section>
+
+      <nav class="io-tabs" aria-label="データ操作メニュー">
+        <button class="io-tab active" type="button" data-tab="import" onclick="showIoTab('import')">CSV取り込み</button>
+        <button class="io-tab" type="button" data-tab="export" onclick="showIoTab('export')">CSV出力</button>
+      </nav>
+
+      <section id="importPanel" class="card io-panel active">
+        <div class="io-panel-head">
+          <div>
+            <span class="io-kicker">Import</span>
+            <h2>CSV取り込み</h2>
+            <p>ファイルを確認して登録します。</p>
+          </div>
+        </div>
+
+        <div class="io-import-layout">
+          <div class="io-upload-card">
+            <div class="io-card-title">
+              <span>01</span>
+              <div>
+                <h3>CSVファイル</h3>
+              </div>
+            </div>
+            <label class="io-drop" for="csvFileInput">
+              <input id="csvFileInput" type="file" accept=".csv,text/csv" onchange="handleCsvFileSelected(event)">
+              <strong>ファイルを選択</strong>
+              <span id="selectedFileName" class="io-file-name">未選択</span>
+            </label>
+          </div>
+
+          <div class="io-option-card">
+            <div class="io-card-title">
+              <span>02</span>
+              <div>
+                <h3>取り込み方法</h3>
+              </div>
+            </div>
+            <div class="io-mode-row">
+              <label class="io-choice"><input type="radio" name="importMode" value="insert" checked><span>新規追加</span></label>
+              <label class="io-choice"><input type="radio" name="importMode" value="upsert"><span>ID一致で更新</span></label>
+            </div>
+            <div class="io-actions">
+              <button class="btn-secondary" type="button" id="cancelImportButton" onclick="cancelImportCsv()" disabled>選択をクリア</button>
+              <button class="btn-secondary" type="button" id="previewImportButton" onclick="previewImportCsv()">プレビュー</button>
+              <button class="btn-secondary is-hidden" type="button" id="downloadErrorCsvButton" onclick="downloadImportErrorCsv()" disabled>エラーCSV</button>
+              <button id="runImportButton" class="btn-primary" data-requires-role="admin,manager" type="button" onclick="runImportCsv()" disabled>取込実行</button>
+              <button id="undoLastImportButton" class="btn-secondary danger is-hidden" data-requires-role="admin,manager" type="button" onclick="restoreLastImportBackup()" disabled>直前取込を取消</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="io-stat-grid" aria-label="取り込み確認サマリー">
+          <div class="io-stat primary"><span>取込可能</span><strong id="importValidCount">-</strong></div>
+          <div class="io-stat error"><span>エラー</span><strong id="importErrorCount">-</strong></div>
+          <div class="io-stat"><span>新規</span><strong id="importInsertCount">-</strong></div>
+          <div class="io-stat warning"><span>更新</span><strong id="importUpdateCount">-</strong></div>
+          <div class="io-stat muted"><span>読込行</span><strong id="importTotalCount">-</strong></div>
+        </div>
+
+        <div class="io-safety-note">
+          取込前に自動バックアップします。エラー時はCSVを出力し、実行後は直前取込を取消できます。
+        </div>
+        <div class="io-undo-status is-hidden" id="lastImportUndoStatus">直前取り込みの取消対象はありません。</div>
+
+        <div id="importDuplicateArea" class="io-duplicate-list"></div>
+        <div id="importErrors" class="io-error-list"></div>
+        <div class="io-preview-table" id="importPreviewArea"><table><tbody><tr><td class="empty">CSVを選択してください。</td></tr></tbody></table></div>
+
+        <div class="io-history-block">
+          <div class="section-head-row">
+            <div>
+              <h3>取り込み履歴</h3>
+              <p class="io-history-note">この端末の直近履歴です。</p>
+            </div>
+            <button class="btn-secondary" type="button" onclick="clearImportHistory()">履歴をクリア</button>
+          </div>
+          <div id="importHistoryArea" class="io-history-list">履歴はまだありません。</div>
+        </div>
+      </section>
+
+      <section id="exportPanel" class="card io-panel">
+        <div class="io-panel-head">
+          <div>
+            <span class="io-kicker">Export</span>
+            <h2>CSV出力</h2>
+          </div>
+          <button class="btn-primary" type="button" onclick="exportCandidatesCsv()">CSVをダウンロード</button>
+        </div>
+        <div class="io-export-grid">
+          <label>
+            <span>年度</span>
+            <select id="exportYear"><option value="all">全期間</option></select>
+          </label>
+          <label>
+            <span>削除済みデータ</span>
+            <select id="exportIncludeDeleted"><option value="false">含めない</option><option value="true">含める</option></select>
+          </label>
+          <div class="io-export-note">
+            <strong>出力内容</strong>
+            <p>応募者詳細項目をCSVで出力します。</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<script>
+const sb = window.getRecruitSupabaseClient();
+
+const CSV_COLUMNS = [
+  ["candidate_id","候補者ID"],["fiscal_year","年度"],["name","氏名"],["age","年齢"],["division","本部"],["center_name","営業所"],["channel","媒体"],["channel_detail","媒体詳細"],["job_type","職種"],["owner_name","担当者"],["status","ステータス"],["hiring_result","選考結果"],["applied_date","応募日"],["appointment_date","アポ日"],["interview1_date","面接予定日"],["interview_done_date","面接実施日"],["offer_date","内定日"],["join_date","入社日"],["last_action_date","最終対応日"],["next_action_date","次回対応日"],["decline_reason","辞退理由"],["reject_reason","不採用理由"],["evaluation","評価"],["evaluation_comment","評価コメント"],["action_memo","対応メモ"],["is_deleted","削除済みデータ"],["created_at","作成日時"],["updated_at","更新日時"]
+];
+const DATE_KEYS = new Set(["applied_date","appointment_date","interview1_date","interview_done_date","offer_date","join_date","last_action_date","next_action_date"]);
+let selectedCsvText = "";
+let selectedCsvFileName = "";
+let previewRows = [];
+let previewErrors = [];
+let previewDuplicateRows = [];
+let previewUpdateCount = 0;
+let previewInsertCount = 0;
+const IMPORT_HISTORY_KEY = "recruit_data_io_import_history";
+const BACKUP_LOCAL_KEY = "recruit_auto_backup_generations_v1";
+const BACKUP_AUTO_META_KEY = "recruit_auto_backup_meta_v1";
+const LAST_IMPORT_UNDO_KEY = "recruit_last_import_undo_v1";
+const BACKUP_TABLES = ["candidates","recruitment_targets","channel_costs","master_centers","profiles"];
+const MAX_LOCAL_BACKUP_GENERATIONS = 30;
+
+
+function showIoTab(key){
+  document.querySelectorAll('.io-tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===key));
+  document.querySelectorAll('.io-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(key+'Panel')?.classList.add('active');
+}
+function csvEscape(v){ const s=String(v ?? ""); return /[",\n\r]/.test(s) ? '"'+s.replaceAll('"','""')+'"' : s; }
+function downloadText(filename, text){ const blob=new Blob(["\uFEFF"+text],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
+function downloadTemplateCsv(){ downloadText('recruit_template.csv', CSV_COLUMNS.map(c=>csvEscape(c[1])).join(',')+'\n'); }
+function parseCsv(text){
+  const rows=[]; let row=[], cell='', q=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i], next=text[i+1];
+    if(q && ch==='"' && next==='"'){ cell+='"'; i++; continue; }
+    if(ch==='"'){ q=!q; continue; }
+    if(!q && ch===','){ row.push(cell); cell=''; continue; }
+    if(!q && (ch==='\n' || ch==='\r')){ if(ch==='\r' && next==='\n') i++; row.push(cell); if(row.some(v=>String(v).trim()!=='')) rows.push(row); row=[]; cell=''; continue; }
+    cell+=ch;
+  }
+  row.push(cell); if(row.some(v=>String(v).trim()!=='')) rows.push(row);
+  return rows;
+}
+function normalizeHeader(h){ const m=CSV_COLUMNS.find(c=>c[1]===h || c[0]===h); return m ? m[0] : String(h||'').trim(); }
+function toIsoDate(v){ if(!v) return ''; const s=String(v).trim().replaceAll('/','-'); if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)){ const [y,m,d]=s.split('-'); return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`; } return s; }
+function normalizePersonName(v){ return String(v ?? '').replace(/[\u3000\s]+/g, ' ').trim(); }
+function fiscalYearFromDateText(v){ const s=toIsoDate(v); if(!s) return ''; const d=new Date(s+'T00:00:00'); if(Number.isNaN(d.getTime())) return ''; return d.getMonth()+1>=4 ? d.getFullYear() : d.getFullYear()-1; }
+async function handleCsvFileSelected(ev){
+  const f=ev.target.files?.[0];
+  selectedCsvFileName=f?f.name:'';
+  document.getElementById('selectedFileName').textContent=f?f.name:'未選択';
+  selectedCsvText=f?await f.text():'';
+  resetPreview();
+  updateCancelImportButton();
+}
+function updateCancelImportButton(){
+  const button=document.getElementById('cancelImportButton');
+  if(button) button.disabled=!(selectedCsvText || previewRows.length || previewErrors.length);
+  updateImportActionVisibility();
+}
+function toggleVisible(id, visible){
+  const el=document.getElementById(id);
+  if(el) el.classList.toggle('is-hidden', !visible);
+}
+function updateImportActionVisibility(){
+  const hasFile=!!selectedCsvText;
+  const hasPreview=previewRows.length>0 || previewErrors.length>0;
+  const hasErrors=previewErrors.length>0;
+  const canRun=previewRows.length>0 && previewErrors.length===0;
+  const undoMeta=getLastImportUndoMeta ? getLastImportUndoMeta() : null;
+  toggleVisible('cancelImportButton', hasFile || hasPreview);
+  toggleVisible('downloadErrorCsvButton', hasErrors);
+  toggleVisible('undoLastImportButton', !!undoMeta?.backup_id);
+  const runButton=document.getElementById('runImportButton');
+  if(runButton) runButton.classList.toggle('is-ready', canRun);
+}
+function cancelImportCsv(silent=false){
+  selectedCsvText='';
+  selectedCsvFileName='';
+  previewRows=[];
+  previewErrors=[];
+  previewDuplicateRows=[];
+  previewUpdateCount=0;
+  previewInsertCount=0;
+  const fileInput=document.getElementById('csvFileInput');
+  if(fileInput) fileInput.value='';
+  document.getElementById('selectedFileName').textContent='未選択';
+  resetPreview();
+  renderPreview();
+  document.getElementById('importPreviewArea').innerHTML='<table><tbody><tr><td class="empty">CSVを選択してください。</td></tr></tbody></table>';
+  if(!silent) RecruitUI.toast('CSV選択とプレビューをキャンセルしました。', 'info');
+}
+function resetPreview(){
+  previewRows=[];
+  previewErrors=[];
+  previewDuplicateRows=[];
+  previewUpdateCount=0;
+  previewInsertCount=0;
+  document.getElementById('runImportButton').disabled=true;
+  const errorButton=document.getElementById('downloadErrorCsvButton');
+  if(errorButton) errorButton.disabled=true;
+  ['importTotalCount','importValidCount','importErrorCount','importUpdateCount','importInsertCount'].forEach(id=>document.getElementById(id).textContent='-');
+  document.getElementById('importErrors').innerHTML='';
+  document.getElementById('importDuplicateArea').innerHTML='';
+  updateCancelImportButton();
+}
+async function getMasters(){ const m = window.RecruitMaster && await window.RecruitMaster.load(true); return m || {divisions:[],centers:[],channels:[],channelDetails:[],jobTypes:[],statuses:[],declineReasons:[],rejectReasons:[]}; }
+function inMaster(list, value){ return !value || (list||[]).includes(value); }
+
+async function getExistingCandidateIdSet(ids){
+  const list=[...new Set((ids||[]).map(v=>String(v||"").trim()).filter(Boolean))];
+  if(!list.length)return new Set();
+  try{
+    const {data,error}=await sb.from("candidates").select("id,name,status").in("id",list);
+    if(error)throw error;
+    return new Set((data||[]).map(r=>String(r.id)));
+  }catch(e){
+    console.warn("既存候補者ID確認に失敗", e);
+    return new Set();
+  }
+}
+
+async function previewImportCsv(){
+  resetPreview();
+  if(!selectedCsvText){ RecruitUI.toast("取り込むCSVを選択してください。", "warning"); return; }
+  const parsed=parseCsv(selectedCsvText); if(parsed.length<2){ RecruitUI.toast("データ行がありません。", "warning"); return; }
+  const headers=parsed[0].map(h=>normalizeHeader(String(h).trim().replace(/^\uFEFF/,'')));
+  const required=['name','applied_date','status'];
+  const missing=required.filter(k=>!headers.includes(k));
+  if(missing.length){ previewErrors=missing.map(k=>`必須列がありません：${CSV_COLUMNS.find(c=>c[0]===k)?.[1]||k}`); renderPreview(); return; }
+  const masters=await getMasters();
+  previewRows=parsed.slice(1).map((cells,i)=>{ const r={_row:i+2}; headers.forEach((h,idx)=>{ if(CSV_COLUMNS.some(c=>c[0]===h)) r[h]=String(cells[idx]??'').trim(); }); if(r.name) r.name=normalizePersonName(r.name); DATE_KEYS.forEach(k=>{ if(r[k]) r[k]=toIsoDate(r[k]); }); if(!r.fiscal_year) r.fiscal_year=String(fiscalYearFromDateText(r.applied_date)||''); return r; });
+  const existingIds = await getExistingCandidateIdSet(previewRows.map(r=>r.candidate_id));
+  previewDuplicateRows = previewRows.filter(r=>r.candidate_id && existingIds.has(String(r.candidate_id)));
+  previewUpdateCount = previewDuplicateRows.length;
+  previewInsertCount = Math.max(0, previewRows.length - previewUpdateCount);
+
+  previewErrors=[];
+  previewRows.forEach(r=>{
+    if(!r.name) previewErrors.push(`${r._row}行目：氏名が未入力です。`);
+    if(!r.applied_date) previewErrors.push(`${r._row}行目：応募日が未入力です。`);
+    DATE_KEYS.forEach(k=>{ if(r[k] && !/^\d{4}-\d{2}-\d{2}$/.test(r[k])) previewErrors.push(`${r._row}行目：${CSV_COLUMNS.find(c=>c[0]===k)?.[1]}の日付形式が不正です。`); });
+    if(!inMaster(masters.divisions,r.division)) previewErrors.push(`${r._row}行目：本部マスタ未登録（${r.division}）`);
+    const centers=(masters.centers||[]).map(c=>c.center_name);
+    if(!inMaster(centers,r.center_name)) previewErrors.push(`${r._row}行目：営業所マスタ未登録（${r.center_name}）`);
+    if(!inMaster(masters.channels,r.channel)) previewErrors.push(`${r._row}行目：媒体マスタ未登録（${r.channel}）`);
+    if(!inMaster(masters.channelDetails,r.channel_detail)) previewErrors.push(`${r._row}行目：媒体詳細マスタ未登録（${r.channel_detail}）`);
+    if(!inMaster(masters.jobTypes,r.job_type)) previewErrors.push(`${r._row}行目：職種マスタ未登録（${r.job_type}）`);
+    if(!inMaster(masters.statuses,r.status)) previewErrors.push(`${r._row}行目：ステータスマスタ未登録（${r.status}）`);
+    if(!inMaster(masters.declineReasons,r.decline_reason)) previewErrors.push(`${r._row}行目：辞退理由マスタ未登録（${r.decline_reason}）`);
+    if(!inMaster(masters.rejectReasons,r.reject_reason)) previewErrors.push(`${r._row}行目：不採用理由マスタ未登録（${r.reject_reason}）`);
+  });
+  renderPreview();
+}
+function renderPreview(){
+  document.getElementById('importTotalCount').textContent=previewRows.length||0;
+  document.getElementById('importErrorCount').textContent=previewErrors.length||0;
+  document.getElementById('importValidCount').textContent=previewErrors.length?0:previewRows.length;
+  document.getElementById('importUpdateCount').textContent=previewUpdateCount;
+  document.getElementById('importInsertCount').textContent=previewInsertCount;
+  document.getElementById('runImportButton').disabled=!(previewRows.length && previewErrors.length===0);
+  const errorButton=document.getElementById('downloadErrorCsvButton');
+  if(errorButton) errorButton.disabled=previewErrors.length===0;
+  updateImportActionVisibility();
+  document.getElementById('importDuplicateArea').innerHTML=previewDuplicateRows.length
+    ? `<div class="io-duplicate-head">上書き候補 ${previewDuplicateRows.length}件</div>` + previewDuplicateRows.slice(0,20).map(r=>`<div class="io-duplicate-item">${escapeHtml(r._row)}行目：${escapeHtml(r.name||"")} / 候補者ID ${escapeHtml(r.candidate_id||"")}</div>`).join('')
+    : '';
+  document.getElementById('importErrors').innerHTML=previewErrors.slice(0,20).map(e=>`<div class="io-error-item">${escapeHtml(e)}</div>`).join('');
+  const cols=['_row','candidate_id','name','applied_date','status','division','center_name','channel'];
+  document.getElementById('importPreviewArea').innerHTML=`<table><thead><tr>${cols.map(c=>`<th>${c==='_row'?'行':(CSV_COLUMNS.find(x=>x[0]===c)?.[1]||c)}</th>`).join('')}</tr></thead><tbody>${previewRows.slice(0,30).map(r=>`<tr>${cols.map(c=>`<td>${escapeHtml(r[c]||'')}</td>`).join('')}</tr>`).join('')||'<tr><td class="empty" colspan="7">プレビュー対象がありません。</td></tr>'}</tbody></table>`;
+}
+async function normalizeExistingCandidateNames(){
+  if(window.RecruitOpsGuard && !window.RecruitOpsGuard.requireImport()) return;
+  if(window.RecruitUI){
+    const ok = await window.RecruitUI.confirmAction(
+      "登録済み候補者の氏名スペースを半角スペースに統一します。\n\n例：山田　太郎 / 山田  太郎 → 山田 太郎",
+      {title:"氏名スペース統一",okText:"実行する",cancelText:"キャンセル",type:"warning"}
+    );
+    if(!ok)return;
+  }
+  try{
+    RecruitUI.toast("氏名を確認しています...", "info");
+    const {data,error}=await sb.from('candidates').select('id,name').order('applied_date',{ascending:false});
+    if(error) throw error;
+    const targets=(data||[])
+      .map(r=>({id:r.id,before:String(r.name||''),after:normalizePersonName(r.name)}))
+      .filter(r=>r.id && r.before !== r.after);
+    for(const row of targets){
+      const {error:updateError}=await sb.from('candidates').update({name:row.after}).eq('id',row.id);
+      if(updateError) throw updateError;
+    }
+    if(window.RecruitAudit && window.RecruitAudit.write){
+      await window.RecruitAudit.write('candidate_name_normalize','candidates','bulk',{count:targets.length});
+    }
+    RecruitUI.toast(`氏名スペースを統一しました：${targets.length}件`, "success");
+  }catch(e){
+    RecruitUI.showError("氏名スペース統一に失敗しました。\n\n"+(e.message||e));
+  }
+}
+
+function backupNowLabel(){
+  return new Date().toLocaleString("ja-JP", {year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"});
+}
+function backupCountOf(payload, table){
+  return payload?.tables?.[table]?.length || 0;
+}
+function simpleHashString(text){
+  let hash = 2166136261;
+  for(let i=0;i<text.length;i++){
+    hash ^= text.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return (hash >>> 0).toString(16);
+}
+async function getCurrentUserForBackup(){
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    return session?.user || null;
+  }catch(e){ return null; }
+}
+async function fetchBackupTable(table){
+  const {data,error}=await sb.from(table).select('*');
+  if(error) throw new Error(`${table}: ${error.message}`);
+  return data || [];
+}
+async function createPreImportBackup(){
+  const user=await getCurrentUserForBackup();
+  const tables={};
+  for(const table of BACKUP_TABLES){
+    tables[table]=await fetchBackupTable(table);
+  }
+  const payload={
+    app:'recruit-app',
+    backup_version:1,
+    backup_type:'auto_before_import',
+    created_at:new Date().toISOString(),
+    created_label:backupNowLabel(),
+    user_email:user?.email || null,
+    user_id:user?.id || null,
+    role:null,
+    note:`CSV取り込み前の自動バックアップ${selectedCsvFileName ? '：' + selectedCsvFileName : ''}`,
+    tables
+  };
+  const item={
+    id:'local_' + Date.now(),
+    created_at:payload.created_at,
+    created_label:payload.created_label,
+    backup_type:payload.backup_type,
+    candidate_count:backupCountOf(payload,'candidates'),
+    recruitment_target_count:backupCountOf(payload,'recruitment_targets'),
+    channel_cost_count:backupCountOf(payload,'channel_costs'),
+    master_center_count:backupCountOf(payload,'master_centers'),
+    profile_count:backupCountOf(payload,'profiles'),
+    created_by_email:payload.user_email,
+    data_hash:simpleHashString(JSON.stringify(payload.tables || {})),
+    payload
+  };
+  const current=JSON.parse(localStorage.getItem(BACKUP_LOCAL_KEY) || '[]');
+  current.unshift(item);
+  localStorage.setItem(BACKUP_LOCAL_KEY, JSON.stringify(current.slice(0, MAX_LOCAL_BACKUP_GENERATIONS)));
+  localStorage.setItem(BACKUP_AUTO_META_KEY, JSON.stringify({
+    ...(JSON.parse(localStorage.getItem(BACKUP_AUTO_META_KEY) || '{}')),
+    lastAutoBackupAt:payload.created_at,
+    lastAutoBackupLabel:payload.created_label,
+    lastBackupAt:payload.created_at,
+    lastBackupLabel:payload.created_label,
+    autoStatusLabel:'CSV取込前に自動保存完了'
+  }));
+  try{
+    await sb.from('system_backups').insert({
+      backup_type:payload.backup_type,
+      backup_version:1,
+      backup_label:payload.created_label,
+      created_by:user?.id || null,
+      created_by_email:user?.email || null,
+      source_app:'recruit-app',
+      candidate_count:item.candidate_count,
+      recruitment_target_count:item.recruitment_target_count,
+      channel_cost_count:item.channel_cost_count,
+      master_center_count:item.master_center_count,
+      profile_count:item.profile_count,
+      backup_json:payload,
+      note:payload.note
+    });
+  }catch(e){
+    console.warn('Supabase backup skipped before import:', e?.message || e);
+  }
+  return item;
+}
+
+function getLastImportUndoMeta(){
+  try{return JSON.parse(localStorage.getItem(LAST_IMPORT_UNDO_KEY) || "null");}catch(e){return null;}
+}
+function updateLastImportUndoUi(){
+  const meta=getLastImportUndoMeta();
+  const button=document.getElementById("undoLastImportButton");
+  const label=document.getElementById("lastImportUndoStatus");
+  if(button) button.disabled=!meta?.backup_id;
+  if(label){
+    label.classList.toggle('is-hidden', !meta?.backup_id);
+    label.textContent = meta?.backup_id
+      ? `取消可能：${meta.file_name || "CSV取り込み"} / ${meta.total || 0}件 / ${meta.created_label || "保存済み"}`
+      : "";
+  }
+  updateImportActionVisibility();
+}
+function findLocalBackupById(id){
+  const backups=JSON.parse(localStorage.getItem(BACKUP_LOCAL_KEY) || "[]");
+  return backups.find(item=>item.id===id) || null;
+}
+async function restoreCandidatesFromBackupItem(item){
+  const rows=item?.payload?.tables?.candidates || [];
+  const {data:current,error:selectError}=await sb.from("candidates").select("id");
+  if(selectError) throw selectError;
+  const ids=(current||[]).map(r=>r.id).filter(Boolean);
+  for(let i=0;i<ids.length;i+=200){
+    const chunk=ids.slice(i,i+200);
+    const {error}=await sb.from("candidates").delete().in("id", chunk);
+    if(error) throw error;
+  }
+  for(let i=0;i<rows.length;i+=200){
+    const chunk=rows.slice(i,i+200);
+    if(chunk.length){
+      const {error}=await sb.from("candidates").insert(chunk);
+      if(error) throw error;
+    }
+  }
+}
+async function restoreLastImportBackup(){
+  if(window.RecruitOpsGuard && !window.RecruitOpsGuard.requireImport()) return;
+  const meta=getLastImportUndoMeta();
+  if(!meta?.backup_id){ RecruitUI.toast("取消できる直前取り込みがありません。", "info"); return; }
+  const item=findLocalBackupById(meta.backup_id);
+  if(!item){ RecruitUI.showError("取消用バックアップがこの端末に見つかりません。バックアップ画面から復元してください。"); return; }
+  if(window.RecruitUI){
+    const ok=await window.RecruitUI.confirmAction(
+      `直前のCSV取り込みを取消し、取り込み前の候補者データへ戻します。\n\n対象：${meta.file_name || "CSV取り込み"}\n件数：${meta.total || 0}件\n保存：${meta.created_label || "自動バックアップ"}`,
+      {title:"直前取り込みの取消",okText:"取り込み前に戻す",cancelText:"やめる",type:"warning"}
+    );
+    if(!ok) return;
+  }
+  try{
+    RecruitUI.toast("直前取り込みを取消しています...", "info");
+    await restoreCandidatesFromBackupItem(item);
+    localStorage.removeItem(LAST_IMPORT_UNDO_KEY);
+    updateLastImportUndoUi();
+    if(window.RecruitAudit && window.RecruitAudit.write){
+      await window.RecruitAudit.write("candidate_import_undo","candidates","last_import",{backup_id:meta.backup_id,file_name:meta.file_name,total:meta.total});
+    }
+    RecruitUI.toast("直前のCSV取り込みを取消しました。", "success");
+  }catch(e){
+    RecruitUI.showError("直前取り込みの取消に失敗しました。\n\n"+(e.message||e));
+  }
+}
+
+async function runImportCsv(){
+  if(window.RecruitOpsGuard && !window.RecruitOpsGuard.requireImport()) return;
+  if(!previewRows.length || previewErrors.length) return;
+  const mode=document.querySelector('input[name="importMode"]:checked')?.value||'insert';
+
+  if(window.RecruitUI){
+    const ok = await window.RecruitUI.confirmAction(
+      `CSVを取り込みます。\n\n新規候補：${previewInsertCount}件\n上書き候補：${previewUpdateCount}件\n\n実行前に現在データを自動バックアップします。`,
+      {title:"CSV取り込み確認",okText:"バックアップ後に取り込む",cancelText:"キャンセル",type:"warning"}
+    );
+    if(!ok)return;
+  }
+  const clean = previewRows.map(r=>{ const o={}; CSV_COLUMNS.forEach(([k])=>{ if(['candidate_id','created_at','updated_at'].includes(k)) return; if(k==='fiscal_year') return; if(r[k]!==undefined && r[k]!== '') o[k]=r[k]; }); if(o.age) o.age=Number(o.age)||null; o.is_deleted = String(o.is_deleted||'').toLowerCase()==='true'; return {id:r.candidate_id, data:o}; });
+  try{
+    RecruitUI.toast('取り込み前バックアップを作成しています...', 'info');
+    const backupItem = await createPreImportBackup();
+    if(mode==='upsert'){
+      for(const item of clean){ if(item.id){ const {error}=await sb.from('candidates').update(item.data).eq('id',item.id); if(error) throw error; } else { const {error}=await sb.from('candidates').insert([item.data]); if(error) throw error; } }
+    }else{
+      const rows=clean.map(x=>x.data); const {error}=await sb.from('candidates').insert(rows); if(error) throw error;
+    }
+    if(window.RecruitAudit && window.RecruitAudit.candidateImport){
+      const fileName = document.getElementById('selectedFileName')?.textContent || null;
+      const inserted = mode === 'insert' ? clean.length : clean.filter(x => !x.id).length;
+      const updated = mode === 'upsert' ? clean.filter(x => x.id).length : 0;
+      await window.RecruitAudit.candidateImport({
+        inserted,
+        updated,
+        total: clean.length,
+        mode,
+        file_name: fileName
+      });
+    }
+    localStorage.setItem(LAST_IMPORT_UNDO_KEY, JSON.stringify({backup_id:backupItem.id,created_at:backupItem.created_at,created_label:backupItem.created_label,file_name:selectedCsvFileName,total:clean.length,inserted:mode === "insert" ? clean.length : clean.filter(x=>!x.id).length,updated:mode === "upsert" ? clean.filter(x=>x.id).length : 0}));
+    updateLastImportUndoUi();
+    RecruitUI.toast(`自動バックアップ後に取り込みしました：${clean.length}件`, "success"); cancelImportCsv(true);
+  }catch(e){ RecruitUI.showError("取り込みに失敗しました。\n\n"+(e.message||e)); }
+}
+
+function getCurrentFiscalYear(){
+  if(typeof fiscalYear === 'function') return fiscalYear(new Date());
+  const d=new Date();
+  return d.getMonth()+1>=4 ? d.getFullYear() : d.getFullYear()-1;
+}
+async function populateExportYearOptions(){
+  const select=document.getElementById('exportYear');
+  if(!select) return;
+  const currentFy=getCurrentFiscalYear();
+  const years=new Set([currentFy, currentFy-1]);
+  try{
+    const {data,error}=await sb.from('candidates').select('applied_date').order('applied_date',{ascending:false});
+    if(!error){
+      (data||[]).forEach(row=>{
+        const fy=Number(fiscalYearFromDateText(row.applied_date));
+        if(fy) years.add(fy);
+      });
+    }
+  }catch(e){ console.warn('年度選択の取得に失敗', e); }
+  const sorted=[...years].filter(Boolean).sort((a,b)=>b-a);
+  select.innerHTML='<option value="all">全期間</option>' + sorted.map(y=>{
+    return `<option value="fy:${y}">${y}年度</option>`;
+  }).join('');
+  const currentOption=select.querySelector(`option[value="fy:${currentFy}"]`);
+  if(currentOption) select.value=`fy:${currentFy}`;
+}
+
+async function exportCandidatesCsv(){
+  const includeDeleted=document.getElementById('exportIncludeDeleted').value==='true';
+  const fy=document.getElementById('exportYear').value;
+  let q=sb.from('candidates').select('*').order('applied_date',{ascending:false});
+  if(!includeDeleted) q=q.eq('is_deleted',false);
+  const {data,error}=await q; if(error){ RecruitUI.showError("CSV出力に失敗しました。\n\n"+error.message); return; }
+  const filtered=(data||[]).filter(r=>{ const rowFy=fiscalYearFromDateText(r.applied_date); if(fy && fy.startsWith('fy:')) return Number(rowFy)===Number(fy.replace('fy:','')); return true; });
+  const header=CSV_COLUMNS.map(c=>csvEscape(c[1])).join(',');
+  const body=filtered.map(r=>CSV_COLUMNS.map(([k])=>{ if(k==='candidate_id') return csvEscape(r.id||''); if(k==='fiscal_year') return csvEscape(fiscalYearFromDateText(r.applied_date)||''); return csvEscape(r[k]??''); }).join(',')).join('\n');
+  downloadText(`recruit_candidates_${new Date().toISOString().slice(0,10)}.csv`, header+'\n'+body+'\n');
+}
+</script>
+<script src="./sidebar.js?v=20260513_compare_graph"></script>
+<script>
+(function(){
+  function showDataIoPage(){
+    document.body.classList.remove('auth-checking');
+    document.getElementById('appScreen')?.classList.remove('hidden');
+    if(typeof window.renderDashboardSidebar === 'function') window.renderDashboardSidebar();
+    if(typeof renderImportHistory === 'function') renderImportHistory();
+    if(typeof populateExportYearOptions === 'function') populateExportYearOptions();
+    if(typeof updateLastImportUndoUi === 'function') updateLastImportUndoUi();
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', showDataIoPage);
+  }else{
+    showDataIoPage();
+  }
+})();
+</script>
+
+</body>
+</html>

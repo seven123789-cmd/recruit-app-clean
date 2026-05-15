@@ -1,0 +1,25 @@
+/* dashboard.css : 採用管理ダッシュボード page specific only
+   共通カード色・hover・一覧へ表示は dashboard_ui.css が担当 */
+#appScreen:not(.hidden){display:block;}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:22px;padding:0;}
+.topbar-row{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;}
+.topbar h1{margin:0;width:100%;min-height:68px;display:flex;align-items:center;padding:0 28px;border-radius:22px;color:#fff;font-size:26px;font-weight:950;letter-spacing:-.02em;background:linear-gradient(135deg,#60a5fa 0%,#7c83f4 62%,#c4a7f8 100%);box-shadow:0 18px 42px rgba(30,64,175,.14);}
+.filter-toggle{width:100%;min-height:44px;margin:0 0 18px;padding:0 18px;display:flex;align-items:center;justify-content:space-between;border:1px solid #dbeafe;border-radius:14px;background:#fff;color:#2563eb;font-size:13px;font-weight:900;box-shadow:0 10px 24px rgba(37,99,235,.08);}
+.filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+
+.dashboard-side-summary{margin-top:18px;padding-top:16px;border-top:1px solid #e2e8f0;}
+.dashboard-side-summary .summary-grid{display:grid;gap:8px;}
+.summary-item{min-height:40px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff;}
+.summary-label{color:#64748b;font-size:11px;font-weight:900;}
+.summary-value{color:#0f172a;font-size:14px;font-weight:950;text-align:right;}
+.priority-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;}
+.flow-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px;}
+.reason-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;}
+.priority-label,.flow-label,.reason-title{font-size:13px;color:#334155;font-weight:900;line-height:1.35;}
+.priority-sub{margin-top:10px;color:#64748b;font-size:12px;font-weight:800;line-height:1.45;}
+.reason-card{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.log-box{display:none;}
+.auth-shell{max-width:520px;margin:48px auto 0;}.auth-title{margin:0 0 8px;font-size:28px;color:#fff;}.auth-sub{margin:0 0 20px;color:rgba(255,255,255,.82);}.auth-card{background:#fff;border:1px solid rgba(226,232,240,.9);border-radius:22px;box-shadow:var(--shadow);padding:24px;}.auth-card h2{margin:0 0 8px;font-size:22px;color:#0f172a;}.auth-note{margin:0 0 18px;color:var(--muted);font-size:13px;}
+@media(max-width:1200px){.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.priority-grid,.reason-grid{grid-template-columns:1fr;}.flow-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:720px){.filter-grid,.flow-grid{grid-template-columns:1fr;}.topbar h1{font-size:22px;min-height:58px;padding:0 20px;}}

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>データバックアップ｜採用管理</title>
+<link rel="stylesheet" href="./assets/css/common.css">
+<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260508_sidebar2">
+<link rel="stylesheet" href="./assets/css/dashboard_ui.css">
+<link rel="stylesheet" href="./assets/css/data_backup.css?v=20260515_base_cleanup">
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar" id="dashboardSidebarMenu"></aside>
+
+  <main class="main-content backup-main">
+    <header class="page-header">
+      <div>
+        <h1>バックアップ</h1>
+        <p>候補者・目標・媒体費・マスタ・権限情報を保存します。</p>
+      </div>
+      <div class="header-status">
+        <div class="header-save-row">
+          <div class="header-save-status">
+            <span>最終保存</span>
+            <strong id="lastBackupAtHeader">-</strong>
+          </div>
+          <div class="header-save-status auto">
+            <span>最終自動保存</span>
+            <strong id="lastAutoBackupAtHeader">-</strong>
+          </div>
+        </div>
+        <div class="header-chips">
+          <span class="header-chip auto-on" id="autoBackupStatus">自動保存ON</span>
+          <span class="header-chip">管理者</span>
+          <span class="header-chip" id="currentAdminEmail">-</span>
+        </div>
+      </div>
+    </header>
+
+    <div id="backupMessage" class="backup-message info">バックアップ状態を確認しています。</div>
+
+    <section class="backup-action-grid">
+      <div class="backup-action-card primary">
+        <div>
+          <h2>バックアップを作成</h2>
+          <p>現在のデータを、ブラウザ内とクラウド側へ保存します。</p>
+        </div>
+        <button type="button" class="btn-main" id="createGenerationBackup">バックアップを作成</button>
+      </div>
+
+      <div class="backup-action-card">
+        <div>
+          <h2>クラウド保存</h2>
+          <p>クラウド側へバックアップを保存します。</p>
+        </div>
+        <button type="button" class="btn-main secondary" id="createSupabaseBackup">クラウドへ保存</button>
+      </div>
+
+      <div class="backup-action-card">
+        <div>
+          <h2>ファイル出力</h2>
+          <p>復旧用ファイルをダウンロードします。CSVは「データ連携・出力」で管理します。</p>
+        </div>
+        <div class="button-row">
+          <button type="button" class="btn-sub" id="downloadFullJson">復旧用JSON</button>
+          <button type="button" class="btn-sub" id="refreshBackupCounts">件数確認</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="backup-count-grid">
+      <div class="count-card"><span>候補者</span><strong id="countCandidates">-</strong></div>
+      <div class="count-card"><span>採用目標</span><strong id="countTargets">-</strong></div>
+      <div class="count-card"><span>媒体費</span><strong id="countCosts">-</strong></div>
+      <div class="count-card"><span>営業所</span><strong id="countCenters">-</strong></div>
+      <div class="count-card"><span>権限</span><strong id="countProfiles">-</strong></div>
+    </section>
+
+    <section class="backup-panel">
+      <div class="panel-head">
+        <div>
+          <h2>バックアップメモ</h2>
+          <p>復元時に分かるよう、変更前・変更後などを残せます。</p>
+        </div>
+      </div>
+      <textarea id="backupNote" class="backup-note" placeholder="例：AI分析追加前、媒体費契約対応後 など"></textarea>
+      <div class="backup-status-line">
+        <span>最終プレビュー：<strong id="lastBackupPreview">-</strong></span>
+      </div>
+    </section>
+
+    <section class="backup-columns">
+      <div class="backup-panel">
+        <div class="panel-head">
+          <div>
+            <h2>クラウド保存済み世代</h2>
+            <p>PCやブラウザが変わっても確認できるバックアップです。</p>
+          </div>
+          <div class="panel-actions">
+            <span class="mini-badge"><span id="supabaseGenerationCount">0</span>世代</span>
+            <button type="button" class="btn-sub" id="refreshSupabaseGenerations">更新</button>
+          </div>
+        </div>
+        <div id="supabaseGenerationList" class="generation-table-area"></div>
+      </div>
+
+      <div class="backup-panel">
+        <div class="panel-head">
+          <div>
+            <h2>このブラウザのバックアップ</h2>
+            <p>このPC・ブラウザ内に保存されたバックアップです。</p>
+          </div>
+          <span class="mini-badge"><span id="localGenerationCount">0</span>世代</span>
+        </div>
+        <div id="localGenerationList" class="generation-table-area"></div>
+      </div>
+    </section>
+
+    <section class="backup-panel">
+      <div class="panel-head">
+        <div>
+          <h2>復元プレビュー</h2>
+          <p>保存済みバックアップや手元のJSONを、復元前に確認します。</p>
+        </div>
+        <div class="panel-actions">
+          <label class="btn-sub file-preview-label" for="restoreJsonFile">JSON読込プレビュー</label>
+          <input type="file" id="restoreJsonFile" class="hidden-file-input" accept="application/json,.json">
+        </div>
+      </div>
+      <div id="restorePreview" class="restore-preview">
+        <div class="empty-state">バックアップの「プレビュー」、またはJSON読込プレビューを押すとここに表示されます。</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="restoreModal" class="restore-modal" aria-hidden="true">
+  <div class="restore-modal-backdrop" data-restore-close="1"></div>
+  <div class="restore-modal-card" role="dialog" aria-modal="true" aria-labelledby="restoreModalTitle">
+    <div class="restore-modal-head">
+      <div>
+        <h2 id="restoreModalTitle">バックアップ復元</h2>
+        <p id="restoreModalSubtitle">復元内容を確認してください。</p>
+      </div>
+      <button type="button" class="restore-modal-close" data-restore-close="1" aria-label="閉じる">×</button>
+    </div>
+
+    <div id="restoreModalSummary" class="restore-modal-summary"></div>
+
+    <div class="restore-target-panel">
+      <div class="restore-target-title">復元対象</div>
+      <div class="restore-target-grid">
+        <label><input type="checkbox" class="restore-table-check" value="candidates" checked> 候補者</label>
+        <label><input type="checkbox" class="restore-table-check" value="recruitment_targets" checked> 採用目標</label>
+        <label><input type="checkbox" class="restore-table-check" value="channel_costs" checked> 媒体費</label>
+        <label><input type="checkbox" class="restore-table-check" value="master_divisions" checked> 本部</label>
+        <label><input type="checkbox" class="restore-table-check" value="master_centers" checked> 営業所</label>
+        <label><input type="checkbox" class="restore-table-check" value="master_job_types" checked> 職種</label>
+        <label><input type="checkbox" class="restore-table-check" value="master_owners" checked> 担当者</label>
+        <label><input type="checkbox" class="restore-table-check" value="master_channels" checked> 媒体</label>
+        <label><input type="checkbox" class="restore-table-check" value="master_channel_details" checked> 媒体詳細</label>
+        <label><input type="checkbox" class="restore-table-check" value="master_statuses" checked> ステータス</label>
+        <label><input type="checkbox" class="restore-table-check" value="master_decline_reasons" checked> 辞退理由</label>
+        <label><input type="checkbox" class="restore-table-check" value="master_reject_reasons" checked> 不採用理由</label>
+        <label><input type="checkbox" class="restore-table-check" value="profiles" checked> 権限</label>
+      </div>
+    </div>
+
+    <div class="restore-warning-box">
+      <strong>復元前に、現在のデータを自動バックアップします。</strong>
+      <span>選択したデータは、バックアップ時点の内容で上書きされます。実行前に必ず内容を確認してください。</span>
+    </div>
+
+    <label class="restore-confirm-label" for="restoreConfirmInput">
+      最終確認：実行する場合は「復元」と入力してください。
+    </label>
+    <input type="text" id="restoreConfirmInput" class="restore-confirm-input" autocomplete="off" placeholder="復元">
+
+    <div class="restore-modal-actions">
+      <button type="button" class="btn-sub" data-restore-close="1">キャンセル</button>
+      <button type="button" class="btn-main danger" id="executeRestore" disabled>復元を実行</button>
+    </div>
+  </div>
+</div>
+<div id="backupToast" class="backup-toast" aria-live="polite"></div>
+<div id="backupLoading" class="backup-loading" aria-hidden="true"><div class="backup-loading-box"><span class="backup-spinner"></span><strong>処理中です</strong><p id="backupLoadingText">バックアップを処理しています。</p></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./common.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/audit_utils.js"></script>
+<script src="assets/js/ops_guard.js"></script>
+<script src="assets/js/safe_utils.js"></script>
+<script src="./sidebar.js?v=20260513_compare_graph"></script>
+<script src="./data_backup.js?v=20260514_master_backup"></script>
+</body>
+</html>

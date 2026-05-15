@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>本部分析</title>
+<link href="./assets/css/common.css" rel="stylesheet"/>
+<link href="./assets/css/header.css" rel="stylesheet"/>
+<link href="./assets/css/sidebar.css?v=20260508_sidebar2" rel="stylesheet"/>
+<link href="./assets/css/dashboard_division.css" rel="stylesheet"/>
+<script src="./common.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/audit_utils.js"></script>
+<script src="assets/js/ops_guard.js"></script>
+<script src="assets/js/safe_utils.js"></script>
+<script src="./sidebar.js?v=20260513_compare_graph"></script>
+<link href="./assets/css/dashboard_ui.css" rel="stylesheet"/>
+</head>
+<body class="auth-checking">
+<div class="container hidden" id="authScreen">
+<div class="auth-shell">
+<h1 class="auth-title">本部分析</h1>
+<p class="auth-sub">ログイン後に画面を表示します。</p>
+<div class="auth-card">
+<h2>ログイン</h2>
+<div class="form-grid">
+<div class="col-12">
+<label for="loginEmail">メールアドレス</label>
+<input id="loginEmail" placeholder="example@sline.co.jp" type="email"/>
+</div>
+<div class="col-12">
+<label for="loginPassword">パスワード</label>
+<input id="loginPassword" placeholder="パスワード" type="password"/>
+</div>
+<div class="col-12">
+<button class="btn-primary" onclick="login()" type="button">ログイン</button>
+</div>
+<div class="col-12">
+<div class="message-box message-info" id="authMessage">未ログインです</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="hidden" id="appScreen">
+<div class="app-layout">
+<aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+<main class="main-content">
+<header class="page-header dashboard-page-header"><div class="dashboard-title-line"><h1>本部分析</h1><div aria-label="集計状態" class="dashboard-header-meta"><span class="dashboard-header-chip">対象年度：<span id="sideFiscalYear">-</span></span><span class="dashboard-header-chip">対象件数：<span id="sideRows">0</span></span><span class="dashboard-header-chip">対象本部：<span id="sideDivision">すべて</span></span><span class="dashboard-header-chip">応募→面接：<span id="sideInterviewRate">0.0%</span></span><span class="dashboard-header-chip">応募→採用：<span id="sideJoinRate">0.0%</span></span><span class="dashboard-header-chip">対象期間：<span id="sidePeriod">-</span></span></div></div></header>
+<section class="division-control-card analysis-control-card">
+<div class="division-control-copy analysis-control-copy">
+<p>分析条件</p>
+<h2>本部別の採用力を確認</h2>
+</div>
+<div class="division-control-form analysis-control-form analysis-control-form--2">
+<div class="analysis-field">
+<label for="fy">対象年度</label>
+<select id="fy" onchange="handleFilterChange()">
+<option value="current"></option>
+<option value="previous"></option>
+<option value="all">全期間</option>
+</select>
+</div>
+<div class="analysis-field">
+<label for="divisionFilter">対象本部</label>
+<select id="divisionFilter" onchange="handleFilterChange()"><option value="">すべて</option></select>
+</div>
+<button class="btn-primary" onclick="loadAnalysis()" type="button">更新</button>
+<div class="period-text analysis-period" id="periodText">対象期間：-</div>
+</div>
+<input id="from" type="hidden"/><input id="to" type="hidden"/>
+</section>
+<section class="card">
+<h2>サマリー</h2>
+<div class="grid-5 summary-grid">
+<div class="metric-card kpi-applied"><div class="label">応募</div><div class="value" id="sumApplied">0</div><div class="sub">対象期間内の応募数</div></div>
+<div class="metric-card kpi-interview"><div class="label">面接実施</div><div class="value" id="sumInterview">0</div><div class="sub">面接まで進んだ人数</div></div>
+<div class="metric-card kpi-hired"><div class="label">採用</div><div class="value" id="sumJoin">0</div><div class="sub">入社日登録済み</div></div>
+<div class="metric-card kpi-rate-interview"><div class="label">応募→面接</div><div class="value" id="sumInterviewRate">0.0%</div><div class="sub">応募数に対する面接率</div></div>
+<div class="metric-card kpi-rate-hired"><div class="label">応募→採用</div><div class="value" id="sumJoinRate">0.0%</div><div class="sub">応募数に対する採用率</div></div>
+</div>
+</section>
+<section class="insight-card" id="divisionInsight">
+<div class="insight-title">重点確認</div>
+<div class="insight-body">読込中です</div>
+</section>
+<section class="card">
+<div class="section-head"><div><h2>本部別パフォーマンス</h2></div></div>
+<div class="performance-grid" id="performanceGrid">
+<div class="empty-box">読込中です</div>
+</div>
+</section>
+<section class="card">
+<div class="section-head"><div><h2>応募→面接→採用の差分比較</h2></div></div>
+<div class="chart-box">
+<canvas id="divisionFunnelChart"></canvas>
+</div>
+</section>
+<section class="card">
+<div class="section-head"><div><h2>本部別 ボトルネック</h2></div></div>
+<div class="bottleneck-grid" id="bottleneckGrid"><div class="empty-box">読込中です</div></div>
+</section>
+<div class="log-box" id="logBox">待機中</div>
+</main>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="./dashboard_division.js"></script>
+<script src="dashboard_summary_links.js"></script>
+</body>
+</html>

@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>帳票出力｜採用管理</title>
+<link rel="stylesheet" href="./assets/css/common.css">
+<link rel="stylesheet" href="./assets/css/header.css">
+<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260514_report_design">
+<link rel="stylesheet" href="./assets/css/print_center.css?v=20260514_hq_flow_real">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="./common.js"></script>
+<script src="./sidebar.js?v=20260514_report_design"></script>
+</head>
+<body>
+<div id="appScreen">
+  <div class="app-layout">
+    <aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+
+    <main class="main-content print-main">
+      <header class="page-header print-page-header">
+        <div>
+          <span class="page-kicker">REPORT CENTER</span>
+          <h1>帳票出力</h1>
+          <p>提出・共有用のレポートを作成します。</p>
+        </div>
+      </header>
+
+      <section class="print-hero">
+        <div>
+          <span class="hero-badge">Print Report</span>
+          <h2>レポートを作成</h2>
+          <p>帳票・集計範囲・見せ方を選んで、提出用のA4レポートを作成します。</p>
+        </div>
+      </section>
+
+      <section class="report-workspace">
+        <div class="workspace-left">
+          <section class="print-panel report-picker-panel">
+            <div class="section-title-row">
+              <div>
+                <span class="step-label">REPORT</span>
+                <h2>帳票を選ぶ</h2>
+              </div>
+              
+            </div>
+
+            <div class="type-tabs" role="tablist" aria-label="レポート種別">
+              <button class="type-tab active" type="button" data-type="summary">サマリー</button>
+              <button class="type-tab" type="button" data-type="single">単体レポート</button>
+              <button class="type-tab" type="button" data-type="list">一覧</button>
+              <button class="type-tab" type="button" data-type="hq">本部分析</button>
+            </div>
+
+            <div id="reportList" class="report-list" aria-live="polite"></div>
+          </section>
+
+          <section class="print-panel condition-panel">
+            <div class="section-title-row">
+              <div>
+                <span class="step-label">RANGE</span>
+                <h2>集計範囲</h2>
+              </div>
+              <p id="conditionGuide">年度・月を指定。</p>
+            </div>
+
+            <div class="condition-focus" id="conditionFocusLabel">月次集計</div>
+
+            <div class="basic-condition-grid">
+              <label class="condition-field" data-field="fiscalYear">年度
+                <select id="reportFiscalYear" aria-label="年度"></select>
+              </label>
+              <label class="condition-field" data-field="month">月
+                <select id="reportMonth">
+                  <option value="全月">全月</option>
+                  <option>4月</option><option>5月</option><option>6月</option><option>7月</option><option>8月</option><option>9月</option>
+                  <option>10月</option><option>11月</option><option>12月</option><option>1月</option><option>2月</option><option>3月</option>
+                </select>
+              </label>
+              <label class="condition-field" data-field="from">応募日From
+                <input id="reportFrom" type="date">
+              </label>
+              <label class="condition-field" data-field="to">応募日To
+                <input id="reportTo" type="date">
+              </label>
+            </div>
+
+            <details class="advanced-filters" id="advancedFilters">
+              <summary>
+                <span>詳細絞り込み</span>
+                <small id="advancedSummary">指定なし</small>
+              </summary>
+              <div class="advanced-grid">
+                <label>本部<select id="reportDivision"><option value="すべて">すべて</option></select></label>
+                <label>営業所<select id="reportCenter"><option value="すべて">すべて</option></select></label>
+                <label>媒体<select id="reportChannel"><option value="すべて">すべて</option></select></label>
+                <label>担当者<select id="reportOwner"><option value="すべて">すべて</option></select></label>
+                <label>職種<select id="reportJob"><option value="すべて">すべて</option></select></label>
+              </div>
+              <div class="hq-flow-note" id="hqFlowNote" hidden>
+                <strong>本部 → 媒体 → 職種</strong>
+                <span>例：東日本本部 / テンリク の応募・面接・採用を職種別に確認します。</span>
+              </div>
+            </details>
+          </section>
+        </div>
+
+        <aside class="workspace-right">
+          <section class="print-panel output-control-panel">
+            <div class="section-title-row compact">
+              <div>
+                <span class="step-label">OUTPUT</span>
+                <h2>出力設定</h2>
+              </div>
+            </div>
+            <dl class="output-setting-list">
+              <div class="is-main"><dt>レポート</dt><dd id="settingReportTitle">月次サマリーレポート</dd></div>
+              <div><dt>集計範囲</dt><dd id="summaryRange">今年度 全月</dd></div>
+              <div><dt>詳細条件</dt><dd id="summaryFilters">指定なし</dd></div>
+              <div><dt>ページ</dt><dd id="settingPageEstimate">A4 1枚想定</dd></div>
+            </dl>
+
+            <div id="layoutMode" class="layout-mode show">
+              <div class="mode-inline" role="radiogroup" aria-label="見せ方">
+                <label>
+                  <input type="radio" name="viewMode" value="graph" checked>
+                  <span>グラフ重視</span>
+                </label>
+                <label>
+                  <input type="radio" name="viewMode" value="table">
+                  <span>表重視</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="mini-preview-title">
+              <span>PREVIEW</span>
+              <strong id="settingViewMode">グラフ重視</strong>
+            </div>
+
+            <div class="paper-mini is-summary" id="paperMini" aria-label="A4横レポートのイメージ">
+              <div class="mini-title-area">
+                <span id="miniReportKicker">RECRUIT REPORT</span>
+                <strong id="miniReportTitle">月次サマリーレポート</strong>
+                <em id="miniReportScope">集計範囲</em>
+              </div>
+              <div class="mini-kpi" id="miniKpiRow"><i></i><i></i><i></i><i></i></div>
+              <div class="mini-chart" id="miniChartBlock">月別推移グラフ</div>
+              <div class="mini-table-grid" id="miniTableGrid">
+                <div>媒体 TOP5</div>
+                <div>本部 TOP5</div>
+              </div>
+              <div class="mini-list-table" id="miniListTable">応募者一覧表</div>
+            </div>
+
+            <div class="output-summary">
+              <div><span>用紙</span><strong>A4横</strong></div>
+              <div><span>形式</span><strong id="outputTypeLabel">サマリー</strong></div>
+              <div><span>内容</span><strong id="outputContentLabel">KPI / グラフ / TOP表</strong></div>
+            </div>
+          </section>
+
+          <section class="print-actions-panel">
+            <button class="btn-large btn-confirm" type="button" onclick="openReport(false)">プレビュー</button>
+            <button class="btn-large btn-print" type="button" onclick="openReport(true)">印刷</button>
+          </section>
+        </aside>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+const REPORTS = [
+  { type:"summary", report:"summary_monthly", title:"月次サマリーレポート", badge:"MONTHLY", desc:"月次状況を要約", content:"KPI / 月別推移 / TOP表", periodMode:"monthly" },
+  { type:"summary", report:"summary_trend", title:"推移サマリーレポート", badge:"TREND", desc:"年度推移を要約", content:"推移グラフ / TOP表", periodMode:"trend" },
+  { type:"summary", report:"summary_compare", title:"比較サマリーレポート", badge:"COMPARE", desc:"主要軸を比較", content:"比較グラフ / ランキング", periodMode:"monthly" },
+  { type:"single", report:"single_media_compare", title:"媒体比較レポート", badge:"MEDIA", desc:"媒体別成果", content:"媒体別グラフ / 詳細表", periodMode:"monthly" },
+  { type:"single", report:"single_division_compare", title:"本部比較レポート", badge:"DIV", desc:"本部別成果", content:"本部別グラフ / 詳細表", periodMode:"monthly" },
+  { type:"single", report:"single_owner_compare", title:"担当比較レポート", badge:"OWNER", desc:"担当者別成果", content:"担当別グラフ / 詳細表", periodMode:"monthly" },
+  { type:"single", report:"single_job_compare", title:"職種比較レポート", badge:"JOB", desc:"職種別成果", content:"職種別グラフ / 詳細表", periodMode:"monthly" },
+  { type:"single", report:"single_cost_compare", title:"採用単価比較レポート", badge:"COST", desc:"媒体費・単価", content:"媒体費 / 応募単価 / 採用単価", periodMode:"monthly" },
+  { type:"single", report:"single_media_trend", title:"媒体推移レポート", badge:"MEDIA", desc:"媒体別推移", content:"媒体別推移 / 詳細表", periodMode:"trend" },
+  { type:"single", report:"single_division_trend", title:"本部推移レポート", badge:"DIV", desc:"本部別推移", content:"本部別推移 / 詳細表", periodMode:"trend" },
+  { type:"single", report:"single_owner_trend", title:"担当推移レポート", badge:"OWNER", desc:"担当者別推移", content:"担当別推移 / 詳細表", periodMode:"trend" },
+  { type:"single", report:"single_job_trend", title:"職種推移レポート", badge:"JOB", desc:"職種別推移", content:"職種別推移 / 詳細表", periodMode:"trend" },
+  { type:"single", report:"single_cost_trend", title:"採用単価推移レポート", badge:"COST", desc:"採用単価推移", content:"単価推移 / 費用推移", periodMode:"trend" },
+  { type:"list", report:"applicant_list", title:"応募者一覧", badge:"LIST", desc:"応募者一覧", content:"応募者一覧表", periodMode:"list" },
+  { type:"list", report:"action_list", title:"要対応一覧", badge:"ACTION", desc:"要対応者一覧", content:"要対応一覧表", periodMode:"list" },
+  { type:"hq", report:"hq_media_job_flow", title:"本部別 媒体・職種導線", badge:"HQ FLOW", desc:"本部ごとの媒体反応と職種別フロー", content:"本部合算 / 媒体 / 職種別フロー", periodMode:"monthly" }
+];
+
+let currentType = "summary";
+let currentReport = "summary_monthly";
+const PRINT_CENTER_STATE_KEY = "recruit_print_center_state_v2";
+let restoringPrintState = false;
+
+function getCurrentFiscalYear(){
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  return m >= 4 ? y : y - 1;
+}
+
+function fiscalYearLabel(fy){
+  return `${fy}年度`;
+}
+
+function normalizeFiscalYearValue(value){
+  const v = String(value || "").trim();
+  const current = getCurrentFiscalYear();
+  if(!v || v === "今年度") return fiscalYearLabel(current);
+  if(v === "前年度") return fiscalYearLabel(current - 1);
+  if(v === "全年度" || v === "全期間") return "全期間";
+  const m = v.match(/(\d{4})/);
+  return m ? fiscalYearLabel(Number(m[1])) : fiscalYearLabel(current);
+}
+
+function buildFiscalYearOptions(){
+  const select = document.getElementById("reportFiscalYear");
+  if(!select) return;
+  const current = getCurrentFiscalYear();
+  const years = [current, current - 1, current - 2, current - 3];
+  const currentValue = normalizeFiscalYearValue(select.value);
+  select.innerHTML = years.map(y => `<option value="${fiscalYearLabel(y)}">${fiscalYearLabel(y)}</option>`).join("") + '<option value="全期間">全期間</option>';
+  select.value = years.map(fiscalYearLabel).includes(currentValue) || currentValue === "全期間" ? currentValue : fiscalYearLabel(current);
+}
+
+
+function setValue(id, value){
+  const el = document.getElementById(id);
+  if(el && value !== undefined && value !== null){
+    el.dataset.pendingValue = value;
+    el.value = value;
+  }
+}
+
+function collectPrintCenterState(){
+  return {
+    currentType,
+    currentReport,
+    fiscalYear:normalizeFiscalYearValue(valueOf("reportFiscalYear")),
+    month:valueOf("reportMonth") || "全月",
+    from:valueOf("reportFrom"),
+    to:valueOf("reportTo"),
+    division:valueOf("reportDivision"),
+    center:valueOf("reportCenter"),
+    channel:valueOf("reportChannel"),
+    owner:valueOf("reportOwner"),
+    job:valueOf("reportJob"),
+    view:document.querySelector('input[name="viewMode"]:checked')?.value || "graph",
+    advancedOpen:!!document.getElementById("advancedFilters")?.open,
+    scrollY:window.scrollY || 0
+  };
+}
+
+function savePrintCenterState(){
+  if(restoringPrintState) return;
+  try{
+    const state = collectPrintCenterState();
+    state.scrollY = window.scrollY || state.scrollY || 0;
+    sessionStorage.setItem(PRINT_CENTER_STATE_KEY, JSON.stringify(state));
+  }catch(e){}
+}
+
+function restorePrintCenterState(){
+  try{
+    const state = JSON.parse(sessionStorage.getItem(PRINT_CENTER_STATE_KEY) || "{}");
+    if(!state || typeof state !== "object") return null;
+    restoringPrintState = true;
+    currentType = state.currentType || currentType;
+    currentReport = state.currentReport || currentReport;
+    setValue("reportFiscalYear", normalizeFiscalYearValue(state.fiscalYear));
+    setValue("reportMonth", state.month);
+    setValue("reportFrom", state.from);
+    setValue("reportTo", state.to);
+    setValue("reportDivision", state.division);
+    setValue("reportCenter", state.center);
+    setValue("reportChannel", state.channel);
+    setValue("reportOwner", state.owner);
+    setValue("reportJob", state.job);
+    const view = state.view || "graph";
+    const radio = document.querySelector(`input[name="viewMode"][value="${view}"]`);
+    if(radio) radio.checked = true;
+    const details = document.getElementById("advancedFilters");
+    if(details) details.open = !!state.advancedOpen;
+    document.querySelectorAll(".type-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.type === currentType));
+    restoringPrintState = false;
+    return state;
+  }catch(e){
+    restoringPrintState = false;
+    return null;
+  }
+}
+
+function restoreScrollPosition(state){
+  if(!state || !Number.isFinite(Number(state.scrollY))) return;
+  const y = Number(state.scrollY);
+  setTimeout(() => window.scrollTo({top:y, left:0, behavior:"auto"}), 120);
+}
+
+
+function valueOf(id){
+  return (document.getElementById(id)?.value || "").trim();
+}
+
+function currentReportObject(){
+  return REPORTS.find(x => x.report === currentReport) || REPORTS[0];
+}
+
+function periodLabel(mode){
+  if(mode === "trend") return "推移集計";
+  if(mode === "list") return "一覧出力";
+  return "月次集計";
+}
+
+function periodGuide(mode){
+  if(mode === "trend") return "年度を主軸に、必要時だけ期間指定。";
+  if(mode === "list") return "応募日From/Toを主軸に指定。";
+  return "年度と月を主軸に集計。";
+}
+
+function fieldsForMode(mode){
+  if(mode === "list") return ["from", "to"];
+  if(mode === "trend") return ["fiscalYear", "from", "to"];
+  return ["fiscalYear", "month"];
+}
+
+function formatRangeText(cond){
+  const fiscal = normalizeFiscalYearValue(cond.fiscalYear);
+  if(cond.periodMode === "list"){
+    return `応募日 ${cond.from || "指定なし"} ～ ${cond.to || "指定なし"}`;
+  }
+  if(cond.periodMode === "trend"){
+    const extra = (cond.from || cond.to) ? ` / 応募日 ${cond.from || "指定なし"} ～ ${cond.to || "指定なし"}` : "";
+    return `${fiscal === "全期間" ? "全期間" : fiscal + " 推移"}${extra}`;
+  }
+  return `${fiscal} ${cond.month}`;
+}
+
+function selectedFilters(cond){
+  const items = [];
+  if(cond.division !== "すべて") items.push(`本部：${cond.division}`);
+  if(cond.center !== "すべて") items.push(`営業所：${cond.center}`);
+  if(cond.channel !== "すべて") items.push(`媒体：${cond.channel}`);
+  if(cond.owner !== "すべて") items.push(`担当者：${cond.owner}`);
+  if(cond.job !== "すべて") items.push(`職種：${cond.job}`);
+  return items;
+}
+
+function renderReports(){
+  const wrap = document.getElementById("reportList");
+  const list = REPORTS.filter(r => r.type === currentType);
+  if(!list.some(r => r.report === currentReport)) currentReport = list[0].report;
+
+  wrap.innerHTML = list.map(r => `
+    <button type="button" class="report-option ${r.report === currentReport ? "active" : ""}" data-report="${r.report}">
+      <span class="report-badge">${r.badge}</span>
+      <strong>${r.title}</strong>
+      <small>${r.desc}</small>
+    </button>
+  `).join("");
+
+  wrap.querySelectorAll(".report-option").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentReport = btn.dataset.report;
+      renderReports();
+      updateSelected();
+      savePrintCenterState();
+    });
+  });
+
+  document.getElementById("layoutMode").classList.add("show");
+  updateSelected();
+}
+
+function applyConditionMode(){
+  const report = currentReportObject();
+  const mode = report.periodMode || "monthly";
+  const activeFields = new Set(fieldsForMode(mode));
+
+  document.querySelectorAll(".condition-field").forEach(field => {
+    const enabled = activeFields.has(field.dataset.field);
+    field.classList.toggle("is-hidden", !enabled);
+    field.querySelectorAll("input,select").forEach(input => {
+      input.disabled = !enabled;
+    });
+  });
+
+  document.getElementById("conditionFocusLabel").textContent = report.type === "hq" ? "本部導線分析" : periodLabel(mode);
+  document.getElementById("conditionGuide").textContent = report.type === "hq" ? "本部合算から媒体・職種別の応募→面接→採用を確認。" : periodGuide(mode);
+  const hqNote = document.getElementById("hqFlowNote");
+  if(hqNote) hqNote.hidden = report.type !== "hq";
+}
+
+function updateSelected(){
+  const r = currentReportObject();
+  document.getElementById("settingReportTitle").textContent = r.title;
+  const heroTitle = document.getElementById("heroSelectedTitle");
+  const heroDesc = document.getElementById("heroSelectedDesc");
+  if(heroTitle) heroTitle.textContent = r.title;
+  if(heroDesc) heroDesc.textContent = r.desc;
+  document.getElementById("outputTypeLabel").textContent = currentType === "summary" ? "サマリー" : currentType === "single" ? "単体" : currentType === "hq" ? "本部分析" : "一覧";
+  document.getElementById("outputContentLabel").textContent = r.content || "KPI / グラフ / 詳細表";
+  applyConditionMode();
+  updateConditionSummary();
+}
+
+function conditions(){
+  const r = currentReportObject();
+  return {
+    periodMode:r.periodMode || "monthly",
+    fiscalYear:normalizeFiscalYearValue(valueOf("reportFiscalYear")),
+    month:valueOf("reportMonth") || "全月",
+    from:valueOf("reportFrom"),
+    to:valueOf("reportTo"),
+    division:valueOf("reportDivision") || "すべて",
+    center:valueOf("reportCenter") || "すべて",
+    channel:valueOf("reportChannel") || "すべて",
+    owner:valueOf("reportOwner") || "すべて",
+    job:valueOf("reportJob") || "すべて",
+    view:document.querySelector('input[name="viewMode"]:checked')?.value || "graph"
+  };
+}
+
+function viewModeLabel(view){
+  return view === "table" ? "表重視" : "グラフ重視";
+}
+
+function estimatePageText(report, cond){
+  if(report.type === "list") return "複数ページ想定";
+  if(report.type === "hq") return cond.division === "すべて" ? "全本部＋本部別ページ" : "本部導線レポート";
+  if(cond.view === "table") return "全件を自動改ページ";
+  if(report.type === "single") return "A4 1枚寄せ";
+  return "A4 1枚想定";
+}
+
+function previewLayout(report, view){
+  if(report.type === "hq"){
+    return {
+      cls:"is-hq-flow",
+      kpi:true,
+      chart:view === "graph" ? "本部別・媒体別フロー" : "媒体 × 職種 フロー表",
+      tables:["本部合算", "媒体別職種導線"],
+      list:"",
+      content:"本部 / 媒体 / 職種フロー"
+    };
+  }
+  if(report.type === "list"){
+    return {
+      cls:"is-list",
+      kpi:false,
+      chart:"",
+      tables:[],
+      list:report.report === "action_list" ? "要対応一覧表" : "応募者一覧表",
+      content:"一覧表"
+    };
+  }
+
+  if(view === "table"){
+    if(report.type === "summary"){
+      const label = report.report === "summary_compare" ? "主要比較表" : "月別集計表";
+      return {
+        cls:"is-summary is-table-focused",
+        kpi:true,
+        chart:"",
+        tables:[label, "補足一覧"],
+        list:"",
+        content:"KPI / 確認表 / 補足一覧"
+      };
+    }
+    return {
+      cls:"is-single is-table-focused",
+      kpi:true,
+      chart:"",
+      tables:[`${report.title.replace("レポート", "")}詳細表`],
+      list:"",
+      content:"KPI / 詳細表"
+    };
+  }
+
+  if(report.type === "single" && report.periodMode === "trend"){
+    return {
+      cls:"is-single is-trend",
+      kpi:true,
+      chart:`${report.title.replace("レポート","")}グラフ`,
+      tables:["詳細一覧"],
+      list:"",
+      content:"KPI / 推移グラフ / 詳細一覧"
+    };
+  }
+  if(report.type === "single" && report.periodMode === "monthly"){
+    return {
+      cls:"is-single is-compare",
+      kpi:true,
+      chart:report.report.includes("cost") ? "媒体費・単価比較グラフ" : `${report.title.replace("レポート","")}グラフ`,
+      tables:["詳細一覧"],
+      list:"",
+      content:"KPI / 比較グラフ / 詳細一覧"
+    };
+  }
+  if(report.report === "summary_compare"){
+    return {
+      cls:"is-summary is-compare",
+      kpi:true,
+      chart:"主要比較グラフ",
+      tables:["主要ランキング", "補足表"],
+      list:"",
+      content:"KPI / 比較グラフ / ランキング"
+    };
+  }
+  if(report.report === "summary_trend"){
+    return {
+      cls:"is-summary is-trend",
+      kpi:true,
+      chart:"年度推移グラフ",
+      tables:["媒体 TOP5", "本部 TOP5"],
+      list:"",
+      content:"KPI / 年度推移 / TOP表"
+    };
+  }
+  return {
+    cls:"is-summary",
+    kpi:true,
+    chart:"月別推移グラフ",
+    tables:["媒体 TOP5", "本部 TOP5"],
+    list:"",
+    content:"KPI / 月別推移 / TOP表"
+  };
+}
+
+function updatePrintPreview(){
+  const report = currentReportObject();
+  const cond = conditions();
+  const mini = document.getElementById("paperMini");
+  const title = document.getElementById("miniReportTitle");
+  const scope = document.getElementById("miniReportScope");
+  const chart = document.getElementById("miniChartBlock");
+  const tables = document.getElementById("miniTableGrid");
+  const listTable = document.getElementById("miniListTable");
+  const kpi = document.getElementById("miniKpiRow");
+
+  if(!mini) return;
+
+  const layout = previewLayout(report, cond.view);
+  mini.className = `paper-mini ${layout.cls}`;
+  title.textContent = report.title;
+  scope.textContent = `${formatRangeText(cond)} / ${viewModeLabel(cond.view)}`;
+  chart.textContent = layout.chart;
+  chart.style.display = layout.chart ? "flex" : "none";
+  tables.innerHTML = layout.tables.map(text => `<div>${text}</div>`).join("");
+  tables.style.display = layout.tables.length ? "grid" : "none";
+  listTable.textContent = layout.list;
+  listTable.style.display = layout.list ? "flex" : "none";
+  kpi.style.display = layout.kpi ? "grid" : "none";
+  document.getElementById("outputContentLabel").textContent = layout.content;
+}
+
+function updateConditionSummary(){
+  const cond = conditions();
+  const filters = selectedFilters(cond);
+  const report = currentReportObject();
+  document.getElementById("summaryRange").textContent = formatRangeText(cond);
+  document.getElementById("summaryFilters").textContent = filters.length ? filters.join(" / ") : "指定なし";
+  document.getElementById("settingViewMode").textContent = viewModeLabel(cond.view);
+  document.getElementById("settingPageEstimate").textContent = estimatePageText(report, cond);
+  document.getElementById("advancedSummary").textContent = filters.length ? `${filters.length}件指定` : "指定なし";
+  updatePrintPreview();
+  savePrintCenterState();
+}
+
+function openReport(printNow){
+  updateConditionSummary();
+  const qs = new URLSearchParams();
+  qs.set("report", currentReport);
+  qs.set("conditions", JSON.stringify(conditions()));
+  if(printNow) qs.set("print", "1");
+  savePrintCenterState();
+  window.open("print_report.html?" + qs.toString(), "_blank");
+}
+
+document.querySelectorAll(".type-tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    currentType = btn.dataset.type;
+    document.querySelectorAll(".type-tab").forEach(b => b.classList.toggle("active", b === btn));
+    renderReports();
+    savePrintCenterState();
+  });
+});
+
+document.addEventListener("input", updateConditionSummary);
+document.addEventListener("change", updateConditionSummary);
+document.addEventListener("scroll", () => savePrintCenterState(), {passive:true});
+window.addEventListener("beforeunload", savePrintCenterState);
+
+
+async function buildFilterOptionsFromCandidates(){
+  const client = window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : (window.sb || null);
+  if(!client) return;
+  try{
+    const {data,error} = await client.from("candidates").select("division,center_name,channel,channel_detail,owner_name,job_type,job,position,is_deleted,deleted_at,deleted_by").limit(5000);
+    if(error) return;
+    const active = (data || []).filter(row => !(row.is_deleted || row.deleted_at || row.deleted_by));
+    const setOptions = (id, values, firstLabel="すべて") => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      const current = el.dataset.pendingValue || el.value || firstLabel;
+      const sorted = [...new Set(values.map(v => String(v || "").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ja"));
+      el.innerHTML = `<option value="${firstLabel}">${firstLabel}</option>` + sorted.map(v => `<option value="${v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}">${v}</option>`).join("");
+      if([...el.options].some(o => o.value === current)) el.value = current;
+      delete el.dataset.pendingValue;
+    };
+    setOptions("reportDivision", ["全本部", ...active.map(r => r.division)]);
+    setOptions("reportCenter", active.map(r => r.center_name));
+    setOptions("reportChannel", active.flatMap(r => [r.channel, r.channel_detail]));
+    setOptions("reportOwner", active.map(r => r.owner_name));
+    setOptions("reportJob", active.map(r => r.job_type || r.job || r.position));
+    updateConditionSummary();
+  }catch(e){}
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  if(window.Sidebar?.render) window.Sidebar.render("帳票出力");
+  buildFiscalYearOptions();
+  const restoredState = restorePrintCenterState();
+  renderReports();
+  buildFilterOptionsFromCandidates();
+  restoreScrollPosition(restoredState);
+});
+</script>
+</body>
+</html>

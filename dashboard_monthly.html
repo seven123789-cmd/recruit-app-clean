@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>月次分析</title>
+<link href="./assets/css/common.css" rel="stylesheet"/>
+<link href="./assets/css/header.css" rel="stylesheet"/>
+<link href="./assets/css/sidebar.css?v=20260508_sidebar2" rel="stylesheet"/>
+<link href="./assets/css/dashboard_monthly.css" rel="stylesheet"/>
+<script src="./common.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/audit_utils.js"></script>
+<script src="assets/js/ops_guard.js"></script>
+<script src="assets/js/safe_utils.js"></script>
+<script src="./sidebar.js?v=20260513_compare_graph"></script>
+<link href="./assets/css/dashboard_ui.css" rel="stylesheet"/>
+</head>
+<body class="auth-checking">
+<div class="container hidden" id="authScreen">
+<div class="auth-shell">
+<h1 class="auth-title">月次分析</h1>
+<p class="auth-sub">ログイン後に画面を表示します。</p>
+<div class="auth-card">
+<h2>ログイン</h2>
+<div class="form-grid">
+<div class="col-12">
+<label for="loginEmail">メールアドレス</label>
+<input id="loginEmail" placeholder="example@sline.co.jp" type="email"/>
+</div>
+<div class="col-12">
+<label for="loginPassword">パスワード</label>
+<input id="loginPassword" placeholder="パスワード" type="password"/>
+</div>
+<div class="col-12">
+<button class="btn-primary" onclick="login()" type="button">ログイン</button>
+</div>
+<div class="col-12">
+<div class="message-box message-info" id="authMessage">未ログインです</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="hidden" id="appScreen">
+<div class="app-layout">
+<aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+<main class="main-content">
+<header class="page-header dashboard-page-header"><div class="dashboard-title-line"><h1>月次分析</h1><div aria-label="集計状態" class="dashboard-header-meta"><span class="dashboard-header-chip">対象年度：<span id="sideFiscalYear">-</span></span><span class="dashboard-header-chip">対象件数：<span id="sideRows">0</span></span><span class="dashboard-header-chip">応募→面接：<span id="sideInterviewRate">0.0%</span></span><span class="dashboard-header-chip">応募→採用：<span id="sideJoinRate">0.0%</span></span><span class="dashboard-header-chip">対象期間：<span id="sidePeriod">-</span></span></div></div></header>
+<section class="monthly-control-card analysis-control-card">
+<div class="monthly-control-copy analysis-control-copy">
+<p>分析条件</p>
+<h2>月ごとの応募・面接・採用の流れを確認</h2>
+</div>
+<div class="monthly-control-form analysis-control-form analysis-control-form--1">
+<div class="analysis-field">
+<label for="fy">対象年度</label>
+<select id="fy" onchange="handleFiscalYearChange()">
+<option value="current"></option>
+<option value="previous"></option>
+<option value="all">全期間</option>
+</select>
+</div>
+<button class="btn-primary" onclick="loadAnalysis()" type="button">更新</button>
+<div class="period-text analysis-period" id="periodText">対象期間：-</div>
+</div>
+<input id="from" type="hidden"/>
+<input id="to" type="hidden"/>
+</section>
+<section class="card">
+<h2>サマリー</h2>
+<div class="grid-5 summary-grid">
+<div class="metric-card kpi-applied">
+<div class="label">応募</div>
+<div class="value" id="sumApplied">0</div>
+<div class="sub">対象年度内の応募数</div>
+</div>
+<div class="metric-card kpi-interview">
+<div class="label">面接実施</div>
+<div class="value" id="sumInterview">0</div>
+<div class="sub">面接まで進んだ人数</div>
+</div>
+<div class="metric-card kpi-hired">
+<div class="label">採用</div>
+<div class="value" id="sumJoin">0</div>
+<div class="sub">入社日登録済み</div>
+</div>
+<div class="metric-card kpi-rate-interview">
+<div class="label">応募→面接</div>
+<div class="value" id="sumInterviewRate">0.0%</div>
+<div class="sub">応募数に対する面接率</div>
+</div>
+<div class="metric-card kpi-rate-hired">
+<div class="label">応募→採用</div>
+<div class="value" id="sumJoinRate">0.0%</div>
+<div class="sub">応募数に対する採用率</div>
+</div>
+</div>
+</section>
+<section class="card">
+<div class="section-head">
+<div>
+<h2>月次推移</h2>
+</div>
+</div>
+<div class="chart-box">
+<canvas id="monthlyCountChart"></canvas>
+</div>
+</section>
+<section class="card">
+<div class="section-head">
+<div>
+<h2>転換率推移</h2>
+</div>
+</div>
+<div class="chart-box compact">
+<canvas id="monthlyRateChart"></canvas>
+</div>
+</section>
+<section class="card table-card">
+<div class="table-head">
+<h2>月次集計</h2>
+</div>
+<div class="table-wrap">
+<table>
+<thead id="tableHead"></thead>
+<tbody id="tableBody"><tr><td class="empty">読込中です</td></tr></tbody>
+</table>
+</div>
+</section>
+<div class="log-box" id="logBox">待機中</div>
+</main>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+function safeDisplayValue(v){return (v===undefined||v===null||String(v)==="undefined"||String(v)==="NaN%")?"―":v;}
+
+const SUPABASE_URL="https://shiztjmmaozrsstjotub.supabase.co";
+const SUPABASE_KEY="sb_publishable_1JKLDIZR9SFsi3Y2sMAgwA_Kd_tA4sS";
+const sb=window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : window.getRecruitSupabaseClient();
+
+let currentUser=null;
+let currentRole=null;
+let rows=[];
+let monthlyCountChart=null;
+let monthlyRateChart=null;
+
+function $(id){return document.getElementById(id)}
+
+function setMsg(id,msg,type="info"){
+  const el=$(id);
+  if(!el)return;
+  el.textContent=msg;
+  el.className="message-box message-"+type;
+}
+function setText(id,value){
+  const el=$(id);
+  if(el)el.textContent=value;
+}
+function rate(n,d){
+  return !d ? "0.0%" : ((n/d)*100).toFixed(1)+"%";
+}
+function rateNum(n,d){
+  return !d ? 0 : Number(((n/d)*100).toFixed(1));
+}
+function validDate(s){
+  if(!s)return false;
+  const y=Number(String(s).slice(0,4));
+  return y>=2000;
+}
+
+function fiscalRange(type){
+  const fy=fiscalYear();
+  if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};
+  if(type==="all")return {fy:null,label:"全期間",from:"",to:""};
+  return {fy,label:fy+"年度",from:fy+"-04-01",to:(fy+1)+"-03-31"};
+}
+function getMonthKey(dateStr){
+  return validDate(dateStr) ? String(dateStr).slice(0,7) : "";
+}
+function monthLabel(key){
+  if(!key)return "未設定";
+  const parts=key.split("-");
+  return parts[0]+"-"+parts[1];
+}
+function buildFiscalMonths(from,to){
+  const months=[];
+  if(!from||!to)return months;
+  let cursor=new Date(from+"T00:00:00");
+  const end=new Date(to+"T00:00:00");
+  while(cursor<=end){
+    const y=cursor.getFullYear();
+    const m=String(cursor.getMonth()+1).padStart(2,"0");
+    months.push(y+"-"+m);
+    cursor.setMonth(cursor.getMonth()+1);
+  }
+  return months;
+}
+function monthRangeFromKey(key){
+  if(!key||!/^[0-9]{4}-[0-9]{2}$/.test(key))return {from:"",to:""};
+  const y=Number(key.slice(0,4));
+  const m=Number(key.slice(5,7));
+  const last=new Date(y,m,0).getDate();
+  return {from:`${key}-01`,to:`${key}-${String(last).padStart(2,"0")}`};
+}
+function buildListUrlForMonth(key,filter="all"){
+  const range=monthRangeFromKey(key);
+  const params=new URLSearchParams();
+  params.set("source","dashboard");
+  params.set("filter",filter);
+  if(range.from)params.set("from",range.from);
+  if(range.to)params.set("to",range.to);
+  return "./list.html?"+params.toString();
+}
+function monthlyCountLink(value,key,filter="all",cls="count-link"){
+  const n=Number(value||0);
+  if(!n)return `<span class="muted-zero">0</span>`;
+  return `<a class="${cls}" href="${esc(buildListUrlForMonth(key,filter))}">${n}</a>`;
+}
+function monthlyRateLink(value,key,filter,cls="count-link"){
+  return `<a class="${cls}" href="${esc(buildListUrlForMonth(key,filter))}">${esc(value)}</a>`;
+}
+function applyFy(){
+  const range=fiscalRange($("fy").value);
+  $("from").value=range.from;
+  $("to").value=range.to;
+  const period=range.from&&range.to ? `${range.from} ～ ${range.to}` : "全期間";
+  setText("periodText","対象期間："+period);
+  setText("sideFiscalYear",range.label);
+  setText("sidePeriod",period);
+}
+function handleFiscalYearChange(){
+  applyFy();
+  loadAnalysis();
+}
+async function getUser(){
+  if(currentUser)return currentUser;
+  const {data:{session}}=await sb.auth.getSession();
+  currentUser=session?.user||null;
+  return currentUser;
+}
+async function getRole(userId){
+  if(currentRole)return currentRole;
+  try{
+    const {data}=await sb.from("profiles").select("role").eq("user_id",userId).single();
+    currentRole=data?.role||"editor";
+  }catch(e){
+    currentRole="editor";
+  }
+  return currentRole;
+}
+function showAuth(msg="未ログインです",type="info"){
+  const a=$("authScreen");
+  const b=$("appScreen");
+  if(a)a.classList.remove("hidden");
+  if(b)b.classList.add("hidden");
+  currentUser=null;
+  currentRole=null;
+  setMsg("authMessage",msg,type);
+  document.body.classList.remove("auth-checking");
+}
+async function showApp(){
+  const user=await getUser();
+  if(!user){
+    showAuth();
+    return false;
+  }
+  await getRole(user.id);
+  $("authScreen")?.classList.add("hidden");
+  $("appScreen")?.classList.remove("hidden");
+  document.body.classList.remove("auth-checking");
+  return true;
+}
+async function login(){
+  const email=$("loginEmail")?.value.trim();
+  const password=$("loginPassword")?.value;
+  if(!email||!password){
+    setMsg("authMessage","メールアドレスとパスワードを入力してください","error");
+    return;
+  }
+  try{
+    const {error}=await sb.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    currentUser=null;
+    currentRole=null;
+    if(await showApp()) await initPageAfterLogin();
+  }catch(e){
+    setMsg("authMessage","ログイン失敗: "+(e.message||e),"error");
+  }
+}
+async function logout(){
+  try{await sb.auth.signOut()}catch(e){}
+  showAuth("ログアウトしました","success");
+}
+sb.auth.onAuthStateChange((ev)=>{
+  if(ev==="SIGNED_OUT")showAuth("ログアウトしました","success");
+});
+async function authInit(){
+  try{
+    if(await showApp()) await initPageAfterLogin();
+  }catch(e){
+    console.error(e);
+    showAuth("初期化に失敗しました","error");
+  }finally{
+    document.body.classList.remove("auth-checking");
+  }
+}
+function filtered(data){
+  const f=$("from").value;
+  const t=$("to").value;
+  return (data||[])
+    .filter(r=>!r.is_deleted)
+    .filter(r=>{
+      if(!validDate(r.applied_date))return false;
+      if(f&&r.applied_date<f)return false;
+      if(t&&r.applied_date>t)return false;
+      return true;
+    });
+}
+function createMonthMap(data){
+  const f=$("from").value;
+  const t=$("to").value;
+  let keys=buildFiscalMonths(f,t);
+  if(!keys.length){
+    keys=[...new Set(data.map(r=>getMonthKey(r.applied_date)).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  }
+
+  const map=new Map();
+  keys.forEach(key=>{
+    map.set(key,{key,applied:0,appointment:0,set:0,interview:0,offer:0,join:0});
+  });
+
+  data.forEach(r=>{
+    const key=getMonthKey(r.applied_date);
+    if(!key)return;
+    if(!map.has(key))map.set(key,{key,applied:0,appointment:0,set:0,interview:0,offer:0,join:0});
+    const x=map.get(key);
+    if(validDate(r.applied_date))x.applied++;
+    if(validDate(r.appointment_date))x.appointment++;
+    if(validDate(r.interview1_date))x.set++;
+    if(validDate(r.interview_done_date))x.interview++;
+    if(validDate(r.offer_date))x.offer++;
+    if(validDate(r.join_date))x.join++;
+  });
+
+  return [...map.values()].sort((a,b)=>String(a.key).localeCompare(String(b.key)));
+}
+function updateSummary(data,monthly){
+  const applied=data.filter(r=>validDate(r.applied_date)).length;
+  const interview=data.filter(r=>validDate(r.interview_done_date)).length;
+  const join=data.filter(r=>validDate(r.join_date)).length;
+  const interviewRate=rate(interview,applied);
+  const joinRate=rate(join,applied);
+
+  setText("sumApplied",applied);
+  setText("sumInterview",interview);
+  setText("sumJoin",join);
+  setText("sumInterviewRate",interviewRate);
+  setText("sumJoinRate",joinRate);
+
+  setText("sideRows",data.length);
+  setText("sideInterviewRate",interviewRate);
+  setText("sideJoinRate",joinRate);
+}
+function chartBaseOptions(maxY=null,isPercent=false){
+  return {
+    responsive:true,
+    maintainAspectRatio:false,
+    interaction:{mode:"index",intersect:false},
+    plugins:{
+      legend:{
+        position:"top",
+        labels:{
+          boxWidth:10,
+          boxHeight:10,
+          usePointStyle:true,
+          pointStyle:"circle",
+          color:"#334155",
+          font:{size:12,weight:"700"}
+        }
+      },
+      tooltip:{
+        callbacks:{
+          label:function(ctx){
+            const suffix=isPercent ? "%" : "件";
+            return ctx.dataset.label+": "+ctx.parsed.y+suffix;
+          }
+        }
+      }
+    },
+    scales:{
+      x:{
+        grid:{display:false},
+        ticks:{color:"#64748b",font:{size:11,weight:"700"}}
+      },
+      y:{
+        beginAtZero:true,
+        suggestedMax:maxY || undefined,
+        max:isPercent ? 100 : undefined,
+        ticks:{
+          color:"#64748b",
+          font:{size:11,weight:"700"},
+          callback:function(value){return isPercent ? value+"%" : value;}
+        },
+        grid:{color:"#e2e8f0"}
+      }
+    }
+  };
+}
+function renderCharts(monthly){
+  const labels=monthly.map(x=>monthLabel(x.key));
+  const applied=monthly.map(x=>x.applied);
+  const interview=monthly.map(x=>x.interview);
+  const join=monthly.map(x=>x.join);
+  const interviewRate=monthly.map(x=>rateNum(x.interview,x.applied));
+  const joinRate=monthly.map(x=>rateNum(x.join,x.applied));
+  const maxCount=Math.max(...applied,...interview,...join,1);
+
+  if(monthlyCountChart)monthlyCountChart.destroy();
+  if(monthlyRateChart)monthlyRateChart.destroy();
+
+  const countCtx=$("monthlyCountChart");
+  const rateCtx=$("monthlyRateChart");
+
+  monthlyCountChart=new Chart(countCtx,{
+    type:"line",
+    data:{
+      labels,
+      datasets:[
+        {label:"応募",data:applied,borderColor:"#2563eb",backgroundColor:"#2563eb",tension:.35,borderWidth:3,pointRadius:4,pointHoverRadius:6},
+        {label:"面接実施",data:interview,borderColor:"#f59e0b",backgroundColor:"#f59e0b",tension:.35,borderWidth:3,pointRadius:4,pointHoverRadius:6},
+        {label:"採用",data:join,borderColor:"#16a34a",backgroundColor:"#16a34a",tension:.35,borderWidth:3,pointRadius:4,pointHoverRadius:6}
+      ]
+    },
+    options:chartBaseOptions(Math.ceil(maxCount*1.2),false)
+  });
+
+  monthlyRateChart=new Chart(rateCtx,{
+    type:"line",
+    data:{
+      labels,
+      datasets:[
+        {label:"応募→面接",data:interviewRate,borderColor:"#7c3aed",backgroundColor:"#7c3aed",tension:.35,borderWidth:3,pointRadius:4,pointHoverRadius:6},
+        {label:"応募→採用",data:joinRate,borderColor:"#0f766e",backgroundColor:"#0f766e",tension:.35,borderWidth:3,pointRadius:4,pointHoverRadius:6}
+      ]
+    },
+    options:chartBaseOptions(100,true)
+  });
+}
+function renderRows(monthly){
+  $("tableHead").innerHTML=
+    "<tr>"+
+    ["月","応募","アポ取得","面接設定","面接実施","内定","採用","応募→面接","応募→採用"].map(h=>"<th>"+h+"</th>").join("")+
+    "</tr>";
+
+  if(!monthly.length){
+    $("tableBody").innerHTML='<tr><td class="empty" colspan="9">データがありません</td></tr>';
+    return;
+  }
+
+  $("tableBody").innerHTML=monthly.map(x=>{
+    const zero=x.applied+x.appointment+x.set+x.interview+x.offer+x.join===0;
+    return `
+      <tr class="${zero?"zero-month":""}">
+        <td>${esc(monthLabel(x.key))}</td>
+        <td>${monthlyCountLink(x.applied,x.key,"applied")}</td>
+        <td>${monthlyCountLink(x.appointment,x.key,"appointment")}</td>
+        <td>${monthlyCountLink(x.set,x.key,"interview_set")}</td>
+        <td>${monthlyCountLink(x.interview,x.key,"interview_done")}</td>
+        <td>${monthlyCountLink(x.offer,x.key,"offer")}</td>
+        <td>${monthlyCountLink(x.join,x.key,"hired")}</td>
+        <td>${monthlyRateLink(rate(x.interview,x.applied),x.key,"heat_interview_gap")}</td>
+        <td>${monthlyRateLink(rate(x.join,x.applied),x.key,"heat_hire_gap")}</td>
+      </tr>`;
+  }).join("");
+}
+async function loadAnalysis(){
+  try{
+    const {data,error}=await sb.from("candidates").select("*").order("id",{ascending:false});
+    if(error)throw error;
+    rows=data||[];
+    const data2=filtered(rows);
+    const monthly=createMonthMap(data2);
+    updateSummary(data2,monthly);
+    renderCharts(monthly);
+    renderRows(monthly);
+  }catch(e){
+    (window.RecruitUI ? window.RecruitUI.showError(String("月次分析の読込に失敗しました: "+(e.message||e))) : console.warn("月次分析の読込に失敗しました: "+(e.message||e)));
+    console.error(e);
+  }
+}
+async function initPageAfterLogin(){
+  applyFy();
+  await loadAnalysis();
+}
+authInit();
+</script>
+<script src="dashboard_summary_links.js"></script>
+</body>
+</html>

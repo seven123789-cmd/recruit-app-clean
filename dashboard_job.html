@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>職種分析</title>
+<link href="./assets/css/common.css" rel="stylesheet"/>
+<link href="./assets/css/header.css" rel="stylesheet"/>
+<link href="./assets/css/sidebar.css?v=20260508_sidebar2" rel="stylesheet"/>
+<link href="./assets/css/dashboard_job.css" rel="stylesheet"/>
+<script src="./common.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/audit_utils.js"></script>
+<script src="assets/js/ops_guard.js"></script>
+<script src="assets/js/safe_utils.js"></script>
+<script src="./sidebar.js?v=20260513_compare_graph"></script>
+<link href="./assets/css/dashboard_ui.css" rel="stylesheet"/>
+</head>
+<body class="auth-checking">
+<div class="container hidden" id="authScreen">
+<div class="auth-shell">
+<h1 class="auth-title">職種分析</h1>
+<p class="auth-sub">ログイン後に画面を表示します。</p>
+<div class="auth-card">
+<h2>ログイン</h2>
+<div class="form-grid">
+<div class="col-12">
+<label for="loginEmail">メールアドレス</label>
+<input id="loginEmail" placeholder="example@sline.co.jp" type="email"/>
+</div>
+<div class="col-12">
+<label for="loginPassword">パスワード</label>
+<input id="loginPassword" placeholder="パスワード" type="password"/>
+</div>
+<div class="col-12">
+<button class="btn-primary" onclick="login()" type="button">ログイン</button>
+</div>
+<div class="col-12">
+<div class="message-box message-info" id="authMessage">未ログインです</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="hidden" id="appScreen">
+<div class="app-layout">
+<aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+<main class="main-content">
+<header class="page-header dashboard-page-header"><div class="dashboard-title-line"><h1>職種分析</h1><div aria-label="集計状態" class="dashboard-header-meta"><span class="dashboard-header-chip">対象年度：<span id="sideFiscalYear">-</span></span><span class="dashboard-header-chip">対象件数：<span id="sideRows">0</span></span><span class="dashboard-header-chip">対象本部：<span id="sideDivision">すべて</span></span><span class="dashboard-header-chip">対象営業所：<span id="sideCenter">すべて</span></span><span class="dashboard-header-chip">職種数：<span id="sideJobCount">0</span></span><span class="dashboard-header-chip">応募→面接：<span id="sideInterviewRate">0.0%</span></span><span class="dashboard-header-chip">応募→採用：<span id="sideJoinRate">0.0%</span></span><span class="dashboard-header-chip">対象期間：<span id="sidePeriod">-</span></span></div></div></header>
+<section class="job-control-card analysis-control-card">
+<div class="job-control-copy analysis-control-copy">
+<p>分析条件</p>
+<h2>職種ごとの採用状況を確認</h2>
+</div>
+<div class="job-control-form analysis-control-form analysis-control-form--4">
+<div class="analysis-field">
+<label for="fy">対象年度</label>
+<select id="fy" onchange="handleFilterChange()">
+<option value="current"></option>
+<option value="previous"></option>
+<option value="all">全期間</option>
+</select>
+</div>
+<div class="analysis-field">
+<label for="division">対象本部</label>
+<select id="division" onchange="handleDivisionChange()"><option value="">すべて</option></select>
+</div>
+<div class="analysis-field">
+<label for="center">対象営業所</label>
+<select id="center" onchange="handleFilterChange()"><option value="">すべて</option></select>
+</div>
+<div class="analysis-field">
+<label for="jobType">対象職種</label>
+<select id="jobType" onchange="handleFilterChange()"><option value="">すべて</option></select>
+</div>
+<button class="btn-primary" onclick="loadAnalysis()" type="button">更新</button>
+<div class="period-text analysis-period" id="periodText">対象期間：-</div>
+</div>
+<input id="from" type="hidden"/>
+<input id="to" type="hidden"/>
+</section>
+<section class="card">
+<h2>サマリー</h2>
+<div class="grid-5 summary-grid">
+<div class="metric-card kpi-applied"><div class="label">応募</div><div class="value" id="sumApplied">0</div><div class="sub">対象期間内の応募数</div></div>
+<div class="metric-card kpi-interview"><div class="label">面接実施</div><div class="value" id="sumInterview">0</div><div class="sub">面接まで進んだ人数</div></div>
+<div class="metric-card kpi-hired"><div class="label">採用</div><div class="value" id="sumJoin">0</div><div class="sub">入社日または採用結果</div></div>
+<div class="metric-card kpi-rate-interview"><div class="label">応募→面接</div><div class="value" id="sumInterviewRate">0.0%</div><div class="sub">応募数に対する面接率</div></div>
+<div class="metric-card kpi-rate-hired"><div class="label">応募→採用</div><div class="value" id="sumJoinRate">0.0%</div><div class="sub">応募数に対する採用率</div></div>
+</div>
+</section>
+<section class="insight-card" id="jobInsight">
+<div class="insight-title">重点確認</div>
+<div class="insight-body">読込中です</div>
+</section>
+<section class="card">
+<div class="section-head"><div><h2>職種ランキング</h2></div></div>
+<div class="performance-grid" id="performanceGrid"><div class="empty-box">読込中です</div></div>
+</section>
+<section class="card" id="referenceSection">
+<div class="section-head"><div><h2>参考値（応募5件未満）</h2></div></div>
+<div class="reference-grid" id="referenceGrid"><div class="empty-box">読込中です</div></div>
+</section>
+<section class="card">
+<div class="section-head"><div><h2>応募 → 面接 → 採用</h2></div></div>
+<div class="chart-box"><canvas id="jobFunnelChart"></canvas></div>
+</section>
+<section class="card">
+<div class="section-head"><div><h2>職種ボトルネック</h2></div></div>
+<div class="bottleneck-grid" id="bottleneckGrid"><div class="empty-box">読込中です</div></div>
+</section>
+<section class="card table-card">
+<div class="table-head"><h2>職種別KPI明細</h2></div>
+<div class="table-wrap">
+<table>
+<thead id="tableHead"></thead>
+<tbody id="tableBody"><tr><td class="empty">読込中です</td></tr></tbody>
+</table>
+</div>
+</section>
+<div class="message-box message-info hidden" id="pageMessage"></div>
+</main>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const sb = window.getRecruitSupabaseClient();
+
+let currentUser=null;
+let currentRole=null;
+let CENTER_MASTER={};
+let rows=[];
+let jobFunnelChart=null;
+let MASTER_JOB_TYPES=[];
+
+const ACTIVE_STATUSES=["応募","アポ取得","面接設定","面接実施"];
+
+function $(id){return document.getElementById(id)}
+
+function setText(id,value){const el=$(id);if(el)el.textContent=value}
+function setMsg(id,msg,type="info"){const el=$(id);if(!el)return;if(!msg){el.textContent="";el.className="message-box message-info hidden";return}el.textContent=msg;el.className="message-box message-"+type}
+function rate(n,d){return !d ? "0.0%" : ((n/d)*100).toFixed(1)+"%"}
+function rateNum(n,d){return !d ? 0 : Number(((n/d)*100).toFixed(1))}
+function todayStr(){return new Date().toISOString().slice(0,10)}
+function validDate(s){if(!s)return false;const y=Number(String(s).slice(0,4));return y>=2000}
+
+
+function isHired(r){return r.hiring_result==="採用"||validDate(r.join_date)}
+
+function isActionRequired(r){
+  const st=String(r.status||"").trim();
+  if(st==="面接実施"&&(r.hiring_result==="採用"||r.hiring_result==="不採用"))return false;
+  if(!ACTIVE_STATUSES.includes(st))return false;
+  if(!r.next_action_date)return true;
+  return daysBetween(todayStr(),r.next_action_date)<=1;
+}
+function normalizeJob(v){const s=String(v||"").trim();return s||"未設定"}
+async function loadJobTypeMaster(){
+
+  try{
+    MASTER_JOB_TYPES = window.RecruitMaster ? await window.RecruitMaster.list("jobTypes") : [];
+    if(!MASTER_JOB_TYPES.length){
+      MASTER_JOB_TYPES = [...new Set((rows || []).map(r => normalizeJob(r.job_type)).filter(Boolean))]
+        .sort((a,b) => String(a).localeCompare(String(b), "ja"));
+    }
+  }catch(e){
+    console.warn("職種マスタ読込失敗", e);
+    MASTER_JOB_TYPES = [...new Set((rows || []).map(r => normalizeJob(r.job_type)).filter(Boolean))]
+      .sort((a,b) => String(a).localeCompare(String(b), "ja"));
+  }
+}
+function buildJobListUrl(job,filter=""){
+  const params=new URLSearchParams();
+  params.set("source","dashboard");
+  params.set("from",$("from")?.value||"");
+  params.set("to",$("to")?.value||"");
+  const fyValue=$("fy")?.value||"current";
+  const range=fiscalRange(fyValue);
+  if(range.fy)params.set("year",String(range.fy));
+  const division=$("division")?.value||"";
+  const center=$("center")?.value||"";
+  if(division)params.set("division",division);
+  if(center)params.set("center",center);
+  if(job)params.set("job",job);
+  if(filter)params.set("filter",filter);
+  return "list.html?"+params.toString();
+}
+function goToJobList(job,filter=""){
+  const normalized=normalizeJob(job);
+  location.href=buildJobListUrl(normalized,filter);
+}
+function jobLinkHtml(job,label){
+  const safe=esc(normalizeJob(job));
+  const text=esc(label||normalizeJob(job));
+  return `<span class="heatmap-key-link" role="button" tabindex="0" data-job-link="${safe}">${text}</span>`;
+}
+document.addEventListener("click",(e)=>{
+  const target=e.target.closest("[data-job-link]");
+  if(!target)return;
+  e.preventDefault();
+  goToJobList(target.dataset.jobLink,target.dataset.filter||"");
+});
+document.addEventListener("keydown",(e)=>{
+  if(e.key!=="Enter"&&e.key!==" ")return;
+  const target=e.target.closest("[data-job-link]");
+  if(!target)return;
+  e.preventDefault();
+  goToJobList(target.dataset.jobLink,target.dataset.filter||"");
+});
+function fiscalRange(type){
+  const fy=fiscalYear();
+  if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};
+  if(type==="all")return {fy:null,label:"全期間",from:"",to:""};
+  return {fy,label:fy+"年度",from:fy+"-04-01",to:(fy+1)+"-03-31"};
+}
+function applyFy(){
+  const range=fiscalRange($("fy")?.value||"current");
+  $("from").value=range.from;
+  $("to").value=range.to;
+  const period=range.from&&range.to ? `${range.from} ～ ${range.to}` : "全期間";
+  setText("periodText","対象期間："+period);
+  setText("sideFiscalYear",range.label);
+  setText("sidePeriod",period);
+}
+function handleFilterChange(){applyFy();loadAnalysis()}
+function handleDivisionChange(){updateCenterOptions();handleFilterChange()}
+
+async function getUser(){
+  if(currentUser)return currentUser;
+  const {data:{session}}=await sb.auth.getSession();
+  currentUser=session?.user||null;
+  return currentUser;
+}
+async function getRole(userId){
+  if(currentRole)return currentRole;
+  try{
+    const {data}=await sb.from("profiles").select("role").eq("user_id",userId).single();
+    currentRole=data?.role||"editor";
+  }catch(e){currentRole="editor"}
+  return currentRole;
+}
+function showAuth(msg="未ログインです",type="info"){
+  const a=$("authScreen"),b=$("appScreen");
+  if(a)a.classList.remove("hidden");
+  if(b)b.classList.add("hidden");
+  currentUser=null;
+  currentRole=null;
+  setMsg("authMessage",msg,type);
+  document.body.classList.remove("auth-checking");
+}
+async function showApp(){
+  const user=await getUser();
+  if(!user){showAuth();return false}
+  await getRole(user.id);
+  $("authScreen")?.classList.add("hidden");
+  $("appScreen")?.classList.remove("hidden");
+  document.body.classList.remove("auth-checking");
+  return true;
+}
+async function login(){
+  const email=$("loginEmail")?.value.trim();
+  const password=$("loginPassword")?.value;
+  if(!email||!password){setMsg("authMessage","メールアドレスとパスワードを入力してください","error");return}
+  try{
+    const {error}=await sb.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    currentUser=null;
+    currentRole=null;
+    if(await showApp())await initPageAfterLogin();
+  }catch(e){setMsg("authMessage","ログイン失敗: "+(e.message||e),"error")}
+}
+async function logout(){try{await sb.auth.signOut()}catch(e){}showAuth("ログアウトしました","success")}
+sb.auth.onAuthStateChange((ev)=>{if(ev==="SIGNED_OUT")showAuth("ログアウトしました","success")});
+async function authInit(){
+  try{if(await showApp())await initPageAfterLogin()}
+  catch(e){console.error(e);showAuth("初期化に失敗しました","error")}
+  finally{document.body.classList.remove("auth-checking")}
+}
+
+async function loadMasterDivisionCenterOptions(){
+
+  if(window.RecruitMaster && typeof window.RecruitMaster.divisionCenter === "function"){
+    const master = await window.RecruitMaster.divisionCenter();
+    return { divisions: master.divisions || [], centersByDivision: master.centersByDivision || {} };
+  }
+  return { divisions:[], centersByDivision:{} };
+}
+async function loadCenterMaster(){
+
+  const master = window.RecruitMaster ? await window.RecruitMaster.divisionCenter() : { centersByDivision:{}, centers:[] };
+  CENTER_MASTER = master.centersByDivision || {};
+  return master.centers || [];
+}
+function setSelectOptions(id,values,blank="すべて",preserveOrder=false){
+  const el=$(id);if(!el)return;
+  const current=el.value;
+  let list=[...new Set((values||[]).filter(Boolean))];
+  if(!preserveOrder)list=list.sort((a,b)=>String(a).localeCompare(String(b),"ja"));
+  el.innerHTML=`<option value="">${blank}</option>`;
+  list.forEach(v=>{el.innerHTML+=`<option value="${esc(v)}">${esc(v)}</option>`});
+  if(list.includes(current))el.value=current;
+}
+function bindMasters(data){
+  const divisions=Object.keys(CENTER_MASTER).length ? Object.keys(CENTER_MASTER) : data.map(r=>r.division);
+  setSelectOptions("division",divisions);
+  updateCenterOptions(data);
+  setSelectOptions("jobType",MASTER_JOB_TYPES,"すべて",true);
+}
+function updateCenterOptions(sourceRows=rows){
+  const div=$("division")?.value||"";
+  let centers=[];
+  if(div&&CENTER_MASTER[div])centers=CENTER_MASTER[div];
+  else centers=(sourceRows||[]).filter(r=>!div||r.division===div).map(r=>r.center_name);
+  setSelectOptions("center",centers);
+}
+function filtered(data){
+  const f=$("from").value,t=$("to").value,d=$("division").value,c=$("center").value,j=$("jobType").value;
+  return (data||[]).filter(r=>!r.is_deleted).filter(r=>{
+    if(!validDate(r.applied_date))return false;
+    if(f&&r.applied_date<f)return false;
+    if(t&&r.applied_date>t)return false;
+    if(d&&r.division!==d)return false;
+    if(c&&r.center_name!==c)return false;
+    if(j&&normalizeJob(r.job_type)!==j)return false;
+    return true;
+  });
+}
+function groupByJob(data){
+  const m=new Map();
+  data.forEach(r=>{
+    const key=normalizeJob(r.job_type);
+    if(!m.has(key))m.set(key,{key,applied:0,appointment:0,set:0,interview:0,offer:0,join:0,todo:0,notDone:0,dormant:0});
+    const x=m.get(key);
+    if(validDate(r.applied_date))x.applied++;
+    if(validDate(r.appointment_date))x.appointment++;
+    if(validDate(r.interview1_date))x.set++;
+    if(validDate(r.interview_done_date))x.interview++;
+    if(validDate(r.offer_date))x.offer++;
+    if(isHired(r))x.join++;
+    if(isActionRequired(r))x.todo++;
+    if(validDate(r.interview1_date)&&!validDate(r.interview_done_date)&&!isFinal(r))x.notDone++;
+    if(validDate(r.applied_date)&&!validDate(r.appointment_date)&&!validDate(r.interview1_date)&&!isFinal(r)){
+      const days=daysBetween(r.applied_date,todayStr());
+      if(days!==null&&days>=3)x.dormant++;
+    }
+  });
+  return [...m.values()].sort((a,b)=>b.applied-a.applied||b.join-a.join||String(a.key).localeCompare(String(b.key),"ja"));
+}
+function updateSummary(data,items){
+  const applied=data.filter(r=>validDate(r.applied_date)).length;
+  const interview=data.filter(r=>validDate(r.interview_done_date)).length;
+  const join=data.filter(isHired).length;
+  const interviewRate=rate(interview,applied);
+  const joinRate=rate(join,applied);
+  setText("sumApplied",applied);
+  setText("sumInterview",interview);
+  setText("sumJoin",join);
+  setText("sumInterviewRate",interviewRate);
+  setText("sumJoinRate",joinRate);
+  setText("sideRows",data.length);
+  setText("sideDivision",$("division").value||"すべて");
+  setText("sideCenter",$("center").value||"すべて");
+  setText("sideJobCount",items.filter(x=>x.applied>0).length);
+  setText("sideInterviewRate",interviewRate);
+  setText("sideJoinRate",joinRate);
+}
+function calcJobScore(item){
+  const interviewRate=rateNum(item.interview,item.applied);
+  const joinRate=rateNum(item.join,item.applied);
+  const volumeScore=Math.min(item.applied*4,40);
+  const actionPenalty=Math.min(item.todo*3+item.notDone*2+item.dormant*2,35);
+  return Number((volumeScore+interviewRate*.35+joinRate*1.1+item.join*10-actionPenalty).toFixed(1));
+}
+function getBottleneck(item){
+  const interviewRate=rateNum(item.interview,item.applied);
+  const setRate=rateNum(item.set,item.applied);
+  const doneRate=rateNum(item.interview,item.set);
+  const joinRate=rateNum(item.join,item.applied);
+  if(item.applied===0)return {level:"確認",label:"応募不足",detail:"応募数がありません",action:"募集条件と媒体露出を確認",cls:"neutral"};
+  if(item.todo>=5)return {level:"重点",label:"要対応が滞留",detail:`要対応 ${item.todo}件`,action:"未対応案件を確認",cls:"danger"};
+  if(item.dormant>=3)return {level:"重点",label:"初動遅れ",detail:`放置3日以上 ${item.dormant}件`,action:"応募後の初回連絡を確認",cls:"danger"};
+  if(item.notDone>=3)return {level:"重点",label:"面接未実施が多い",detail:`面接設定後の未実施 ${item.notDone}件`,action:"面接再設定と前日連絡を確認",cls:"danger"};
+  if(setRate<45&&item.applied>=10)return {level:"注意",label:"面接設定弱い",detail:`応募→面接設定 ${setRate.toFixed(1)}%`,action:"日程提示の早さを確認",cls:"warning"};
+  if(doneRate<65&&item.set>=5)return {level:"注意",label:"面接実施率低い",detail:`設定→実施 ${doneRate.toFixed(1)}%`,action:"辞退・不通理由を確認",cls:"warning"};
+  if(joinRate<8&&item.applied>=10)return {level:"注意",label:"採用転換弱い",detail:`応募→採用 ${joinRate.toFixed(1)}%`,action:"条件・職種説明のズレを確認",cls:"warning"};
+  return {level:"良好",label:"流れ良好",detail:`応募→採用 ${joinRate.toFixed(1)}%`,action:"現行運用を維持",cls:"success"};
+}
+function problemSort(a,b){
+  const rank={danger:0,warning:1,success:2,neutral:3};
+  const ar=rank[a.b.cls]??9,br=rank[b.b.cls]??9;
+  if(ar!==br)return ar-br;
+  if(a.item.todo!==b.item.todo)return b.item.todo-a.item.todo;
+  if(a.item.notDone!==b.item.notDone)return b.item.notDone-a.item.notDone;
+  if(rateNum(a.item.join,a.item.applied)!==rateNum(b.item.join,b.item.applied))return rateNum(a.item.join,a.item.applied)-rateNum(b.item.join,b.item.applied);
+  return b.item.applied-a.item.applied;
+}
+function renderPerformanceCards(items){
+  const box=$("performanceGrid");
+  if(!box)return;
+
+  const list=[...items]
+    .filter(x=>x.applied>=5)
+    .sort((a,b)=>calcJobScore(b)-calcJobScore(a)||b.applied-a.applied)
+    .slice(0,5);
+
+  if(!list.length){
+    box.innerHTML='<div class="empty-box">応募5件以上の職種がありません</div>';
+    return;
+  }
+
+  box.innerHTML=list.map((x,i)=>{
+    const b=getBottleneck(x);
+    const interviewRate=rate(x.interview,x.applied);
+    const joinRate=rate(x.join,x.applied);
+    const score=Math.max(0,Math.round(calcJobScore(x)));
+    const interviewCls=rateNum(x.interview,x.applied)>=50?"good":"bad";
+    const joinCls=rateNum(x.join,x.applied)>=10?"good":"bad";
+
+    return `<article class="performance-card ${b.cls}">
+      <div class="performance-head">
+        <span class="rank-no">${i+1}</span>
+        <div><h3>${jobLinkHtml(x.key)}</h3></div>
+        <strong>${score}<small>pt</small></strong>
+      </div>
+
+      <div class="performance-metrics">
+        <div><span>応募</span><b>${x.applied}</b></div>
+        <div><span>面接</span><b>${x.interview}</b></div>
+        <div><span>採用</span><b>${x.join}</b></div>
+      </div>
+
+      <div class="performance-rates">
+        <div class="${interviewCls}"><span>応募→面接</span><b>${interviewRate}</b></div>
+        <div class="${joinCls}"><span>応募→採用</span><b>${joinRate}</b></div>
+      </div>
+
+      <div class="performance-foot">
+        <span class="mini-status ${b.cls}">${esc(b.level)}：${esc(b.label)}</span>
+        <em>${esc(b.action)}</em>
+      </div>
+    </article>`;
+  }).join("");
+}
+function renderReferenceCards(items){
+  const box=$("referenceGrid");
+  const section=$("referenceSection");
+  if(!box||!section)return;
+
+  const list=[...items]
+    .filter(x=>x.applied>0&&x.applied<5)
+    .sort((a,b)=>b.applied-a.applied||String(a.key).localeCompare(String(b.key),"ja"));
+
+  if(!list.length){
+    section.classList.add("hidden");
+    box.innerHTML="";
+    return;
+  }
+
+  section.classList.remove("hidden");
+
+  box.innerHTML=list.map(x=>`
+    <article class="reference-card">
+      <div>
+        <strong>${jobLinkHtml(x.key)}</strong>
+        <span>応募 ${x.applied} / 面接 ${x.interview} / 採用 ${x.join}</span>
+      </div>
+      <em>参考値</em>
+    </article>
+  `).join("");
+}
+const chartValueLabelPlugin={
+  id:"chartValueLabelPlugin",
+  afterDatasetsDraw(chart){
+    const {ctx,chartArea}=chart;
+    const maxValue=Number(chart.options.plugins?.valueLabelLimit?.maxValue||0);
+    ctx.save();
+    ctx.font="800 10.5px Segoe UI, Meiryo, sans-serif";
+    ctx.textBaseline="middle";
+    ctx.textAlign="left";
+    chart.data.datasets.forEach((dataset,datasetIndex)=>{
+      const meta=chart.getDatasetMeta(datasetIndex);
+      meta.data.forEach((bar,index)=>{
+        const value=dataset.data[index];
+        if(!value)return;
+        if(maxValue>=30&&value<Math.ceil(maxValue*.04))return;
+        const pos=bar.tooltipPosition();
+        const text=String(value);
+        const textWidth=ctx.measureText(text).width;
+        const labelX=Math.min(pos.x+8,chartArea.right-textWidth-4);
+        ctx.fillStyle=dataset.backgroundColor||"#334155";
+        ctx.fillText(text,labelX,pos.y);
+      });
+    });
+    ctx.restore();
+  }
+};
+function renderJobFunnelChart(items){
+  const box=document.querySelector(".chart-box");
+  if(!box)return;
+
+  const list=[...items]
+    .filter(x=>x.applied>=5)
+    .sort((a,b)=>b.applied-a.applied||b.join-a.join)
+    .slice(0,5);
+
+  if(jobFunnelChart){
+    jobFunnelChart.destroy();
+    jobFunnelChart=null;
+  }
+
+  if(!list.length){
+    box.innerHTML='<div class="empty-box">応募5件以上の職種がありません</div>';
+    return;
+  }
+
+  box.innerHTML='<canvas id="jobFunnelChart"></canvas>';
+  const activeCanvas=$("jobFunnelChart");
+  const maxValue=Math.max(...list.flatMap(x=>[x.applied,x.interview,x.join]),1);
+
+  jobFunnelChart=new Chart(activeCanvas,{
+    type:"bar",
+    plugins:[chartValueLabelPlugin],
+    data:{
+      labels:list.map(x=>x.key),
+      datasets:[
+        {label:"応募",data:list.map(x=>x.applied),backgroundColor:"#2563eb",borderRadius:7,barThickness:13,maxBarThickness:13},
+        {label:"面接実施",data:list.map(x=>x.interview),backgroundColor:"#f59e0b",borderRadius:7,barThickness:13,maxBarThickness:13},
+        {label:"採用",data:list.map(x=>x.join),backgroundColor:"#16a34a",borderRadius:7,barThickness:13,maxBarThickness:13}
+      ]
+    },
+    options:{
+      indexAxis:"y",
+      responsive:true,
+      maintainAspectRatio:false,
+      layout:{padding:{right:18}},
+      interaction:{mode:"nearest",intersect:false},
+      datasets:{bar:{grouped:true,categoryPercentage:.72,barPercentage:.76}},
+      plugins:{
+        valueLabelLimit:{maxValue},
+        legend:{position:"top",labels:{usePointStyle:true,pointStyle:"circle",boxWidth:10,boxHeight:10,color:"#334155",font:{size:11,weight:"700"}}},
+        tooltip:{enabled:true,callbacks:{label:(ctx)=>ctx.dataset.label+": "+ctx.parsed.x+"件"}}
+      },
+      scales:{
+        x:{beginAtZero:true,suggestedMax:Math.ceil(maxValue*1.12),grid:{color:"#e2e8f0"},ticks:{color:"#64748b",font:{size:11,weight:"700"}}},
+        y:{grid:{display:false},ticks:{color:"#0f172a",font:{size:11,weight:"850"}}}
+      }
+    }
+  });
+}
+function updateInsight(items){
+  const box=$("jobInsight");if(!box)return;
+  const problem=[...items].filter(x=>x.applied>0).map(x=>({item:x,b:getBottleneck(x)})).sort(problemSort)[0];
+  if(!problem){box.className="insight-card neutral";box.innerHTML='<div class="insight-title">重点確認</div><div class="insight-body">対象データがありません。</div>';return}
+  const joinRate=rate(problem.item.join,problem.item.applied);
+  box.className="insight-card "+problem.b.cls;
+  box.innerHTML=`<div class="insight-title">重点確認</div><div class="insight-body">最優先：${esc(problem.item.key)}（採用率 ${joinRate}）<span>${esc(problem.b.action)}</span></div>`;
+}
+function renderBottleneck(items){
+  const box=$("bottleneckGrid");
+  if(!box)return;
+
+  let source=[...items].filter(x=>x.applied>=5);
+  if(!source.length)source=[...items].filter(x=>x.applied>0);
+
+  const list=source.map(x=>({item:x,b:getBottleneck(x)})).sort(problemSort).slice(0,6);
+
+  if(!list.length){
+    box.innerHTML='<div class="empty-box">データがありません</div>';
+    return;
+  }
+
+  box.innerHTML=list.map(({item:x,b})=>`<div class="bottleneck-card ${b.cls}">
+    <div>
+      <strong>${jobLinkHtml(x.key)}</strong>
+      <span>${esc(b.level)}｜${esc(b.label)}</span>
+    </div>
+    <p>${esc(b.detail)} / 応募 ${x.applied}・面接 ${x.interview}・採用 ${x.join}</p>
+    <small>${esc(b.action)}</small>
+  </div>`).join("");
+}
+function renderTable(items){
+  const head=["職種","応募","アポ取得","面接設定","面接実施","内定","採用","応募→面接","応募→採用","要対応","未実施","放置3日+","判定"];
+  $("tableHead").innerHTML="<tr>"+head.map(h=>"<th>"+h+"</th>").join("")+"</tr>";
+  if(!items.length){$("tableBody").innerHTML='<tr><td class="empty" colspan="13">データがありません</td></tr>';return}
+  $("tableBody").innerHTML=items.map(x=>{
+    const b=getBottleneck(x);
+    return `<tr>
+      <td><strong>${jobLinkHtml(x.key)}</strong></td>
+      <td>${x.applied}</td>
+      <td>${x.appointment}</td>
+      <td>${x.set}</td>
+      <td>${x.interview}</td>
+      <td>${x.offer}</td>
+      <td>${x.join}</td>
+      <td>${rate(x.interview,x.applied)}</td>
+      <td>${rate(x.join,x.applied)}</td>
+      <td>${x.todo}</td>
+      <td>${x.notDone}</td>
+      <td>${x.dormant}</td>
+      <td><span class="mini-status ${b.cls}">${esc(b.label)}</span></td>
+    </tr>`;
+  }).join("");
+}
+
+function applyInboundParamsOnce(){
+  if(window.__inboundParamsApplied)return;
+  window.__inboundParamsApplied=true;
+  const params=new URLSearchParams(window.location.search);
+  const setSelect=(id,names,options={})=>{
+    const el=$(id);
+    if(!el)return;
+    const keys=Array.isArray(names)?names:[names];
+    const raw=keys.map(k=>params.get(k)).find(v=>v!==null&&v!=="");
+    if(!raw)return;
+    const value=raw.trim();
+    if(!value)return;
+    const exists=[...el.options].some(o=>o.value===value);
+    if(!exists && options.allowAppend===true){
+      const option=document.createElement("option");
+      option.value=value;
+      option.textContent=value;
+      el.appendChild(option);
+    }
+    if(exists || options.allowAppend===true)el.value=value;
+  };
+  const fy=params.get("fy");
+  if(fy&&$("fy"))$("fy").value=fy;
+  setSelect("division",["division","divisionFilter"]);
+  setSelect("divisionFilter",["division","divisionFilter"]);
+  setSelect("center",["center","centerFilter"]);
+  setSelect("centerFilter",["center","centerFilter"]);
+  setSelect("channel",["channel","channelFilter"]);
+  setSelect("ownerFilter",["owner","ownerFilter"]);
+  setSelect("jobType",["job","jobType"],{allowAppend:false});
+  if($("fy"))applyFy();
+}
+
+async function loadAnalysis(){
+  try{
+    setMsg("pageMessage","","info");
+    const {data,error}=await sb.from("candidates").select("*").order("id",{ascending:false});
+    if(error)throw error;
+    await loadJobTypeMaster();
+    rows=data||[];
+    bindMasters(rows);
+    applyInboundParamsOnce();
+    const data2=filtered(rows);
+    const items=groupByJob(data2);
+    updateSummary(data2,items);
+    renderPerformanceCards(items);
+    renderReferenceCards(items);
+    renderJobFunnelChart(items);
+    updateInsight(items);
+    renderBottleneck(items);
+    renderTable(items);
+  }catch(e){
+    setMsg("pageMessage","読込失敗: "+(e.message||e),"error");
+    console.error(e);
+  }
+}
+async function initPageAfterLogin(){
+  await loadCenterMaster();
+  applyFy();
+  await loadAnalysis();
+}
+authInit();
+</script>
+</body>
+</html>

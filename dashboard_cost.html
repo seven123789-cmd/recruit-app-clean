@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>採用単価</title>
+<link href="./assets/css/common.css" rel="stylesheet"/>
+<link href="./assets/css/header.css" rel="stylesheet"/>
+<link href="./assets/css/sidebar.css?v=20260508_sidebar2" rel="stylesheet"/>
+<link href="./assets/css/dashboard_cost.css" rel="stylesheet"/>
+<script src="./common.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/audit_utils.js"></script>
+<script src="assets/js/ops_guard.js"></script>
+<script src="assets/js/safe_utils.js"></script>
+<script src="./sidebar.js?v=20260513_compare_graph"></script>
+<link href="./assets/css/dashboard_ui.css" rel="stylesheet"/>
+</head>
+<body class="auth-checking">
+<div class="container hidden" id="authScreen">
+<div class="auth-shell">
+<h1 class="auth-title">採用単価</h1>
+<p class="auth-sub">ログイン後に画面を表示します。</p>
+<div class="auth-card">
+<h2>ログイン</h2>
+<div class="form-grid">
+<div class="col-12">
+<label for="loginEmail">メールアドレス</label>
+<input id="loginEmail" placeholder="example@sline.co.jp" type="email"/>
+</div>
+<div class="col-12">
+<label for="loginPassword">パスワード</label>
+<input id="loginPassword" placeholder="パスワード" type="password"/>
+</div>
+<div class="col-12">
+<button class="btn-primary" onclick="login()" type="button">ログイン</button>
+</div>
+<div class="col-12">
+<div class="message-box message-info" id="authMessage">未ログインです</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="hidden" id="appScreen">
+<div class="app-layout">
+<aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+<main class="main-content">
+<header class="page-header dashboard-page-header"><div class="dashboard-title-line"><h1>採用単価</h1><div aria-label="集計状態" class="dashboard-header-meta"><span class="dashboard-header-chip">対象年度：<span id="sideFiscalYear">-</span></span><span class="dashboard-header-chip">対象件数：<span id="sideRows">0</span></span><span class="dashboard-header-chip">媒体数：<span id="sideChannels">0</span></span><span class="dashboard-header-chip">費用合計：<span id="sideCost">0円</span></span><span class="dashboard-header-chip">平均単価：<span id="sideCostPerHire">-</span></span><span class="dashboard-header-chip">対象期間：<span id="sidePeriod">-</span></span></div></div></header>
+<section class="cost-control-card analysis-control-card">
+<div class="cost-control-copy analysis-control-copy">
+<p>分析条件</p>
+<h2>媒体別の投資効率を確認</h2>
+</div>
+<div class="cost-control-form analysis-control-form analysis-control-form--cost">
+<div class="analysis-field">
+<label for="fy">対象年度</label>
+<select id="fy" onchange="handleFilterChange()">
+<option value="current"></option>
+<option selected="" value="previous"></option>
+<option value="all">全期間</option>
+</select>
+</div>
+<div class="analysis-field">
+<label for="division">対象本部</label>
+<select id="division" onchange="handleDivisionChange()"><option value="">すべて</option></select>
+</div>
+<div class="analysis-field">
+<label for="center">対象営業所</label>
+<select id="center" onchange="handleFilterChange()"><option value="">すべて</option></select>
+</div>
+<div class="analysis-field">
+<label for="channel">対象媒体</label>
+<select id="channel" onchange="handleFilterChange()"><option value="">すべて</option></select>
+</div>
+<div class="cost-period-row">
+<div class="analysis-field">
+<label for="costFrom">期間From</label>
+<input id="costFrom" onchange="handleFilterChange()" type="date"/>
+</div>
+<div class="analysis-field">
+<label for="costTo">期間To</label>
+<input id="costTo" onchange="handleFilterChange()" type="date"/>
+</div>
+<button class="btn-primary" onclick="loadAnalysis()" type="button">更新</button>
+<div class="period-text analysis-period" id="periodText">対象期間：-</div>
+</div>
+</div>
+<input id="from" type="hidden"/>
+<input id="to" type="hidden"/>
+</section>
+<section class="card">
+<h2>サマリー</h2>
+<div class="grid-5 summary-grid">
+<div class="metric-card kpi-applied">
+<div class="label">費用</div>
+<div class="value" id="sumCost">0円</div>
+<div class="sub">対象年度の媒体費</div>
+</div>
+<div class="metric-card kpi-interview">
+<div class="label">応募</div>
+<div class="value" id="sumApplied">0</div>
+<div class="sub">対象期間内の応募</div>
+</div>
+<div class="metric-card kpi-hired">
+<div class="label">採用</div>
+<div class="value" id="sumJoin">0</div>
+<div class="sub">入社日または採用結果</div>
+</div>
+<div class="metric-card kpi-rate-interview">
+<div class="label">応募単価</div>
+<div class="value" id="sumCostPerApply">-</div>
+<div class="sub">費用 ÷ 応募</div>
+</div>
+<div class="metric-card kpi-rate-hired">
+<div class="label">採用単価</div>
+<div class="value" id="sumCostPerHire">-</div>
+<div class="sub">費用 ÷ 採用</div>
+</div>
+</div>
+</section>
+<section class="insight-card" id="costInsight">
+<div class="insight-title">重点確認</div>
+<div class="insight-body">読込中です</div>
+</section>
+<section class="card">
+<div class="section-head">
+<div>
+<h2>費用対効果ランキング</h2>
+</div>
+</div>
+<div class="performance-grid" id="performanceGrid">
+<div class="empty-box">読込中です</div>
+</div>
+</section>
+<section class="card">
+<div class="section-head">
+<div>
+<h2>費用 → 応募 → 採用</h2>
+</div>
+</div>
+<div class="chart-box">
+<canvas id="costChart"></canvas>
+</div>
+</section>
+<section class="card">
+<div class="section-head">
+<div>
+<h2>単価ボトルネック</h2>
+</div>
+</div>
+<div class="bottleneck-grid" id="bottleneckGrid">
+<div class="empty-box">読込中です</div>
+</div>
+</section>
+<section class="card table-card">
+<div class="table-head">
+<h2>媒体別採用単価明細</h2>
+</div>
+<div class="table-wrap">
+<table>
+<thead id="tableHead"></thead>
+<tbody id="tableBody"><tr><td class="empty">読込中です</td></tr></tbody>
+</table>
+</div>
+</section>
+
+<div class="message-box message-info hidden" id="pageMessage"></div>
+</main>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const sb = window.getRecruitSupabaseClient();
+
+let currentUser=null;
+let currentRole=null;
+let rows=[];
+let CENTER_MASTER={};
+let costRows=[];
+let masterChannels=[];
+let costChart=null;
+
+const ACTIVE_STATUSES=["応募","アポ取得","面接設定","面接実施"];
+
+function $(id){return document.getElementById(id)}
+
+function setText(id,value){const el=$(id);if(el)el.textContent=value}
+function setMsg(id,msg,type="info"){const el=$(id);if(!el)return;if(!msg){el.textContent="";el.className="message-box message-info hidden";return}el.textContent=msg;el.className="message-box message-"+type}
+function validDate(s){if(!s)return false;const y=Number(String(s).slice(0,4));return y>=2000}
+function rate(n,d){return !d ? "0.0%" : ((n/d)*100).toFixed(1)+"%"}
+function rateNum(n,d){return !d ? 0 : Number(((n/d)*100).toFixed(1))}
+function yen(v){const n=Number(v||0);return n ? n.toLocaleString("ja-JP")+"円" : "0円"}
+function yenDash(v){const n=Number(v||0);return n ? n.toLocaleString("ja-JP")+"円" : "-"}
+function todayStr(){const d=new Date();return d.toISOString().slice(0,10)}
+
+function isHired(r){return r.hiring_result==="採用"||validDate(r.join_date)}
+
+function isActionRequired(r){
+  const st=String(r.status||"").trim();
+  if(st==="面接実施"&&(r.hiring_result==="採用"||r.hiring_result==="不採用"))return false;
+  if(!ACTIVE_STATUSES.includes(st))return false;
+  if(!r.next_action_date)return true;
+  return daysBetween(todayStr(),r.next_action_date)<=1;
+}
+
+function fiscalRange(type){
+  const fy=fiscalYear();
+  if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};
+  if(type==="all")return {fy:null,label:"全期間",from:"",to:""};
+  return {fy,label:fy+"年度",from:fy+"-04-01",to:(fy+1)+"-03-31"};
+}
+function selectedRange(){
+  const base=fiscalRange($("fy").value);
+  const customFrom=$("costFrom")?.value||"";
+  const customTo=$("costTo")?.value||"";
+  if(customFrom||customTo){
+    return {fy:null,label:"期間指定",from:customFrom||base.from,to:customTo||base.to};
+  }
+  return base;
+}
+function applyFy(){
+  const base=fiscalRange($("fy").value);
+  if($("costFrom") && !$("costFrom").value)$("costFrom").placeholder=base.from||"";
+  if($("costTo") && !$("costTo").value)$("costTo").placeholder=base.to||"";
+  const r=selectedRange();
+  $("from").value=r.from;
+  $("to").value=r.to;
+  const period=r.from&&r.to ? `${r.from} ～ ${r.to}` : "全期間";
+  setText("periodText","対象期間："+period);
+  setText("sideFiscalYear",r.label);
+  setText("sidePeriod",period);
+}
+function handleFilterChange(){applyFy();loadAnalysis()}
+function handleDivisionChange(){updateCenterOptions(rows);handleFilterChange()}
+function buildListUrlForCostChannel(channel,filter="all"){
+  const params=new URLSearchParams();
+  params.set("source","dashboard");
+  params.set("filter",filter);
+  const from=$("from")?.value||"";
+  const to=$("to")?.value||"";
+  const division=$("division")?.value||"";
+  const center=$("center")?.value||"";
+  if(from)params.set("from",from);
+  if(to)params.set("to",to);
+  if(division)params.set("division",division);
+  if(center)params.set("center",center);
+  if(channel)params.set("channel",channel);
+  return "./list.html?"+params.toString();
+}
+function costChannelLink(channel,filter="all",cls="analysis-link"){
+  const label=String(channel||"未設定");
+  return `<a class="${cls}" href="${esc(buildListUrlForCostChannel(label,filter))}">${esc(label)}</a>`;
+}
+
+async function getUser(){
+  if(currentUser)return currentUser;
+  const {data:{session}}=await sb.auth.getSession();
+  currentUser=session?.user||null;
+  return currentUser;
+}
+async function getRole(userId){
+  if(currentRole)return currentRole;
+  try{
+    const {data}=await sb.from("profiles").select("role").eq("user_id",userId).single();
+    currentRole=data?.role||"editor";
+  }catch(e){
+    currentRole="editor";
+  }
+  return currentRole;
+}
+function showAuth(msg="未ログインです",type="info"){
+  const a=$("authScreen"),b=$("appScreen");
+  if(a)a.classList.remove("hidden");
+  if(b)b.classList.add("hidden");
+  currentUser=null;
+  currentRole=null;
+  setMsg("authMessage",msg,type);
+  document.body.classList.remove("auth-checking");
+}
+async function showApp(){
+  const user=await getUser();
+  if(!user){showAuth();return false}
+  await getRole(user.id);
+  $("authScreen")?.classList.add("hidden");
+  $("appScreen")?.classList.remove("hidden");
+  document.body.classList.remove("auth-checking");
+  return true;
+}
+async function login(){
+  const email=$("loginEmail")?.value.trim();
+  const password=$("loginPassword")?.value;
+  if(!email||!password){setMsg("authMessage","メールアドレスとパスワードを入力してください","error");return}
+  try{
+    const {error}=await sb.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    currentUser=null;
+    currentRole=null;
+    if(await showApp())await initPageAfterLogin();
+  }catch(e){
+    setMsg("authMessage","ログイン失敗: "+(e.message||e),"error");
+  }
+}
+async function logout(){
+  try{await sb.auth.signOut()}catch(e){}
+  showAuth("ログアウトしました","success");
+}
+sb.auth.onAuthStateChange((ev)=>{if(ev==="SIGNED_OUT")showAuth("ログアウトしました","success")});
+async function authInit(){
+  try{
+    if(await showApp())await initPageAfterLogin();
+  }catch(e){
+    console.error(e);
+    showAuth("初期化に失敗しました","error");
+  }finally{
+    document.body.classList.remove("auth-checking");
+  }
+}
+
+function setSelectOptions(id,values,blank="すべて"){
+  const el=$(id);
+  if(!el)return;
+  const current=el.value;
+  const list=[...new Set((values||[]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));
+  el.innerHTML=`<option value="">${blank}</option>`;
+  list.forEach(v=>{el.innerHTML+=`<option value="${esc(v)}">${esc(v)}</option>`});
+  if(list.includes(current))el.value=current;
+}
+async function loadMasterChannels(){
+
+  try{
+    masterChannels = window.RecruitMaster ? await window.RecruitMaster.list("channels") : [];
+  }catch(e){
+    console.warn("媒体マスタ読込失敗", e);
+    masterChannels = [];
+  }
+}
+function getActiveChannelOptions(){
+  return [...new Set((masterChannels||[]).map(normalizeChannel).filter(Boolean))];
+}
+async function loadCenterMaster(){
+
+  const master = window.RecruitMaster ? await window.RecruitMaster.divisionCenter() : { centersByDivision:{}, centers:[] };
+  CENTER_MASTER = master.centersByDivision || {};
+  return master.centers || [];
+}
+function bindMasters(data){
+  const divisions=Object.keys(CENTER_MASTER).length ? Object.keys(CENTER_MASTER) : data.map(r=>r.division);
+  setSelectOptions("division",divisions);
+  updateCenterOptions(data);
+  setSelectOptions("channel",getActiveChannelOptions());
+}
+function updateCenterOptions(sourceRows=rows){
+  const div=$("division")?.value||"";
+  const centers=div&&CENTER_MASTER[div] ? CENTER_MASTER[div] : (Object.keys(CENTER_MASTER).length ? Object.values(CENTER_MASTER).flat() : (sourceRows||[]).filter(r=>!div||r.division===div).map(r=>r.center_name));
+  setSelectOptions("center",centers);
+}
+function filteredCandidates(data){
+  const f=$("from").value;
+  const t=$("to").value;
+  const d=$("division").value;
+  const c=$("center").value;
+  const ch=$("channel").value;
+  return (data||[])
+    .filter(r=>!r.is_deleted)
+    .filter(r=>{
+      if(!validDate(r.applied_date))return false;
+      if(f&&r.applied_date<f)return false;
+      if(t&&r.applied_date>t)return false;
+      if(d&&r.division!==d)return false;
+      if(c&&r.center_name!==c)return false;
+      if(ch&&(r.channel||"未設定")!==ch)return false;
+      return true;
+    });
+}
+function getCostFiscalYearsForRange(range){
+  if(range.fy!==null)return [range.fy];
+  const years=[...new Set((costRows||[]).map(r=>Number(r.fiscal_year)).filter(Boolean))].sort((a,b)=>a-b);
+  return years;
+}
+function costRowMonth(row){
+  return String(row?.target_month||"").slice(0,7);
+}
+function isCostRowInSelectedRange(row,range){
+  const month=costRowMonth(row);
+  if(!month)return range.fy===null || Number(row.fiscal_year)===Number(range.fy);
+  if(!range.from||!range.to)return true;
+  return month>=range.from.slice(0,7) && month<=range.to.slice(0,7);
+}
+function monthKeysBetween(startDate,endDate){
+  const start=String(startDate||"").slice(0,7);
+  const end=String(endDate||"").slice(0,7);
+  if(!start||!end||start>end)return [];
+  const [sy,sm]=start.split("-").map(Number);
+  const [ey,em]=end.split("-").map(Number);
+  const keys=[];
+  let y=sy,m=sm;
+  while(y<ey || (y===ey && m<=em)){
+    keys.push(`${y}-${String(m).padStart(2,"0")}`);
+    m++;
+    if(m>12){m=1;y++;}
+  }
+  return keys;
+}
+function splitAmount(total,count,index){
+  const n=Number(total||0);
+  if(!count)return 0;
+  const base=Math.floor(n/count);
+  const remainder=n-base*count;
+  return base+(index<remainder?1:0);
+}
+function normalizeChannel(ch){
+  const s=String(ch||"").trim();
+  if(!s)return "未設定";
+
+  // channel_costs側でIndeed登録されている費用は、応募データ側のテンリクに紐づける
+  if(s==="Indeed")return "テンリク";
+
+  // それ以外は、媒体分析側の表示とズレないよう原則そのまま扱う
+  return s;
+}
+function channelKind(ch){
+  const s=String(ch||"");
+  if(s.includes("ハローワーク"))return "無料";
+  if(s.includes("紹介")||s.includes("リファラル"))return "紹介";
+  if(s.includes("ホームページ"))return "その他";
+  if(s==="未設定")return "未設定";
+  return "有料";
+}
+function buildCostMap(range){
+  const map=new Map();
+  (costRows||[]).filter(r=>isCostRowInSelectedRange(r,range)).forEach(r=>{
+    const key=normalizeChannel(r.channel);
+    map.set(key,(map.get(key)||0)+Number(r.cost_amount||0));
+  });
+  return map;
+}
+function groupByChannel(data,costMap){
+  const m=new Map();
+  function ensure(key){
+    const k=normalizeChannel(key);
+    if(!m.has(k)){
+      m.set(k,{
+        key:k,
+        kind:channelKind(k),
+        applied:0,
+        appointment:0,
+        set:0,
+        interview:0,
+        offer:0,
+        join:0,
+        decline:0,
+        lost:0,
+        hold:0,
+        todo:0,
+        cost:Number(costMap.get(k)||0)
+      });
+    }
+    return m.get(k);
+  }
+  data.forEach(r=>{
+    const x=ensure(r.channel||"未設定");
+    if(validDate(r.applied_date))x.applied++;
+    if(validDate(r.appointment_date))x.appointment++;
+    if(validDate(r.interview1_date))x.set++;
+    if(validDate(r.interview_done_date))x.interview++;
+    if(validDate(r.offer_date))x.offer++;
+    if(isHired(r))x.join++;
+    if(r.status==="辞退"||r.decline_reason)x.decline++;
+    if(r.status==="不通")x.lost++;
+    if(r.status==="保留")x.hold++;
+    if(isActionRequired(r))x.todo++;
+  });
+  (costMap||new Map()).forEach((cost,key)=>{
+    const x=ensure(key);
+    x.cost=Number(cost||0);
+  });
+  return [...m.values()].sort((a,b)=>b.cost-a.cost||b.join-a.join||b.applied-a.applied||String(a.key).localeCompare(String(b.key),"ja"));
+}
+function costPerApply(x){return x.applied ? Math.round(x.cost/x.applied) : 0}
+function costPerHire(x){return x.join ? Math.round(x.cost/x.join) : 0}
+function judgeCost(x){
+  if(x.cost<=0)return {label:"費用未設定",cls:"neutral",action:"媒体費を登録"};
+  if(x.join<=0)return {label:"採用0",cls:"danger",action:"掲載継続・原稿・初動を見直し"};
+  const cph=costPerHire(x);
+  if(cph<=50000)return {label:"優秀",cls:"success",action:"投資継続・強化候補"};
+  if(cph<=100000)return {label:"良好",cls:"success",action:"現行運用を維持"};
+  if(cph<=200000)return {label:"注意",cls:"warning",action:"原稿・対象職種を見直し"};
+  return {label:"高騰",cls:"danger",action:"費用配分を見直し"};
+}
+function problemCostType(x){
+  if(x.cost<=0)return {level:"確認",label:"費用未設定",detail:"媒体費が登録されていません",action:"媒体費を登録",cls:"neutral"};
+  if(x.applied<=0)return {level:"重点",label:"応募0",detail:`費用 ${yen(x.cost)} / 応募 0`,action:"掲載状況・媒体名の紐づきを確認",cls:"danger"};
+  if(x.join<=0)return {level:"重点",label:"採用0",detail:`費用 ${yen(x.cost)} / 応募 ${x.applied}・採用 0`,action:"原稿・対応速度・職種設定を確認",cls:"danger"};
+  const cph=costPerHire(x);
+  const cpa=costPerApply(x);
+  if(cph>200000)return {level:"重点",label:"採用単価高騰",detail:`採用単価 ${yen(cph)} / 採用 ${x.join}`,action:"予算配分を見直し",cls:"danger"};
+  if(cpa>20000&&x.applied>=5)return {level:"注意",label:"応募単価高め",detail:`応募単価 ${yen(cpa)} / 応募 ${x.applied}`,action:"クリック単価・原稿を確認",cls:"warning"};
+  if(rateNum(x.join,x.applied)<10&&x.applied>=10)return {level:"注意",label:"採用転換弱い",detail:`応募→採用 ${rate(x.join,x.applied)}`,action:"面接後フォロー・条件ミスマッチを確認",cls:"warning"};
+  return {level:"良好",label:"費用対効果良好",detail:`採用単価 ${yen(cph)}`,action:"現行運用を維持",cls:"success"};
+}
+function updateSummary(items,data){
+  const totalCost=items.reduce((s,x)=>s+x.cost,0);
+  const applied=data.filter(r=>validDate(r.applied_date)).length;
+  const join=data.filter(isHired).length;
+  const cpa=applied ? Math.round(totalCost/applied) : 0;
+  const cph=join ? Math.round(totalCost/join) : 0;
+  setText("sumCost",yen(totalCost));
+  setText("sumApplied",applied);
+  setText("sumJoin",join);
+  setText("sumCostPerApply",yenDash(cpa));
+  setText("sumCostPerHire",yenDash(cph));
+  setText("sideRows",data.length);
+  setText("sideChannels",items.length);
+  setText("sideCost",yen(totalCost));
+  setText("sideCostPerHire",yenDash(cph));
+}
+function updateInsight(items){
+  const box=$("costInsight");
+  if(!box)return;
+  const problem=[...items].map(x=>({item:x,b:problemCostType(x)})).sort((a,b)=>{
+    const rank={danger:0,warning:1,neutral:2,success:3};
+    const ar=rank[a.b.cls]??9;
+    const br=rank[b.b.cls]??9;
+    if(ar!==br)return ar-br;
+    return b.item.cost-a.item.cost;
+  })[0];
+  if(!problem){
+    box.className="insight-card neutral";
+    box.innerHTML='<div class="insight-title">重点確認</div><div class="insight-body">対象データがありません。</div>';
+    return;
+  }
+  box.className="insight-card "+problem.b.cls;
+  box.innerHTML=`<div class="insight-title">重点確認</div><div class="insight-body">最優先：${esc(problem.item.key)}（${esc(problem.b.label)}）<span>${esc(problem.b.action)}</span></div>`;
+}
+function renderPerformance(items){
+  const box=$("performanceGrid");
+  if(!box)return;
+  const list=[...items].filter(x=>x.cost>0&&x.join>0).sort((a,b)=>costPerHire(a)-costPerHire(b)||b.join-a.join).slice(0,5);
+  if(!list.length){box.innerHTML='<div class="empty-box">採用単価を計算できる媒体がありません</div>';return}
+  box.innerHTML=list.map((x,i)=>{
+    const j=judgeCost(x);
+    const cpa=costPerApply(x);
+    const cph=costPerHire(x);
+    const cphCls=cph<=100000?"good":cph<=200000?"normal":"bad";
+    const cpaCls=cpa<=10000?"good":cpa<=20000?"normal":"bad";
+    return `<article class="performance-card ${j.cls}">
+      <div class="performance-head">
+        <span class="rank-no">${i+1}</span>
+        <div><h3>${costChannelLink(x.key)}</h3><p>${esc(x.kind)}</p></div>
+        <strong>${yen(cph).replace("円","")}<small>円/採用</small></strong>
+      </div>
+      <div class="performance-metrics">
+        <div><span>費用</span><b>${yen(x.cost)}</b></div>
+        <div><span>応募</span><b>${x.applied}</b></div>
+        <div><span>採用</span><b>${x.join}</b></div>
+      </div>
+      <div class="performance-rates">
+        <div class="${cpaCls}"><span>応募単価</span><b>${yenDash(cpa)}</b></div>
+        <div class="${cphCls}"><span>採用単価</span><b>${yenDash(cph)}</b></div>
+      </div>
+      <div class="performance-foot">
+        <span class="mini-status ${j.cls}">${esc(j.label)}</span>
+        <em>${esc(j.action)}</em>
+      </div>
+    </article>`;
+  }).join("");
+}
+const chartValueLabelPlugin={
+  id:"chartValueLabelPlugin",
+  afterDatasetsDraw(chart){
+    const {ctx,chartArea}=chart;
+    ctx.save();
+    ctx.font="800 10px Segoe UI, Meiryo, sans-serif";
+    ctx.textBaseline="middle";
+    ctx.textAlign="left";
+    chart.data.datasets.forEach((dataset,datasetIndex)=>{
+      const meta=chart.getDatasetMeta(datasetIndex);
+      meta.data.forEach((bar,index)=>{
+        const value=dataset.data[index];
+        if(!value)return;
+        const pos=bar.tooltipPosition();
+        const label=dataset.label==="費用" ? Number(value).toLocaleString("ja-JP")+"円" : String(value);
+        const textWidth=ctx.measureText(label).width;
+        const labelX=Math.min(pos.x+8,chartArea.right-textWidth-4);
+        ctx.fillStyle=dataset.backgroundColor||"#334155";
+        ctx.fillText(label,labelX,pos.y);
+      });
+    });
+    ctx.restore();
+  }
+};
+function renderChart(items){
+  const canvas=$("costChart");
+  const box=canvas?.closest(".chart-box");
+  if(!canvas||!box)return;
+  const list=[...items].filter(x=>x.cost>0).sort((a,b)=>b.cost-a.cost).slice(0,5);
+  if(costChart)costChart.destroy();
+  if(!list.length){box.innerHTML='<div class="empty-box">費用データがありません</div>';return}
+  if(!box.querySelector("canvas"))box.innerHTML='<canvas id="costChart"></canvas>';
+  const activeCanvas=$("costChart");
+  const maxCost=Math.max(...list.map(x=>x.cost),1);
+  const maxCount=Math.max(...list.flatMap(x=>[x.applied,x.join]),1);
+  costChart=new Chart(activeCanvas,{
+    type:"bar",
+    plugins:[chartValueLabelPlugin],
+    data:{
+      labels:list.map(x=>x.key),
+      datasets:[
+        {label:"費用",data:list.map(x=>x.cost),backgroundColor:"#2563eb",borderRadius:7,barThickness:13,maxBarThickness:13,xAxisID:"xCost"},
+        {label:"応募",data:list.map(x=>x.applied),backgroundColor:"#f59e0b",borderRadius:7,barThickness:13,maxBarThickness:13,xAxisID:"xCount"},
+        {label:"採用",data:list.map(x=>x.join),backgroundColor:"#16a34a",borderRadius:7,barThickness:13,maxBarThickness:13,xAxisID:"xCount"}
+      ]
+    },
+    options:{
+      indexAxis:"y",
+      responsive:true,
+      maintainAspectRatio:false,
+      layout:{padding:{right:18}},
+      interaction:{mode:"nearest",intersect:false},
+      datasets:{bar:{grouped:true,categoryPercentage:.72,barPercentage:.76}},
+      plugins:{
+        legend:{position:"top",labels:{usePointStyle:true,pointStyle:"circle",boxWidth:10,boxHeight:10,color:"#334155",font:{size:11,weight:"700"}}},
+        tooltip:{callbacks:{label:(ctx)=>{
+          const item=list[ctx.dataIndex];
+          if(ctx.dataset.label==="費用")return "費用: "+yen(item.cost);
+          return ctx.dataset.label+": "+ctx.parsed.x;
+        }}}
+      },
+      scales:{
+        xCost:{beginAtZero:true,suggestedMax:Math.ceil(maxCost*1.12),position:"top",grid:{color:"#e2e8f0"},ticks:{color:"#64748b",font:{size:11,weight:"700"},callback:(v)=>Number(v).toLocaleString("ja-JP")+"円"}},
+        xCount:{beginAtZero:true,suggestedMax:Math.ceil(maxCount*1.12),position:"bottom",grid:{drawOnChartArea:false},ticks:{color:"#64748b",font:{size:11,weight:"700"}}},
+        y:{grid:{display:false},ticks:{color:"#0f172a",font:{size:11,weight:"850"}}}
+      }
+    }
+  });
+}
+function renderBottleneck(items){
+  const box=$("bottleneckGrid");
+  if(!box)return;
+  const list=[...items].map(x=>({item:x,b:problemCostType(x)})).sort((a,b)=>{
+    const rank={danger:0,warning:1,neutral:2,success:3};
+    const ar=rank[a.b.cls]??9;
+    const br=rank[b.b.cls]??9;
+    if(ar!==br)return ar-br;
+    return b.item.cost-a.item.cost;
+  }).slice(0,8);
+  if(!list.length){box.innerHTML='<div class="empty-box">データがありません</div>';return}
+  box.innerHTML=list.map(({item:x,b})=>`<div class="bottleneck-card ${b.cls}">
+    <div><strong>${costChannelLink(x.key)}</strong><span>${esc(b.level)}｜${esc(b.label)}</span></div>
+    <p>${esc(b.detail)} / 費用 ${yen(x.cost)}</p>
+    <small>${esc(b.action)}</small>
+  </div>`).join("");
+}
+function renderTable(items){
+  const head=["媒体","種別","費用","応募","面接","採用","応募単価","採用単価","応募→採用","判定"];
+  $("tableHead").innerHTML="<tr>"+head.map(h=>"<th>"+h+"</th>").join("")+"</tr>";
+  if(!items.length){$("tableBody").innerHTML='<tr><td class="empty" colspan="10">データがありません</td></tr>';return}
+  $("tableBody").innerHTML=items.map(x=>{
+    const j=judgeCost(x);
+    const cpa=costPerApply(x);
+    const cph=costPerHire(x);
+    return `<tr>
+      <td><strong>${costChannelLink(x.key)}</strong></td>
+      <td>${esc(x.kind)}</td>
+      <td class="num">${yen(x.cost)}</td>
+      <td class="num">${x.applied}</td>
+      <td class="num">${x.interview}</td>
+      <td class="num">${x.join}</td>
+      <td class="num">${yenDash(cpa)}</td>
+      <td class="num">${yenDash(cph)}</td>
+      <td class="num">${rate(x.join,x.applied)}</td>
+      <td class="center"><span class="mini-status ${j.cls}">${esc(j.label)}</span></td>
+    </tr>`;
+  }).join("");
+}
+
+async function loadCosts(range){
+  try{
+    let q=sb.from("channel_costs").select("*");
+    if(range.fy!==null)q=q.eq("fiscal_year",range.fy);
+    const {data,error}=await q;
+    if(error)throw error;
+    costRows=data||[];
+  }catch(e){
+    console.error(e);
+    costRows=[];
+  }
+}
+async function loadAnalysis(){
+  try{
+    setMsg("pageMessage","","info");
+    const user=await getUser();
+    if(!user){showAuth();return}
+    const range=selectedRange();
+    await Promise.all([loadCosts(range),loadMasterChannels(),loadCenterMaster()]);
+    const {data,error}=await sb.from("candidates").select("*").order("id",{ascending:false});
+    if(error)throw error;
+    rows=data||[];
+    bindMasters(rows);
+    const data2=filteredCandidates(rows);
+    const costMap=buildCostMap(range);
+    const items=groupByChannel(data2,costMap);
+    updateSummary(items,data2);
+    updateInsight(items);
+    renderPerformance(items);
+    renderChart(items);
+    renderBottleneck(items);
+    renderTable(items);
+  }catch(e){
+    console.error(e);
+    setMsg("pageMessage","読込失敗: "+(e.message||e),"error");
+  }
+}
+async function initPageAfterLogin(){
+  const fySelect=$("fy");
+  if(fySelect && !fySelect.dataset.initialized){
+    fySelect.value="previous";
+    fySelect.dataset.initialized="1";
+  }
+  // 契約期間入力は月別配賦に変換して保存するため、年度は保存時に対象月から自動算出します。
+  applyFy();
+  await loadAnalysis();
+}
+authInit();
+</script>
+<script src="dashboard_summary_links.js"></script>
+</body>
+</html>

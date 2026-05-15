@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>推移分析</title>
+<link href="./assets/css/common.css" rel="stylesheet">
+<link href="./assets/css/header.css" rel="stylesheet">
+<link href="./assets/css/sidebar.css?v=20260513_trend" rel="stylesheet">
+<link href="./assets/css/dashboard_ui.css" rel="stylesheet">
+<link href="./assets/css/dashboard_trend.css" rel="stylesheet">
+<script src="./common.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/safe_utils.js"></script>
+<script src="./sidebar.js?v=20260513_role"></script>
+</head>
+<body class="auth-checking">
+<div class="container hidden" id="authScreen">
+  <div class="auth-shell">
+    <h1 class="auth-title">推移分析</h1>
+    <p class="auth-sub">ログイン後に画面を表示します。</p>
+    <div class="auth-card">
+      <h2>ログイン</h2>
+      <div class="form-grid">
+        <div class="col-12"><label for="loginEmail">メールアドレス</label><input id="loginEmail" type="email"></div>
+        <div class="col-12"><label for="loginPassword">パスワード</label><input id="loginPassword" type="password"></div>
+        <div class="col-12"><button class="btn-primary" onclick="login()" type="button">ログイン</button></div>
+        <div class="col-12"><div class="message-box message-info" id="authMessage">未ログインです</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="hidden" id="appScreen">
+  <div class="app-layout">
+    <aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+    <main class="main-content">
+      <header class="page-header dashboard-page-header">
+        <div class="dashboard-title-line">
+          <h1>推移分析</h1>
+          <div aria-label="集計状態" class="dashboard-header-meta">
+            <span class="dashboard-header-chip">対象年度：<span id="headYear">-</span></span>
+            <span class="dashboard-header-chip">対象件数：<span id="headRows">0</span></span>
+            <span class="dashboard-header-chip">対象期間：<span id="headPeriod">-</span></span>
+          </div>
+        </div>
+      </header>
+
+      <section class="analysis-control-card">
+        <div class="analysis-control-copy">
+          <p>分析条件</p>
+          <h2>採用推移を目的別に確認</h2>
+        </div>
+        <div class="analysis-control-form analysis-control-form--4">
+          <div class="analysis-field"><label for="fy">対象年度</label><select id="fy"><option value="current"></option><option value="previous"></option><option value="all">全期間</option></select></div>
+          <div class="analysis-field"><label for="division">対象本部</label><select id="division"><option value="">すべて</option></select></div>
+          <div class="analysis-field"><label for="center">対象営業所</label><select id="center"><option value="">すべて</option></select></div>
+          <div class="analysis-field"><label for="owner">対象担当</label><select id="owner"><option value="">すべて</option></select></div>
+          <button class="btn-primary" onclick="loadAnalysis()" type="button">更新</button>
+          <div class="period-text analysis-period" id="periodText">対象期間：-</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="trend-tabs" role="tablist" aria-label="推移分析タブ">
+          <button class="trend-tab active" type="button" data-tab="overall">全体推移</button>
+          <button class="trend-tab" type="button" data-tab="media">媒体推移</button>
+          <button class="trend-tab" type="button" data-tab="division">本部推移</button>
+          <button class="trend-tab" type="button" data-tab="owner">担当推移</button>
+          <button class="trend-tab" type="button" data-tab="job">職種推移</button>
+          <button class="trend-tab" type="button" data-tab="cost">採用単価推移</button>
+        </div>
+        <div class="trend-kpi-grid" id="trendKpis"></div>
+        <div class="trend-note" id="trendNote">読込中です。</div>
+      </section>
+
+      <section class="card trend-section" id="sectionOverall">
+        <div class="trend-card-title"><div><h3>全体月次推移</h3><p>年度内の応募・面接実施・採用を月別に確認します。</p></div></div>
+        <div class="trend-chart-grid">
+          <div class="trend-chart-panel"><div class="trend-card-title"><div><h3>月次推移グラフ</h3><p>応募・面接実施・採用</p></div></div><div class="trend-chart-box"><canvas id="overallCountChart"></canvas></div></div>
+          <div class="trend-chart-panel"><div class="trend-card-title"><div><h3>転換率推移グラフ</h3><p>応募→面接 / 応募→採用</p></div></div><div class="trend-chart-box"><canvas id="overallRateChart"></canvas></div></div>
+        </div>
+        <div class="trend-table-wrap"><table class="trend-table"><thead id="overallHead"></thead><tbody id="overallBody"></tbody></table></div>
+      </section>
+
+      <section class="card trend-section hidden" id="sectionMedia">
+        <div class="trend-card-title"><div><h3>媒体推移</h3><p>媒体または媒体詳細ごとに、月別の応募・面接・採用を確認します。本部別報告にも使えます。</p></div></div>
+        <div class="trend-toolbar">
+          <div class="analysis-field"><label for="mediaMode">集計単位</label><select id="mediaMode"><option value="detail">媒体詳細</option><option value="channel">媒体</option></select></div>
+          <div class="analysis-field"><label for="mediaDivision">報告本部</label><select id="mediaDivision"><option value="">全本部</option></select></div>
+          <div class="analysis-field"><label for="mediaMonth">確認月</label><select id="mediaMonth"></select></div>
+          <div class="analysis-field"><label>&nbsp;</label><button class="btn-secondary" onclick="renderCurrentTab()" type="button">表示更新</button></div>
+        </div>
+        <div class="trend-chart-panel trend-chart-panel--wide"><div class="trend-card-title"><div><h3>媒体月次推移グラフ</h3><p>上位媒体の応募推移</p></div></div><div class="trend-chart-box"><canvas id="mediaTrendChart"></canvas></div></div>
+        <div class="trend-layout">
+          <div><div class="trend-card-title"><div><h3>選択月の媒体別実績</h3><p id="mediaMonthCaption">-</p></div></div><div class="trend-table-wrap"><table class="trend-table"><thead id="mediaSelectedHead"></thead><tbody id="mediaSelectedBody"></tbody></table></div></div>
+          <div><div class="trend-card-title"><div><h3>月別サマリー</h3><p>応募/面接/採用を月ごとに表示</p></div></div><div class="trend-table-wrap"><table class="trend-table"><thead id="mediaMatrixHead"></thead><tbody id="mediaMatrixBody"></tbody></table></div></div>
+        </div>
+        <div class="trend-detail-block">
+          <div class="trend-card-title"><div><h3>本部別 月次内訳</h3><p id="mediaBreakdownCaption">選択月・報告本部の応募を職種別、媒体×職種別に確認します。</p></div></div>
+          <div class="trend-layout trend-layout--breakdown">
+            <div>
+              <div class="trend-card-title"><div><h3>職種別内訳</h3><p>その月に何人応募し、何人が面接・採用まで進んだか</p></div></div>
+              <div class="trend-table-wrap"><table class="trend-table trend-table--compact"><thead id="mediaJobHead"></thead><tbody id="mediaJobBody"></tbody></table></div>
+            </div>
+            <div>
+              <div class="trend-card-title"><div><h3>媒体×職種 内訳</h3><p>媒体ごとに、どの職種の応募が多いかを確認</p></div></div>
+              <div class="trend-table-wrap"><table class="trend-table trend-table--compact"><thead id="mediaJobChannelHead"></thead><tbody id="mediaJobChannelBody"></tbody></table></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card trend-section hidden" id="sectionDivision">
+        <div class="trend-card-title"><div><h3>本部推移</h3><p>本部ごとの月別応募・面接・採用を確認します。</p></div></div>
+        <div class="trend-chart-panel trend-chart-panel--wide"><div class="trend-card-title"><div><h3>本部別月次推移グラフ</h3><p>上位本部の応募推移</p></div></div><div class="trend-chart-box"><canvas id="divisionTrendChart"></canvas></div></div>
+        <div class="trend-table-wrap"><table class="trend-table"><thead id="divisionHead"></thead><tbody id="divisionBody"></tbody></table></div>
+      </section>
+
+      <section class="card trend-section hidden" id="sectionOwner">
+        <div class="trend-card-title"><div><h3>担当推移</h3><p>担当者ごとの月別応募・面接・採用を確認します。</p></div></div>
+        <div class="trend-chart-panel trend-chart-panel--wide"><div class="trend-card-title"><div><h3>担当別月次推移グラフ</h3><p>上位担当者の応募推移</p></div></div><div class="trend-chart-box"><canvas id="ownerTrendChart"></canvas></div></div>
+        <div class="trend-table-wrap"><table class="trend-table"><thead id="ownerHead"></thead><tbody id="ownerBody"></tbody></table></div>
+      </section>
+
+      <section class="card trend-section hidden" id="sectionJob">
+        <div class="trend-card-title"><div><h3>職種推移</h3><p>職種ごとの月別応募・面接・採用を確認します。</p></div></div>
+        <div class="trend-chart-panel trend-chart-panel--wide"><div class="trend-card-title"><div><h3>職種別月次推移グラフ</h3><p>上位職種の応募推移</p></div></div><div class="trend-chart-box"><canvas id="jobTrendChart"></canvas></div></div>
+        <div class="trend-table-wrap"><table class="trend-table"><thead id="jobHead"></thead><tbody id="jobBody"></tbody></table></div>
+      </section>
+
+      <section class="card trend-section hidden" id="sectionCost">
+        <div class="trend-card-title"><div><h3>採用単価推移</h3><p>媒体費を月別に配賦し、応募単価・採用単価を確認します。</p></div></div>
+        <div class="trend-toolbar trend-toolbar--cost">
+          <div class="analysis-field"><label for="costMode">集計単位</label><select id="costMode"><option value="channel">媒体</option><option value="detail">媒体詳細</option></select></div>
+          <div class="analysis-field"><label for="costDivision">対象本部</label><select id="costDivision"><option value="">全本部</option></select></div>
+          <div class="analysis-field"><label>&nbsp;</label><button class="btn-secondary" onclick="renderCurrentTab()" type="button">表示更新</button></div>
+        </div>
+        <div class="trend-chart-panel trend-chart-panel--wide"><div class="trend-card-title"><div><h3>採用単価月次推移グラフ</h3><p>応募単価・採用単価</p></div></div><div class="trend-chart-box"><canvas id="costUnitTrendChart"></canvas></div></div>
+        <div class="trend-layout">
+          <div><div class="trend-card-title"><div><h3>月別採用単価</h3><p>月ごとの費用・応募・採用を確認</p></div></div><div class="trend-table-wrap"><table class="trend-table"><thead id="costMonthlyHead"></thead><tbody id="costMonthlyBody"></tbody></table></div></div>
+          <div><div class="trend-card-title"><div><h3>媒体別採用単価</h3><p>選択条件内の媒体別効率</p></div></div><div class="trend-table-wrap"><table class="trend-table"><thead id="costChannelHead"></thead><tbody id="costChannelBody"></tbody></table></div></div>
+        </div>
+      </section>
+      <div class="message-box message-info hidden" id="pageMessage"></div>
+    </main>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const sb = window.getRecruitSupabaseClient();
+let currentUser=null;
+let currentRole=null;
+let rows=[];
+let costRows=[];
+let filteredRows=[];
+let CENTER_MASTER={};
+let currentTab="overall";
+const trendCharts = window.trendCharts || (window.trendCharts = {});
+
+function $(id){return document.getElementById(id)}
+function esc(v){return String(v ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}
+function setText(id,value){const el=$(id);if(el)el.textContent=value}
+function setMsg(id,msg,type="info"){const el=$(id);if(!el)return;if(!msg){el.textContent="";el.className="message-box message-info hidden";return}el.textContent=msg;el.className="message-box message-"+type}
+function validDate(s){if(!s)return false;const y=Number(String(s).slice(0,4));return y>=2000}
+function isHired(r){return r.hiring_result==="採用"||validDate(r.join_date)}
+function isInterview(r){return validDate(r.interview1_date)||validDate(r.interview_done_date)||String(r.status||"").includes("面接実施")||String(r.status||"").includes("内定")||String(r.status||"").includes("入社")||isHired(r)}
+function fiscalYear(){const d=new Date();const y=d.getFullYear();return d.getMonth()+1>=4?y:y-1}
+function rateNum(n,d){return !d?0:Math.round((n/d)*1000)/10}
+function rate(n,d){return rateNum(n,d).toFixed(1)+"%"}
+function yen(n){return Number(n||0).toLocaleString("ja-JP")+"円"}
+function costMonth(row){return window.RecruitCost?.monthKey ? window.RecruitCost.monthKey(row) : String(row?.target_month||"").slice(0,7)}
+function costKey(row){return window.RecruitCost?.normalizeChannel ? window.RecruitCost.normalizeChannel(row?.channel||row?.media||row?.channel_name) : (String(row?.channel||row?.media||row?.channel_name||"未設定").trim()||"未設定")}
+function costAmount(row){return window.RecruitCost?.amount ? window.RecruitCost.amount(row) : Number(row?.cost_amount||row?.amount||row?.cost||0)}
+function monthKey(s){return validDate(s)?String(s).slice(0,7):""}
+function fiscalRange(type){const fy=fiscalYear();if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};if(type==="all")return {fy:null,label:"全期間",from:"",to:""};return {fy,label:fy+"年度",from:fy+"-04-01",to:(fy+1)+"-03-31"}}
+function monthList(){const range=fiscalRange($("fy").value);if(!range.from||!range.to){const keys=[...new Set(rows.map(r=>monthKey(r.applied_date)).filter(Boolean))].sort();return keys.length?keys:[]}const start=Number(range.from.slice(0,4));return [4,5,6,7,8,9,10,11,12,1,2,3].map(m=>`${m>=4?start:start+1}-${String(m).padStart(2,"0")}`)}
+function applyFy(){const range=fiscalRange($("fy").value);const period=range.from&&range.to?`${range.from} ～ ${range.to}`:"全期間";setText("periodText","対象期間："+period);setText("headYear",range.label);setText("headPeriod",period);return range}
+function setSelectOptions(id,values,blank="すべて"){const el=$(id);if(!el)return;const current=el.value;const list=[...new Set((values||[]).map(v=>String(v||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ja"));el.innerHTML=`<option value="">${blank}</option>`+list.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");if(list.includes(current))el.value=current}
+async function loadCenterMaster(){try{const master=window.RecruitMaster?await window.RecruitMaster.divisionCenter():{centersByDivision:{},centers:[]};CENTER_MASTER=master.centersByDivision||{};return master.centers||[]}catch(e){CENTER_MASTER={};return []}}
+function updateCenterOptions(){const div=$("division")?.value||"";const centers=div&&CENTER_MASTER[div]?CENTER_MASTER[div]:Object.values(CENTER_MASTER).flat();setSelectOptions("center",centers.length?centers:rows.map(r=>r.center_name))}
+function bindMasters(){const divisions=Object.keys(CENTER_MASTER).length?Object.keys(CENTER_MASTER):rows.map(r=>r.division);setSelectOptions("division",divisions);updateCenterOptions();setSelectOptions("owner",rows.map(r=>r.owner_name));setSelectOptions("mediaDivision",divisions,"全本部");setSelectOptions("costDivision",divisions,"全本部")}
+function filterRows(){const range=applyFy();const d=$("division").value;const c=$("center").value;const o=$("owner").value;filteredRows=(rows||[]).filter(r=>!r.is_deleted).filter(r=>{if(!validDate(r.applied_date))return false;if(range.from&&r.applied_date<range.from)return false;if(range.to&&r.applied_date>range.to)return false;if(d&&r.division!==d)return false;if(c&&r.center_name!==c)return false;if(o&&r.owner_name!==o)return false;return true});setText("headRows",filteredRows.length);}
+function metrics(list){const applied=list.length;const interview=list.filter(isInterview).length;const join=list.filter(isHired).length;return {applied,interview,join,interviewRate:rate(interview,applied),joinRate:rate(join,applied),interviewRateNum:rateNum(interview,applied),joinRateNum:rateNum(join,applied)}}
+function renderKpis(){const m=metrics(filteredRows);$("trendKpis").innerHTML=`
+  <div class="trend-mini-card"><span>応募</span><strong>${m.applied}</strong><small>対象条件内</small></div>
+  <div class="trend-mini-card"><span>面接実施</span><strong>${m.interview}</strong><small>応募→面接 ${m.interviewRate}</small></div>
+  <div class="trend-mini-card"><span>採用</span><strong>${m.join}</strong><small>応募→採用 ${m.joinRate}</small></div>
+  <div class="trend-mini-card"><span>確認中の軸</span><strong>${tabLabel(currentTab)}</strong><small>タブで切替</small></div>`;
+}
+function tabLabel(tab){return {overall:"全体",media:"媒体",division:"本部",owner:"担当",job:"職種",cost:"採用単価"}[tab]||"全体"}
+function groupBy(list, keyFn){const map=new Map();list.forEach(r=>{const key=keyFn(r)||"未設定";if(!map.has(key))map.set(key,[]);map.get(key).push(r)});return [...map.entries()].map(([key,items])=>({key,items,...metrics(items)})).sort((a,b)=>b.applied-a.applied||String(a.key).localeCompare(String(b.key),"ja"))}
+function groupByMonth(list){const months=monthList();const map=new Map(months.map(m=>[m,[]]));list.forEach(r=>{const m=monthKey(r.applied_date);if(m){if(!map.has(m))map.set(m,[]);map.get(m).push(r)}});return [...map.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([key,items])=>({key,items,...metrics(items)}))}
+function emptyRow(colspan,message="表示するデータがありません"){return `<tr><td class="empty" colspan="${colspan}">${esc(message)}</td></tr>`}
+function pct(n,d){return !d?"0.0%":(Math.round((n/d)*1000)/10).toFixed(1)+"%"}
+function renderMediaBreakdown(selected, mode, div, month){
+  const caption=$("mediaBreakdownCaption");
+  if(caption)caption.textContent=`${month || "-"} / ${div || "全本部"} / ${mode==="channel"?"媒体":"媒体詳細"}基準の職種内訳`;
+  const total=selected.length;
+  const jobGroups=groupBy(selected,r=>r.job_type||"未設定");
+  $("mediaJobHead").innerHTML="<tr><th>職種</th><th>応募</th><th>構成比</th><th>面接</th><th>採用</th><th>応募→面接</th><th>応募→採用</th></tr>";
+  $("mediaJobBody").innerHTML=jobGroups.map(g=>`<tr><td><strong>${esc(g.key)}</strong></td><td class="num">${g.applied}</td><td class="num">${pct(g.applied,total)}</td><td class="num">${g.interview}</td><td class="num">${g.join}</td><td class="num">${g.interviewRate}</td><td class="num">${g.joinRate}</td></tr>`).join("")||emptyRow(7,"選択月・本部に表示するデータがありません");
+  const mediaKeyFn=mode==="channel"?(r=>r.channel||"未設定"):(r=>r.channel_detail||r.channel||"未設定");
+  const comboMap=new Map();
+  selected.forEach(r=>{
+    const key=(mediaKeyFn(r)||"未設定")+"||"+(r.job_type||"未設定");
+    if(!comboMap.has(key))comboMap.set(key,[]);
+    comboMap.get(key).push(r);
+  });
+  const combos=[...comboMap.entries()].map(([key,items])=>{const [media,job]=key.split("||");return {media,job,items,...metrics(items)}}).sort((a,b)=>b.applied-a.applied||a.media.localeCompare(b.media,"ja")||a.job.localeCompare(b.job,"ja"));
+  $("mediaJobChannelHead").innerHTML="<tr><th>媒体</th><th>職種</th><th>応募</th><th>面接</th><th>採用</th><th>応募→面接</th><th>応募→採用</th></tr>";
+  $("mediaJobChannelBody").innerHTML=combos.map(x=>`<tr><td><strong>${esc(x.media)}</strong></td><td>${esc(x.job)}</td><td class="num">${x.applied}</td><td class="num">${x.interview}</td><td class="num">${x.join}</td><td class="num">${x.interviewRate}</td><td class="num">${x.joinRate}</td></tr>`).join("")||emptyRow(7,"選択月・本部に表示するデータがありません");
+}
+
+function trendColor(i){return ["#2563eb","#f59e0b","#16a34a","#7c3aed","#0f766e","#dc2626","#64748b"][i%7]}
+function destroyTrendChart(id){if(trendCharts[id]&&typeof trendCharts[id].destroy==="function"){trendCharts[id].destroy();}trendCharts[id]=null}
+function setChartEmpty(id, message="表示するデータがありません"){
+  const canvas=$(id);
+  if(!canvas)return;
+  destroyTrendChart(id);
+  const box=canvas.closest(".trend-chart-box");
+  if(!box)return;
+  box.classList.add("is-empty");
+  box.setAttribute("data-empty",message);
+}
+function clearChartEmpty(id){
+  const canvas=$(id);
+  const box=canvas?.closest(".trend-chart-box");
+  if(box){box.classList.remove("is-empty");box.removeAttribute("data-empty");}
+}
+function hasChartData(datasets){return (datasets||[]).some(ds=>(ds.data||[]).some(v=>Number(v||0)>0))}
+function makeTrendChart(id, labels, datasets, percent=false){
+  const canvas=$(id);if(!canvas||typeof Chart==="undefined")return;destroyTrendChart(id);
+  if(!labels.length||!hasChartData(datasets)){setChartEmpty(id);return;}
+  clearChartEmpty(id);
+  trendCharts[id]=new Chart(canvas,{type:"line",data:{labels,datasets:datasets.map((ds,i)=>({
+    label:ds.label,
+    data:ds.data,
+    borderColor:ds.borderColor||trendColor(i),
+    backgroundColor:"transparent",
+    pointBackgroundColor:ds.borderColor||trendColor(i),
+    pointBorderColor:ds.borderColor||trendColor(i),
+    fill:false,
+    tension:.28,
+    borderWidth:2.5,
+    pointRadius:3,
+    pointHoverRadius:5
+  }))},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},plugins:{legend:{position:"top",labels:{boxWidth:10,usePointStyle:true,font:{size:11,weight:"800"}}},tooltip:{callbacks:{label:(ctx)=>`${ctx.dataset.label}: ${ctx.parsed.y}${percent?"%":""}`}}},scales:{x:{grid:{color:"rgba(148,163,184,.16)"},ticks:{color:"#64748b",font:{size:11,weight:"800"}}},y:{beginAtZero:true,suggestedMax:percent?100:undefined,grid:{color:"rgba(148,163,184,.22)"},ticks:{callback:v=>percent?`${v}%`:v,color:"#64748b",font:{size:11,weight:"800"}}}}}})
+}
+function makeGroupMonthlyChart(id, groups, months, titleMetric="applied"){
+  const top=(groups||[]).filter(g=>g.applied>0).slice(0,6);
+  const datasets=top.map((g,i)=>({label:g.key,data:months.map(m=>metrics(g.items.filter(r=>monthKey(r.applied_date)===m))[titleMetric]||0),borderColor:trendColor(i)}));
+  makeTrendChart(id, months.map(m=>m.slice(5)+"月"), datasets, false);
+}
+function renderOverall(){const data=groupByMonth(filteredRows);const labels=data.map(x=>x.key.slice(5)+"月");makeTrendChart("overallCountChart",labels,[{label:"応募",data:data.map(x=>x.applied),borderColor:"#2563eb"},{label:"面接実施",data:data.map(x=>x.interview),borderColor:"#f59e0b"},{label:"採用",data:data.map(x=>x.join),borderColor:"#16a34a"}],false);makeTrendChart("overallRateChart",labels,[{label:"応募→面接",data:data.map(x=>x.interviewRateNum),borderColor:"#7c3aed"},{label:"応募→採用",data:data.map(x=>x.joinRateNum),borderColor:"#0f766e"}],true);$("overallHead").innerHTML="<tr><th>月</th><th>応募</th><th>面接実施</th><th>採用</th><th>応募→面接</th><th>応募→採用</th></tr>";$("overallBody").innerHTML=data.map(x=>`<tr><td><strong>${esc(x.key)}</strong></td><td class="num">${x.applied}</td><td class="num">${x.interview}</td><td class="num">${x.join}</td><td class="num">${x.interviewRate}</td><td class="num">${x.joinRate}</td></tr>`).join("")||emptyRow(6,"対象条件に表示するデータがありません");$("trendNote").textContent=data.some(x=>x.applied>0)?"全体推移では、対象条件内の月ごとの応募・面接・採用の流れを確認できます。":"対象条件に表示するデータがありません。条件を変更してください。"}
+function renderAxisTable(axis, headId, bodyId, chartId){const months=monthList();const source=filteredRows;const groups=groupBy(source, axis.keyFn).slice(0,18);if(chartId)makeGroupMonthlyChart(chartId,groups,months,"applied");$(headId).innerHTML="<tr><th>区分</th>"+months.map(m=>`<th>${esc(m.slice(5))}月</th>`).join("")+"<th>合計</th><th>応募→面接</th><th>応募→採用</th></tr>";$(bodyId).innerHTML=groups.map(g=>{const cells=months.map(m=>{const mm=g.items.filter(r=>monthKey(r.applied_date)===m);const x=metrics(mm);return `<td class="num"><strong>${x.applied}</strong><br><span class="muted">面${x.interview}/採${x.join}</span></td>`}).join("");return `<tr><td><strong>${esc(g.key)}</strong></td>${cells}<td class="num">${g.applied}</td><td class="num">${g.interviewRate}</td><td class="num">${g.joinRate}</td></tr>`}).join("")||`<tr><td class="empty" colspan="${months.length+4}">データがありません</td></tr>`;$("trendNote").textContent=`${axis.label}推移では、月別に応募数・面接数・採用数をまとめて確認できます。`;}
+function setupMediaMonthOptions(sourceRows){const el=$("mediaMonth");const months=monthList();if(!el)return;const cur=el.value;el.innerHTML=months.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join("");const dataMonths=[...new Set((sourceRows||filteredRows||[]).map(r=>monthKey(r.applied_date)).filter(Boolean))].sort();const latest=dataMonths[dataMonths.length-1]||months[months.length-1]||"";if(!cur||!months.includes(cur)||!dataMonths.includes(cur))el.value=latest;else el.value=cur;}
+function renderMedia(){
+  const mode=$("mediaMode").value;
+  const div=$("mediaDivision").value;
+  const source=filteredRows.filter(r=>!div||r.division===div);
+  setupMediaMonthOptions(source);
+  const m=$("mediaMonth").value;
+  const keyFn=mode==="channel"?(r=>r.channel||"未設定"):(r=>r.channel_detail||r.channel||"未設定");
+  const selected=source.filter(r=>monthKey(r.applied_date)===m);
+  const selectedGroups=groupBy(selected,keyFn);
+  $("mediaMonthCaption").textContent=`${m || "-"} / ${mode==="channel"?"媒体":"媒体詳細"} / ${div||"全本部"}`;
+  $("mediaSelectedHead").innerHTML="<tr><th>媒体区分</th><th>媒体</th><th>応募</th><th>面接</th><th>採用</th><th>応募→面接</th><th>応募→採用</th></tr>";
+  $("mediaSelectedBody").innerHTML=selectedGroups.map(x=>`<tr><td><strong>${esc(x.key)}</strong></td><td>${esc(x.items[0]?.channel||"-")}</td><td class="num">${x.applied}</td><td class="num">${x.interview}</td><td class="num">${x.join}</td><td class="num">${x.interviewRate}</td><td class="num">${x.joinRate}</td></tr>`).join("")||emptyRow(7,"選択月・本部に表示するデータがありません");
+  renderMediaBreakdown(selected,mode,div,m);
+  const months=monthList();
+  const groups=groupBy(source,keyFn).slice(0,14);
+  makeGroupMonthlyChart("mediaTrendChart",groups,months,"applied");
+  $("mediaMatrixHead").innerHTML="<tr><th>媒体区分</th>"+months.map(mm=>`<th>${esc(mm.slice(5))}月</th>`).join("")+"<th>合計</th></tr>";
+  $("mediaMatrixBody").innerHTML=groups.map(g=>`<tr><td><strong>${esc(g.key)}</strong><br><span class="muted">${esc(g.items[0]?.channel||"")}</span></td>`+months.map(mm=>{const x=metrics(g.items.filter(r=>monthKey(r.applied_date)===mm));return `<td class="num"><strong>${x.applied}</strong><br><span class="muted">面${x.interview}/採${x.join}</span></td>`}).join("")+`<td class="num">${g.applied}</td></tr>`).join("")||emptyRow(months.length+2,"対象条件に表示するデータがありません");
+  if(!source.length){$("trendNote").textContent="対象条件に該当する応募データはありません。条件を変更してください。";}
+  else if(!selected.length){$("trendNote").textContent="選択した確認月には表示するデータがありません。月または本部条件を変更してください。";}
+  else{$("trendNote").textContent="媒体推移では、媒体ベース・媒体詳細ベースを切り替え、本部別の月次報告にも使えます。";}
+}
+function buildCostMapByMonth(){
+  const fy=Number($("fy")?.value||fiscalYear());
+  return window.RecruitCost?.buildMap
+    ? window.RecruitCost.buildMap(costRows,{fiscalYear:fy,byMonth:true})
+    : new Map();
+}
+function renderCost(){
+  const mode=$("costMode")?.value||"channel";
+  const div=$("costDivision")?.value||"";
+  const months=monthList();
+  const fy=Number($("fy")?.value||fiscalYear());
+  const source=filteredRows.filter(r=>!div||r.division===div);
+  const costMap=window.RecruitCost?.buildMap ? window.RecruitCost.buildMap(costRows,{fiscalYear:fy,byMonth:true}) : buildCostMapByMonth();
+  const keyFn=mode==="detail"?(r=>r.channel_detail||r.channel||"未設定"):(r=>r.channel||"未設定");
+  const rowsByMonth=months.map(m=>{
+    const mm=source.filter(r=>monthKey(r.applied_date)===m);
+    const x=metrics(mm);
+    let cost=0;
+    [...costMap.entries()].forEach(([k,v])=>{const [cm]=k.split("||");if(cm===m)cost+=Number(v||0);});
+    return {month:m,...x,cost,cpa:x.applied?Math.round(cost/x.applied):0,cph:x.join?Math.round(cost/x.join):0};
+  });
+  makeTrendChart("costUnitTrendChart",months.map(m=>m.slice(5)+"月"),[{label:"応募単価",data:rowsByMonth.map(x=>x.cpa),borderColor:"#2563eb"},{label:"採用単価",data:rowsByMonth.map(x=>x.cph),borderColor:"#0f766e"}],false);
+  $("costMonthlyHead").innerHTML="<tr><th>月</th><th>費用</th><th>応募</th><th>面接</th><th>採用</th><th>応募単価</th><th>採用単価</th></tr>";
+  $("costMonthlyBody").innerHTML=rowsByMonth.map(x=>`<tr><td><strong>${esc(x.month)}</strong></td><td class="num">${yen(x.cost)}</td><td class="num">${x.applied}</td><td class="num">${x.interview}</td><td class="num">${x.join}</td><td class="num">${x.cpa?yen(x.cpa):"-"}</td><td class="num">${x.cph?yen(x.cph):"-"}</td></tr>`).join("")||'<tr><td class="empty" colspan="7">データがありません</td></tr>';
+  const rawGroups=groupBy(source,keyFn).slice(0,14);
+  const groups=(window.RecruitCost?.enrichGroups ? window.RecruitCost.enrichGroups(rawGroups,costRows,{fiscalYear:fy,months,channelForGroup:g=>mode==="channel"?g.key:(g.items[0]?.channel||g.key)}) : rawGroups).sort((a,b)=>b.cost-a.cost||b.applied-a.applied);
+  $("costChannelHead").innerHTML="<tr><th>区分</th><th>費用</th><th>応募</th><th>採用</th><th>応募単価</th><th>採用単価</th></tr>";
+  $("costChannelBody").innerHTML=groups.map(x=>`<tr><td><strong>${esc(x.key)}</strong></td><td class="num">${yen(x.cost)}</td><td class="num">${x.applied}</td><td class="num">${x.join}</td><td class="num">${x.cpa?yen(x.cpa):"-"}</td><td class="num">${x.cph?yen(x.cph):"-"}</td></tr>`).join("")||'<tr><td class="empty" colspan="6">データがありません</td></tr>';
+  $("trendNote").textContent="採用単価推移では、媒体費マスタを月別費用として参照し、月ごとの応募単価・採用単価を確認できます。";
+}
+function setActiveTab(tab){currentTab=tab;document.querySelectorAll(".trend-tab").forEach(btn=>btn.classList.toggle("active",btn.dataset.tab===tab));document.querySelectorAll(".trend-section").forEach(sec=>sec.classList.add("hidden"));const map={overall:"sectionOverall",media:"sectionMedia",division:"sectionDivision",owner:"sectionOwner",job:"sectionJob",cost:"sectionCost"};$(map[tab])?.classList.remove("hidden");renderCurrentTab();renderKpis();}
+function renderCurrentTab(){if(currentTab==="overall")renderOverall();if(currentTab==="media")renderMedia();if(currentTab==="division")renderAxisTable({label:"本部",keyFn:r=>r.division||"未設定"},"divisionHead","divisionBody","divisionTrendChart");if(currentTab==="owner")renderAxisTable({label:"担当",keyFn:r=>r.owner_name||"未設定"},"ownerHead","ownerBody","ownerTrendChart");if(currentTab==="job")renderAxisTable({label:"職種",keyFn:r=>r.job_type||"未設定"},"jobHead","jobBody","jobTrendChart");if(currentTab==="cost")renderCost();}
+async function getUser(){if(currentUser)return currentUser;const {data:{session}}=await sb.auth.getSession();currentUser=session?.user||null;return currentUser}
+async function getRole(userId){if(currentRole)return currentRole;try{const {data}=await sb.from("profiles").select("role").eq("user_id",userId).single();currentRole=data?.role||"editor";localStorage.setItem("recruit_user_role",currentRole)}catch(e){currentRole="editor"}return currentRole}
+function showAuth(msg="未ログインです",type="info"){$("authScreen")?.classList.remove("hidden");$("appScreen")?.classList.add("hidden");currentUser=null;currentRole=null;setMsg("authMessage",msg,type);document.body.classList.remove("auth-checking")}
+async function showApp(){const user=await getUser();if(!user){showAuth();return false}await getRole(user.id);$("authScreen")?.classList.add("hidden");$("appScreen")?.classList.remove("hidden");document.body.classList.remove("auth-checking");return true}
+async function login(){const email=$("loginEmail")?.value.trim();const password=$("loginPassword")?.value;if(!email||!password){setMsg("authMessage","メールアドレスとパスワードを入力してください","error");return}try{const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;currentUser=null;currentRole=null;if(await showApp()) await initPageAfterLogin()}catch(e){setMsg("authMessage","ログイン失敗: "+(e.message||e),"error")}}
+async function logout(){try{await sb.auth.signOut()}catch(e){}showAuth("ログアウトしました","success")}
+sb.auth.onAuthStateChange((ev)=>{if(ev==="SIGNED_OUT")showAuth("ログアウトしました","success")});
+async function loadAnalysis(){try{setMsg("pageMessage","","info");applyFy();await loadCenterMaster();const {data,error}=await sb.from("candidates").select("*").order("applied_date",{ascending:true});if(error)throw error;rows=data||[];try{const costRes=await sb.from("channel_costs").select("*");costRows=costRes.error?[]:(costRes.data||[]);}catch(e){costRows=[];}bindMasters();filterRows();setupMediaMonthOptions(filteredRows);renderKpis();renderCurrentTab();}catch(e){console.error(e);setMsg("pageMessage","読込失敗: "+(e.message||e),"error")}}
+async function initPageAfterLogin(){applyFy();await loadAnalysis()}
+async function authInit(){try{if(await showApp()) await initPageAfterLogin()}catch(e){console.error(e);showAuth("初期化に失敗しました","error")}finally{document.body.classList.remove("auth-checking")}}
+["fy","division","center","owner"].forEach(id=>document.addEventListener("change",e=>{if(e.target&&e.target.id===id){if(id==="division")updateCenterOptions();filterRows();setupMediaMonthOptions();renderKpis();renderCurrentTab();}}));
+["mediaMode","mediaDivision","mediaMonth","costMode","costDivision"].forEach(id=>document.addEventListener("change",e=>{if(e.target&&e.target.id===id)renderCurrentTab();}));
+document.addEventListener("click",e=>{const btn=e.target.closest(".trend-tab");if(btn)setActiveTab(btn.dataset.tab);});
+authInit();
+</script>
+</body>
+</html>

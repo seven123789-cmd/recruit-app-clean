@@ -1,0 +1,646 @@
+/* dashboard_reason.css : page specific styles only */
+
+#appScreen:not(.hidden){display:block}
+
+.btn-primary{background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;box-shadow:0 10px 22px rgba(99,102,241,.22)}
+.btn-secondary{background:#eaf2ff;color:#1e3a8a;border:1px solid var(--line-strong)}
+
+.auth-shell{max-width:520px;margin:48px auto 0}
+.auth-title{margin:0 0 8px;font-size:28px;color:#fff}
+.auth-sub{margin:0 0 20px;color:rgba(255,255,255,.82)}
+.auth-card{background:#fff;border:1px solid rgba(226,232,240,.9);border-radius:22px;box-shadow:var(--shadow);padding:24px}
+.auth-card h2{margin:0 0 8px;font-size:22px;color:#0f172a}
+
+
+
+
+
+
+
+
+
+
+.grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
+
+.metric-card{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-soft);padding:18px}
+.metric-card .label{font-size:12px;color:#64748b;font-weight:900;margin-bottom:8px}
+.metric-card .value{font-size:30px;font-weight:950;line-height:1;color:#0f172a}
+.metric-card .sub{font-size:12px;color:#475569;font-weight:700;margin-top:8px;line-height:1.5}
+.blue{border-top:5px solid #3b82f6}.orange{border-top:5px solid #f97316}.green{border-top:5px solid #10b981}.purple{border-top:5px solid #8b5cf6}.teal{border-top:5px solid #0f766e}
+
+.insight-card{display:flex;gap:14px;align-items:center;background:#fff7ed;border:1px solid #fed7aa;border-left:6px solid #f97316;border-radius:18px;box-shadow:var(--shadow-soft);padding:16px 18px;margin-bottom:18px}
+.insight-card.success{background:#ecfdf5;border-color:#bbf7d0;border-left-color:#16a34a}
+.insight-card.danger{background:#fff1f2;border-color:#fecdd3;border-left-color:#dc2626}
+.insight-card.neutral{background:#f8fafc;border-color:#e2e8f0;border-left-color:#94a3b8}
+.insight-title{font-size:12px;font-weight:950;color:#2563eb;white-space:nowrap}
+.insight-body{font-size:14px;font-weight:950;color:#0f172a}
+.insight-body span{display:inline-block;margin-left:12px;color:#475569;font-size:12px;font-weight:900}
+
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px}
+.section-head h2{margin:0;color:#0f4fe8;font-size:20px;font-weight:950;line-height:1.25}
+
+.performance-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.performance-card{background:#fff;border:1px solid #dbeafe;border-left:5px solid #94a3b8;border-radius:18px;box-shadow:var(--shadow-soft);padding:16px}
+.performance-card.success{border-left-color:#16a34a;background:#f0fdf4}
+.performance-card.warning{border-left-color:#f59e0b;background:#fffbeb}
+.performance-card.danger{border-left-color:#ef4444;background:#fff1f2}
+.performance-card.neutral{border-left-color:#94a3b8;background:#f8fafc}
+.performance-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.rank-no{width:26px;height:26px;border-radius:50%;background:#dbeafe;color:#2563eb;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:950;flex:0 0 auto}
+.performance-head h3{margin:0;color:#0f172a;font-size:16px;font-weight:950}
+.performance-head strong{margin-left:auto;color:#0f172a;font-size:20px;font-weight:950;white-space:nowrap}
+.performance-head small{margin-left:2px;color:#64748b;font-size:11px}
+.performance-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.performance-metrics div,.performance-rates div{border:1px solid #dbe3ee;background:#f8fafc;border-radius:12px;padding:10px}
+.performance-metrics span,.performance-rates span{display:block;color:#64748b;font-size:11px;font-weight:900}
+.performance-metrics b,.performance-rates b{display:block;margin-top:4px;color:#0f172a;font-size:16px;font-weight:950}
+.performance-rates{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.performance-rates .good{background:#ecfdf5;border-color:#bbf7d0}
+.performance-rates .bad{background:#fff1f2;border-color:#fecdd3}
+.performance-foot{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.performance-foot em{color:#0f172a;font-size:12px;font-style:normal;font-weight:900}
+
+.chart-box{position:relative;height:330px;border:1px solid #dbe3ee;border-radius:18px;background:#fff;padding:14px}
+
+.bottleneck-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.bottleneck-card{border:1px solid #dbe3ee;border-left:5px solid #94a3b8;border-radius:16px;background:#fff;padding:14px}
+.bottleneck-card.success{border-left-color:#16a34a;background:#f0fdf4}
+.bottleneck-card.warning{border-left-color:#f59e0b;background:#fffbeb}
+.bottleneck-card.danger{border-left-color:#ef4444;background:#fff1f2}
+.bottleneck-card.neutral{border-left-color:#94a3b8;background:#f8fafc}
+.bottleneck-card strong{display:block;color:#0f172a;font-size:15px;font-weight:950}
+.bottleneck-card span{display:inline-block;margin-top:4px;color:#2563eb;font-size:12px;font-weight:950}
+.bottleneck-card p{margin:8px 0 0;color:#0f172a;font-size:12px;font-weight:900}
+.bottleneck-card small{display:block;margin-top:5px;color:#475569;font-size:12px;font-weight:800}
+
+.mini-status{display:inline-flex;align-items:center;justify-content:center;width:max-content;max-width:100%;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:950;background:#e2e8f0;color:#334155}
+.mini-status.success{background:#dcfce7;color:#15803d}
+.mini-status.warning{background:#fef3c7;color:#b45309}
+.mini-status.danger{background:#fee2e2;color:#b91c1c}
+.mini-status.neutral{background:#e2e8f0;color:#475569}
+
+.card.table-card{padding:20px;overflow:hidden}
+.card.table-card .table-head{padding:0 0 14px}
+.card.table-card .table-head h2{margin:0;color:#0f4fe8;font-size:20px;font-weight:950;line-height:1.25}
+.card.table-card .table-wrap{border:1px solid #dbeafe;border-radius:16px;overflow:hidden;background:#fff}
+.card.table-card .table-scroll{max-height:680px;overflow:auto;border-radius:15px;scrollbar-gutter:stable}
+.card.table-card table{width:100%;min-width:980px;border-collapse:separate;border-spacing:0;background:#fff;table-layout:fixed}
+.card.table-card th{height:42px;padding:10px 14px;background:#eff6ff;color:#1e3a8a;font-size:12px;font-weight:950;line-height:1.3;white-space:nowrap;border-bottom:1px solid #bfdbfe}
+.card.table-card thead th:first-child{border-top-left-radius:15px}
+.card.table-card thead th:last-child{border-top-right-radius:15px}
+.card.table-card td{height:48px;padding:10px 14px;color:#0f172a;font-size:13px;font-weight:800;line-height:1.35;vertical-align:middle;white-space:nowrap;border-bottom:1px solid #e5edf8}
+.card.table-card th:first-child,.card.table-card td:first-child{padding-left:18px;text-align:left}
+.card.table-card th:not(:first-child),.card.table-card td:not(:first-child){text-align:center}
+.card.table-card tbody tr:last-child td{border-bottom:0}
+.card.table-card tbody tr:last-child td:first-child{border-bottom-left-radius:15px}
+.card.table-card tbody tr:last-child td:last-child{border-bottom-right-radius:15px}
+
+.dashboard-side-summary{margin-top:18px;padding-top:16px;border-top:1px solid #e2e8f0}
+.dashboard-side-summary .sidebar-section-title{margin:0 0 10px}
+.side-summary-card{min-height:40px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;padding:10px 12px;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff;box-shadow:none}
+.side-summary-card span{color:#64748b;font-size:11px;font-weight:900}
+.side-summary-card strong{color:#0f172a;font-size:14px;font-weight:950;text-align:right;line-height:1.25}
+.side-summary-wide{display:block}
+.side-summary-wide span,.side-summary-wide strong{display:block}
+.side-summary-wide strong{margin-top:5px;text-align:left;word-break:break-word}
+
+.empty-box{border:1px dashed #cbd5e1;border-radius:14px;background:#f8fafc;color:#64748b;padding:16px;text-align:center;font-weight:900}
+#pageMessage.hidden{display:none!important}
+
+@media(max-width:1280px){
+  .grid-5,.performance-grid,.bottleneck-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media(max-width:720px){
+}
+
+
+/* 参考値カード */
+.reference-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+
+.reference-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  border:1px solid #e2e8f0;
+  border-radius:16px;
+  background:#f8fafc;
+  padding:13px 14px;
+}
+
+.reference-card strong{
+  display:block;
+  color:#0f172a;
+  font-size:14px;
+  font-weight:950;
+}
+
+.reference-card span{
+  display:block;
+  margin-top:4px;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+
+.reference-card em{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:58px;
+  height:26px;
+  border-radius:999px;
+  background:#e2e8f0;
+  color:#475569;
+  font-size:11px;
+  font-weight:950;
+  font-style:normal;
+}
+
+.hidden{
+  display:none!important;
+}
+
+@media(max-width:1280px){
+  .reference-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:720px){
+  .reference-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+
+/* グラフ空表示・再描画安定 */
+.chart-box .empty-box{
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+
+/* =========================================================
+   辞退・不通分析 追加UI
+   ========================================================= */
+
+/* 辞退・不通では赤系もKPIに使用 */
+.red{border-top:5px solid #ef4444}
+.red .value{color:#991b1b}
+
+/* ランキング */
+.reason-rank-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+
+.reason-rank-card{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  min-height:76px;
+  border:1px solid #dbeafe;
+  border-left:5px solid #f97316;
+  border-radius:16px;
+  background:#fff7ed;
+  padding:13px 14px;
+}
+
+.reason-rank-card.no-contact{
+  border-left-color:#ef4444;
+  background:#fff1f2;
+}
+
+.rank-no{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  background:#dbeafe;
+  color:#2563eb;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:950;
+  flex:0 0 auto;
+}
+
+.reason-rank-card strong{
+  display:block;
+  color:#0f172a;
+  font-size:15px;
+  font-weight:950;
+  line-height:1.35;
+}
+
+.reason-rank-card em{
+  display:block;
+  margin-top:5px;
+  color:#475569;
+  font-size:12px;
+  font-style:normal;
+  font-weight:900;
+}
+
+.rank-main{
+  width:100%;
+  min-width:0;
+}
+
+.rank-stats{
+  display:flex;
+  align-items:baseline;
+  gap:10px;
+  margin-top:7px;
+}
+
+.rank-stats b{
+  color:#0f172a;
+  font-size:20px;
+  font-weight:950;
+  line-height:1;
+}
+
+.rank-stats em{
+  color:#64748b;
+  font-size:12px;
+  font-style:normal;
+  font-weight:900;
+}
+
+/* 辞退理由分類 */
+.reason-category-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+
+.reason-category-card{
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  gap:8px;
+  min-height:84px;
+  border:1px solid #dbeafe;
+  border-left:5px solid #94a3b8;
+  border-radius:16px;
+  background:#f8fafc;
+  padding:13px 14px;
+}
+
+.reason-category-card.danger{
+  border-left-color:#ef4444;
+  background:#fff1f2;
+}
+
+.reason-category-card.warning{
+  border-left-color:#f59e0b;
+  background:#fffbeb;
+}
+
+.reason-category-card.neutral{
+  border-left-color:#94a3b8;
+  background:#f8fafc;
+}
+
+.reason-category-card strong{
+  display:block;
+  color:#0f172a;
+  font-size:15px;
+  font-weight:950;
+}
+
+.reason-category-card span{
+  display:block;
+  margin-top:4px;
+  color:#475569;
+  font-size:12px;
+  font-weight:900;
+}
+
+.reason-category-card small{
+  color:#334155;
+  font-size:12px;
+  font-weight:850;
+}
+
+/* 辞退タイミング */
+.timing-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px;
+}
+
+.timing-card{
+  border:1px solid #dbeafe;
+  border-radius:18px;
+  background:#f8fbff;
+  padding:15px 16px;
+  box-shadow:var(--shadow-soft);
+}
+
+.timing-card span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:900;
+  margin-bottom:8px;
+}
+
+.timing-card strong{
+  display:block;
+  color:#0f172a;
+  font-size:28px;
+  font-weight:950;
+  line-height:1;
+}
+
+.timing-card em{
+  display:block;
+  margin-top:7px;
+  color:#64748b;
+  font-size:11px;
+  font-style:normal;
+  font-weight:850;
+}
+
+/* 媒体別離脱 */
+.bottleneck-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+
+.bottleneck-card{
+  border:1px solid #dbe3ee;
+  border-left:5px solid #94a3b8;
+  border-radius:16px;
+  background:#fff;
+  padding:14px;
+}
+
+.bottleneck-card.success{
+  border-left-color:#16a34a;
+  background:#f0fdf4;
+}
+
+.bottleneck-card.warning{
+  border-left-color:#f59e0b;
+  background:#fffbeb;
+}
+
+.bottleneck-card.danger{
+  border-left-color:#ef4444;
+  background:#fff1f2;
+}
+
+.bottleneck-card strong{
+  display:block;
+  color:#0f172a;
+  font-size:15px;
+  font-weight:950;
+}
+
+.bottleneck-card span{
+  display:inline-block;
+  margin-top:4px;
+  color:#2563eb;
+  font-size:12px;
+  font-weight:950;
+}
+
+.bottleneck-card p{
+  margin:8px 0 0;
+  color:#0f172a;
+  font-size:12px;
+  font-weight:900;
+}
+
+.bottleneck-card small{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:max-content;
+  margin-top:8px;
+  border-radius:999px;
+  padding:4px 10px;
+  font-size:11px;
+  font-weight:950;
+}
+
+.bottleneck-card.danger small{
+  background:#fee2e2;
+  color:#b91c1c;
+}
+
+.bottleneck-card.warning small{
+  background:#fef3c7;
+  color:#b45309;
+}
+
+.bottleneck-card.success small{
+  background:#dcfce7;
+  color:#15803d;
+}
+
+/* 要対応者一覧 */
+.card.table-card table{
+  min-width:980px;
+}
+
+.card.table-card th:first-child,
+.card.table-card td:first-child{
+  text-align:left;
+}
+
+.card.table-card th:not(:first-child),
+.card.table-card td:not(:first-child){
+  text-align:center;
+}
+
+.card.table-card td{
+  height:42px;
+  padding-top:8px;
+  padding-bottom:8px;
+}
+
+/* 辞退・不通分析のサイドバー集計状態は他画面と同じカード表示 */
+.dashboard-side-summary{
+  margin-top:18px;
+  padding-top:16px;
+  border-top:1px solid #e2e8f0;
+}
+
+.dashboard-side-summary .sidebar-section-title{
+  margin:0 0 10px;
+}
+
+.side-summary-card{
+  min-height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:8px;
+  padding:10px 12px;
+  border:1px solid #dbeafe;
+  border-radius:12px;
+  background:#f8fbff;
+}
+
+.side-summary-card span{
+  color:#64748b;
+  font-size:11px;
+  font-weight:900;
+}
+
+.side-summary-card strong{
+  color:#0f172a;
+  font-size:14px;
+  font-weight:950;
+  text-align:right;
+  line-height:1.25;
+}
+
+.side-summary-wide{
+  display:block;
+}
+
+.side-summary-wide span,
+.side-summary-wide strong{
+  display:block;
+}
+
+.side-summary-wide strong{
+  margin-top:5px;
+  text-align:left;
+  word-break:break-word;
+}
+
+@media(max-width:1280px){
+  .reason-rank-grid,
+  .reason-category-grid,
+  .bottleneck-grid,
+  .timing-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:720px){
+  .reason-rank-grid,
+  .reason-category-grid,
+  .bottleneck-grid,
+  .timing-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* ===== KPI table centerline normalization 2026-05-07 ===== */
+.card.table-card table,
+.table-card table,
+.heatmap-table-wrap table{
+  table-layout:fixed;
+  border-collapse:collapse;
+}
+.card.table-card th,
+.card.table-card td,
+.table-card table th,
+.table-card table td,
+.heatmap-table-wrap th,
+.heatmap-table-wrap td{
+  vertical-align:middle !important;
+  text-align:center !important;
+  line-height:1.35 !important;
+  font-variant-numeric:tabular-nums;
+}
+.card.table-card td,
+.table-card table td{
+  display:table-cell !important;
+  height:52px;
+}
+.card.table-card th,
+.table-card table th{
+  height:44px;
+}
+.card.table-card td:first-child,
+.table-card table td:first-child,
+.card.table-card th:first-child,
+.table-card table th:first-child,
+.heatmap-table-wrap td:first-child,
+.heatmap-table-wrap th:first-child{
+  text-align:left !important;
+}
+.card.table-card .mini-status,
+.table-card .mini-status,
+.heatmap-table-wrap .mini-status,
+.card.table-card .status-pill,
+.table-card .status-pill,
+.heatmap-table-wrap .status-pill{
+  min-width:54px;
+  min-height:22px;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  padding:4px 10px !important;
+  border-radius:999px;
+  line-height:1 !important;
+  white-space:nowrap;
+  vertical-align:middle !important;
+}
+.card.table-card td:last-child,
+.table-card table td:last-child,
+.card.table-card th:last-child,
+.table-card table th:last-child,
+.heatmap-table-wrap td:last-child,
+.heatmap-table-wrap th:last-child{
+  width:108px;
+  min-width:108px;
+  max-width:108px;
+  text-align:center !important;
+}
+.card.table-card td:last-child .mini-status,
+.table-card table td:last-child .mini-status,
+.heatmap-table-wrap td:last-child .mini-status{
+  min-width:62px;
+}
+.card.table-card td.empty,
+.table-card table td.empty{
+  text-align:center !important;
+}
+
+.card.table-card th:nth-child(1),.card.table-card td:nth-child(1){width:130px;text-align:left!important;}
+.card.table-card th:nth-child(3),.card.table-card td:nth-child(3),
+.card.table-card th:nth-child(4),.card.table-card td:nth-child(4),
+.card.table-card th:nth-child(5),.card.table-card td:nth-child(5){text-align:left!important;}
+.card.table-card th:nth-child(n+2),.card.table-card td:nth-child(n+2){text-align:center!important;}
+.card.table-card th:nth-child(3),.card.table-card td:nth-child(3),
+.card.table-card th:nth-child(4),.card.table-card td:nth-child(4),
+.card.table-card th:nth-child(5),.card.table-card td:nth-child(5){text-align:left!important;}
+.card.table-card th:last-child,.card.table-card td:last-child{width:116px;min-width:116px;max-width:116px;}
+
+
+
+/* 分析導線リンク */
+.analysis-link{
+  color:#0f4ed6;
+  text-decoration:none;
+  font-weight:900;
+  border-bottom:1px dotted rgba(37,99,235,.38);
+  cursor:pointer;
+}
+.analysis-link:hover{
+  color:#1d4ed8;
+  border-bottom-color:#2563eb;
+}
+.analysis-link.strong{
+  font-weight:950;
+}

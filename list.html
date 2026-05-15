@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>応募者一覧</title>
+
+<link rel="stylesheet" href="./assets/css/common.css">
+<link rel="stylesheet" href="./assets/css/header.css">
+<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260508_sidebar2">
+<link rel="stylesheet" href="./assets/css/list.css">
+<script src="./common.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/candidate_utils.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/audit_utils.js"></script>
+<script src="assets/js/ops_guard.js"></script>
+<script src="assets/js/safe_utils.js"></script>
+</head>
+<body class="auth-checking">
+
+<div id="authScreen" class="container hidden">
+  <div class="auth-shell">
+    <h1 class="auth-title">応募者一覧</h1>
+    <p class="auth-sub">ログイン後に画面を表示します。</p>
+    <div class="auth-card">
+      <h2>ログイン</h2>
+      <div class="form-grid">
+        <div class="col-12">
+          <label for="loginEmail">メールアドレス</label>
+          <input id="loginEmail" type="email" placeholder="example@sline.co.jp">
+        </div>
+        <div class="col-12">
+          <label for="loginPassword">パスワード</label>
+          <input id="loginPassword" type="password" placeholder="パスワード">
+        </div>
+        <div class="col-12">
+          <button class="btn-primary" type="button" onclick="login()">ログイン</button>
+        </div>
+        <div class="col-12">
+          <div id="authMessage" class="message-box message-info">未ログインです</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="appScreen" class="hidden">
+  <div class="app-layout">
+        <aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+
+  <main class="main-content">
+      <header class="page-header">
+        <h1>応募者一覧</h1>
+      </header>
+
+
+      <section class="card">
+        <h2>検索・絞り込み</h2>
+        <div class="form-grid">
+          <div class="col-2">
+            <label for="filterYear">応募年度</label>
+            <select id="filterYear">
+              <option value="">全期間</option>
+              <option>2026</option>
+              <option>2025</option>
+            </select>
+          </div>
+          <div class="col-2">
+            <label for="filterMonth">応募月</label>
+            <select id="filterMonth">
+              <option value="">全月</option>
+              <option value="01">1月</option>
+              <option value="02">2月</option>
+              <option value="03">3月</option>
+              <option value="04">4月</option>
+              <option value="05">5月</option>
+              <option value="06">6月</option>
+              <option value="07">7月</option>
+              <option value="08">8月</option>
+              <option value="09">9月</option>
+              <option value="10">10月</option>
+              <option value="11">11月</option>
+              <option value="12">12月</option>
+            </select>
+          </div>
+          <div class="col-2">
+            <label for="filterDivision">本部</label>
+            <select id="filterDivision"><option value="">全部</option></select>
+          </div>
+          <div class="col-2">
+            <label for="filterCenter">営業所</label>
+            <select id="filterCenter"><option value="">全営業所</option></select>
+          </div>
+          <div class="col-2">
+            <label for="filterOwner">担当者</label>
+            <select id="filterOwner"><option value="">全担当</option></select>
+          </div>
+          <div class="col-2">
+            <label for="filterChannel">媒体</label>
+            <select id="filterChannel"><option value="">全媒体</option></select>
+          </div>
+          <div class="col-12 actions">
+            <button id="filterAllBtn" class="btn-primary" type="button" onclick="setListFilter('all')">全件</button>
+            <button id="filterActionBtn" class="btn-warning" type="button" onclick="setListFilter('action')">要対応のみ</button>
+            <button class="btn-secondary" type="button" onclick="setSortMode('actionAsc')" id="sortActionAscBtn">対応日 ↑</button>
+            <button class="btn-secondary" type="button" onclick="setSortMode('actionDesc')" id="sortActionDescBtn">対応日 ↓</button>
+            <button class="btn-secondary" type="button" onclick="setSortMode('appliedDesc')" id="sortAppliedDescBtn">応募日 ↓</button>
+            <button class="btn-secondary" type="button" onclick="setSortMode('appliedAsc')" id="sortAppliedAscBtn">応募日 ↑</button>
+            <button class="btn-danger" type="button" onclick="clearFilters()">クリア</button>
+            <span class="message-box message-info" id="listCount">表示 0件 / 要対応 0件</span>
+          </div>
+        </div>
+      </section>
+
+
+      <section class="card bulk-action-card">
+        <div class="bulk-action-head">
+          <div>
+            <h2>一括操作</h2>
+            <div class="bulk-action-note">チェックした応募者に対して、ステータス・担当者・辞退理由・削除をまとめて実行します。</div>
+          </div>
+          <div class="bulk-select-count" id="bulkSelectCount">選択 0件</div>
+        </div>
+        <div class="bulk-action-bar">
+          <div class="bulk-field">
+            <label for="bulkStatus">ステータス</label>
+            <select id="bulkStatus">
+              <option value="">変更しない</option>
+              <option>応募</option>
+              <option>アポ取得</option>
+              <option>面接設定</option>
+              <option>面接実施</option>
+              <option>内定</option>
+              <option>入社</option>
+              <option>辞退</option>
+              <option>不通</option>
+            </select>
+          </div>
+          <div class="bulk-field">
+            <label for="bulkOwner">担当者</label>
+            <select id="bulkOwner">
+              <option value="">変更しない</option>
+            </select>
+          </div>
+          <div class="bulk-field">
+            <label for="bulkDeclineReason">辞退理由</label>
+            <select id="bulkDeclineReason">
+              <option value="">変更しない</option>
+            </select>
+          </div>
+          <div class="bulk-buttons">
+            <button class="btn-primary" type="button" onclick="bulkUpdateCandidates()">一括更新</button>
+            <button class="btn-secondary" type="button" onclick="clearBulkSelection()">選択解除</button>
+            <button class="btn-danger bulk-danger" type="button" id="bulkDeleteButton" data-requires-role="admin,manager,editor" onclick="bulkDeleteCandidates()">一括削除</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card table-card">
+        <div class="table-head">
+          <h2>応募者一覧</h2>
+        </div>
+        <div class="table-wrap">
+          <table id="candidateTable">
+            <thead>
+              <tr>
+                <th class="list-check-col"><input type="checkbox" id="bulkSelectAll" aria-label="全選択"></th>
+                <th>氏名</th>
+                <th>応募日</th>
+                <th>ステータス</th>
+                <th>本部</th>
+                <th>センター</th>
+                <th>媒体</th>
+                <th>媒体詳細</th>
+                <th>担当者</th>
+                <th>次回対応日</th>
+                <th class="list-action-col">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="empty" colspan="11">読込中です</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const sb=window.getRecruitSupabaseClient();
+
+let currentUser=null;
+let currentRole=null;
+let CENTER_MASTER={};
+let allCandidateRows=[];
+let currentListFilter="all";
+let sortMode="actionAsc";
+let dashboardFrom="";
+let dashboardTo="";
+let dashboardFilterActive=false;
+let dashboardContextActive=false;
+let listMasterChannels=[];
+let dashboardJob="";
+const selectedIds = new Set();
+
+const ACTIVE_STATUSES=["応募","アポ取得","面接設定","面接実施"];
+const STATE="recruit_list_filter_state";
+const NAV="recruit_list_navigation_state";
+
+function $(id){return document.getElementById(id)}
+
+function setMsg(id,msg,type="info"){
+  const el=$(id);
+  if(!el)return;
+  el.textContent=msg;
+  el.className="message-box message-"+type;
+}
+function todayStr(){
+  const d=new Date();
+  return d.toISOString().slice(0,10);
+}
+
+function validDate(s){
+  if(!s)return false;
+  const y=Number(String(s).slice(0,4));
+  return y>=2000;
+}
+
+function isActionRequired(r){
+  const st=String(r.status||"");
+  if(st==="面接実施"&&(r.hiring_result==="採用"||r.hiring_result==="不採用"))return false;
+  if(!ACTIVE_STATUSES.includes(st))return false;
+  if(!r.next_action_date)return true;
+  return daysBetween(todayStr(),r.next_action_date)<=1;
+}
+function isHired(r){
+  return !!r && (
+    r.status==="入社" ||
+    r.hiring_result==="採用" ||
+    validDate(r.join_date)
+  );
+}
+function badge(v){
+  const t=v||"未設定";
+  return '<span class="badge '+(v?'badge-'+esc(v):'badge-empty')+'">'+esc(t)+'</span>';
+}
+
+function getFiscalYearFromAppliedDate(dateStr){
+  if(!dateStr)return "";
+  const dt=new Date(dateStr+"T00:00:00");
+  if(Number.isNaN(dt.getTime()))return "";
+  return dt.getMonth()+1>=4 ? String(dt.getFullYear()) : String(dt.getFullYear()-1);
+}
+function getDashboardFiscalYear(){
+  if(dashboardFrom)return getFiscalYearFromAppliedDate(dashboardFrom);
+  if(dashboardTo)return getFiscalYearFromAppliedDate(dashboardTo);
+  return "";
+}
+function setFilterValue(id,value){
+  const el=$(id);
+  if(!el)return;
+  const v=String(value||"");
+  if(v && ![...el.options].some(opt=>opt.value===v)){
+    const option=document.createElement("option");
+    option.value=v;
+    option.textContent=v;
+    el.appendChild(option);
+  }
+  el.value=v;
+}
+function clearDashboardRangeFilter(){
+  dashboardFrom="";
+  dashboardTo="";
+  dashboardFilterActive=false;
+  dashboardJob="";
+  sessionStorage.removeItem("recruit_dashboard_list_filter");
+  localStorage.removeItem("recruit_dashboard_list_filter");
+}
+function setDashboardYearDisplay(){
+  if(!dashboardFilterActive)return;
+  const fy=getDashboardFiscalYear();
+  if(fy)setFilterValue("filterYear",fy);
+  setFilterValue("filterMonth","");
+}
+function readDashboardFilterPayload(){
+  const params=new URLSearchParams(location.search);
+
+  const source=params.get("source") || (params.get("from")==="dashboard" ? "dashboard" : "");
+  const hasUrlDashboard=source==="dashboard" || params.has("fromDate") || params.has("toDate") || params.has("dashboardFrom") || params.has("dashboardTo") || params.has("dateFrom") || params.has("dateTo");
+
+  let saved=null;
+  try{
+    saved=JSON.parse(sessionStorage.getItem("recruit_dashboard_list_filter") || localStorage.getItem("recruit_dashboard_list_filter") || "null");
+  }catch(e){
+    saved=null;
+  }
+
+  const hasSavedDashboard=saved && (saved.source==="dashboard" || saved.from || saved.to || saved.filterType || saved.division || saved.center || saved.owner || saved.channel);
+
+  // dashboardからの遷移条件は毎回1回だけ使う。
+  // sessionStorage/localStorageに残したままだと、前回の2026年度などが次回の全期間クリックに混ざる。
+  sessionStorage.removeItem("recruit_dashboard_list_filter");
+  localStorage.removeItem("recruit_dashboard_list_filter");
+
+  if(!hasUrlDashboard && !hasSavedDashboard)return null;
+
+  const rawFrom=params.get("from");
+  const urlFrom=(rawFrom && rawFrom!=="dashboard") ? rawFrom : "";
+
+  return {
+    source:"dashboard",
+    filter:params.get("filter") || saved?.filterType || "",
+    from:urlFrom || params.get("fromDate") || params.get("dashboardFrom") || params.get("dateFrom") || saved?.from || saved?.dashboardFrom || saved?.dateFrom || "",
+    to:params.get("to") || params.get("toDate") || params.get("dashboardTo") || params.get("dateTo") || saved?.to || saved?.dashboardTo || saved?.dateTo || "",
+    year:params.get("year") || params.get("fiscalYear") || saved?.year || saved?.fiscalYear || "",
+    division:params.get("division") || saved?.division || "",
+    center:params.get("center") || saved?.center || "",
+    owner:params.get("owner") || saved?.owner || "",
+    channel:params.get("channel") || saved?.channel || "",
+    job:params.get("job") || saved?.job || ""
+  };
+}
+function setSelectOptions(id,values,blank){
+  const el=$(id);
+  if(!el)return;
+  const cur=el.value;
+  const list=[...new Set((values||[]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));
+  el.innerHTML='<option value="">'+blank+'</option>';
+  list.forEach(v=>{el.innerHTML+='<option value="'+esc(v)+'">'+esc(v)+'</option>';});
+  if(list.includes(cur))el.value=cur;
+}
+async function getUser(){
+  if(currentUser)return currentUser;
+  const {data:{session}}=await sb.auth.getSession();
+  currentUser=session?.user||null;
+  return currentUser;
+}
+async function getRole(userId){
+  if(currentRole)return currentRole;
+  try{
+    const {data}=await sb.from("profiles").select("role").eq("user_id",userId).single();
+    currentRole=data?.role||"editor";
+    if(window.RecruitOpsGuard) window.RecruitOpsGuard.setRole(currentRole);
+  }catch(e){
+    currentRole="editor";
+    if(window.RecruitOpsGuard) window.RecruitOpsGuard.setRole(currentRole);
+  }
+  return currentRole;
+}
+function showAuth(msg="未ログインです",type="info"){
+  $("authScreen")?.classList.remove("hidden");
+  $("appScreen")?.classList.add("hidden");
+  currentUser=null;
+  currentRole=null;
+  setMsg("authMessage",msg,type);
+  document.body.classList.remove("auth-checking");
+}
+async function showApp(){
+  const user=await getUser();
+  if(!user){
+    showAuth();
+    return false;
+  }
+  await getRole(user.id);
+  $("authScreen")?.classList.add("hidden");
+  $("appScreen")?.classList.remove("hidden");
+  document.body.classList.remove("auth-checking");
+  return true;
+}
+async function login(){
+  const email=$("loginEmail")?.value.trim();
+  const password=$("loginPassword")?.value;
+  if(!email||!password){
+    setMsg("authMessage","メールアドレスとパスワードを入力してください","error");
+    return;
+  }
+  try{
+    const {error}=await sb.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    currentUser=null;
+    currentRole=null;
+    if(await showApp()) await initPageAfterLogin();
+  }catch(e){
+    setMsg("authMessage","ログイン失敗: "+(e.message||e),"error");
+  }
+}
+async function logout(){
+  try{await sb.auth.signOut()}catch(e){}
+  showAuth("ログアウトしました","success");
+}
+sb.auth.onAuthStateChange((ev)=>{
+  if(ev==="SIGNED_OUT")showAuth("ログアウトしました","success");
+});
+async function authInit(){
+  try{
+    if(await showApp()) await initPageAfterLogin();
+  }catch(e){
+    console.error(e);
+    showAuth("初期化に失敗しました","error");
+  }finally{
+    document.body.classList.remove("auth-checking");
+  }
+}
+
+function saveState(){
+  // dashboardから来た一時条件はLISTの通常保存条件に混ぜない。
+  // ここで保存すると、次回「全期間」で開いた時に前回年度が復活する。
+  if(dashboardContextActive)return;
+
+  localStorage.setItem(STATE,JSON.stringify({
+    listFilter:currentListFilter,
+    sortMode,
+    year:$("filterYear").value,
+    month:$("filterMonth").value,
+    division:$("filterDivision").value,
+    center:$("filterCenter").value,
+    owner:$("filterOwner").value,
+    channel:$("filterChannel").value
+  }));
+}
+function restoreState(){
+  try{return JSON.parse(localStorage.getItem(STATE)||"null")}catch(e){return null}
+}
+function applyDashboardFilterIfExists(){
+  const payload=readDashboardFilterPayload();
+  if(!payload)return false;
+
+  dashboardContextActive=true;
+  dashboardFrom=validDate(payload.from) ? payload.from : "";
+  dashboardTo=validDate(payload.to) ? payload.to : "";
+  dashboardFilterActive=!!(dashboardFrom||dashboardTo);
+  dashboardJob=payload.job||"";
+
+  // dashboard遷移時は、LISTに残っていた前回年度・月を必ず消す。
+  setFilterValue("filterYear","");
+  setFilterValue("filterMonth","");
+
+  if(payload.filter){
+    currentListFilter=payload.filter || "all";
+  }
+
+  setFilterValue("filterDivision",payload.division||"");
+  setFilterValue("filterCenter",payload.center||"");
+  setFilterValue("filterOwner",payload.owner||"");
+  setFilterValue("filterChannel",payload.channel||"");
+
+  if(dashboardFilterActive){
+    setDashboardYearDisplay();
+  }else if(payload.year){
+    setFilterValue("filterYear",payload.year);
+  }
+
+  return true;
+}
+
+async function loadMasterDivisionCenterOptions(){
+
+  if(window.RecruitMaster && typeof window.RecruitMaster.divisionCenter === "function"){
+    const master = await window.RecruitMaster.divisionCenter();
+    return { divisions: master.divisions || [], centersByDivision: master.centersByDivision || {} };
+  }
+  return { divisions:[], centersByDivision:{} };
+}
+async function loadListMasterChannels(){
+
+  try{
+    listMasterChannels = window.RecruitMaster ? await window.RecruitMaster.list("channels") : [];
+  }catch(e){
+    console.warn("媒体マスタ読込失敗", e);
+    listMasterChannels = [];
+  }
+}
+function getListChannelOptions(rows=[]){
+  const master=[...new Set((listMasterChannels||[]).filter(Boolean))];
+  if(master.length)return master;
+  return [...new Set((rows||[]).map(r=>String(r.channel||"").trim()).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));
+}
+
+async function setupFilters(rows){
+  setSelectOptions("filterYear", rows.map(r=>getFiscalYearFromAppliedDate(r.applied_date)).filter(Boolean), "全期間");
+  const master = await loadMasterDivisionCenterOptions();
+  const divisionOptions = master.divisions.length ? master.divisions : rows.map(r=>r.division);
+  const centerOptions = Object.values(master.centersByDivision).flat().length ? Object.values(master.centersByDivision).flat() : rows.map(r=>r.center_name);
+  setSelectOptions("filterDivision", divisionOptions, "全部");
+  setSelectOptions("filterCenter", centerOptions, "全営業所");
+  setSelectOptions("filterOwner", rows.map(r=>r.owner_name), "全担当");
+  await loadListMasterChannels();
+  setSelectOptions("filterChannel", getListChannelOptions(rows), "全媒体");
+}
+function clearFilters(){
+  ["filterYear","filterMonth","filterDivision","filterCenter","filterOwner","filterChannel"].forEach(id=>{
+    const el=$(id);
+    if(el)el.value="";
+  });
+  clearDashboardRangeFilter();
+  dashboardContextActive=false;
+  dashboardJob="";
+  currentListFilter="all";
+  sortMode="actionAsc";
+  saveState();
+  renderCandidates();
+}
+function setListFilter(mode){
+  currentListFilter=mode;
+  saveState();
+  renderCandidates();
+}
+function setSortMode(mode){
+  sortMode=mode || "actionAsc";
+  saveState();
+  renderCandidates();
+}
+function updateSortButtons(){
+  const map={
+    actionAsc:"sortActionAscBtn",
+    actionDesc:"sortActionDescBtn",
+    appliedDesc:"sortAppliedDescBtn",
+    appliedAsc:"sortAppliedAscBtn"
+  };
+  Object.entries(map).forEach(([mode,id])=>{
+    const el=$(id);
+    if(!el)return;
+    el.className=sortMode===mode ? "btn-primary" : "btn-secondary";
+  });
+}
+function sortPriority(row){
+  const today=todayStr();
+
+  if(isActionRequired(row)){
+    if(row.next_action_date && row.next_action_date < today)return 0;   // 期限切れ：赤塗り最優先
+    if(row.next_action_date === today)return 1;                         // 今日
+    if(row.next_action_date)return 2;                                   // 対応日あり
+    return 3;                                                           // 未設定
+  }
+
+  return 9;
+}
+function dateTime(value, emptyValue){
+  if(!value)return emptyValue;
+  const t=new Date(value+"T00:00:00").getTime();
+  return Number.isNaN(t) ? emptyValue : t;
+}
+function isInterviewNotDone(r){
+  return validDate(r.interview1_date) && !validDate(r.interview_done_date) && !isFinal(r);
+}
+function isDormant3Days(r){
+  if(!validDate(r.applied_date) || isFinal(r))return false;
+  if(validDate(r.appointment_date) || validDate(r.interview1_date) || validDate(r.interview_done_date))return false;
+  const days=daysBetween(r.applied_date,todayStr());
+  return days!==null && days>=3;
+}
+function isNoContact(r){
+  const memo=String(r.action_memo||"");
+  return r.status==="不通" || r.reject_reason==="連絡取れず" || r.decline_reason==="連絡取れず" || memo.includes("不通") || memo.includes("連絡取れず");
+}
+function isDecline(r){
+  return r.status==="辞退" || !!r.decline_reason;
+}
+function isInterviewNotSet(r){
+  return validDate(r.appointment_date) && !validDate(r.interview1_date) && !isFinal(r);
+}
+function isHeatInterviewGap(r){
+  return validDate(r.applied_date) && !validDate(r.interview_done_date) && !isFinal(r);
+}
+function isHeatHireGap(r){
+  return validDate(r.applied_date) && !isHired(r) && !isFinal(r);
+}
+function applyListFilterRows(rows){
+  switch(currentListFilter){
+    case "all":
+      return rows;
+    case "applied":
+      return rows.filter(r=>validDate(r.applied_date));
+    case "appointment":
+      return rows.filter(r=>validDate(r.appointment_date));
+    case "interview_set":
+      return rows.filter(r=>validDate(r.interview1_date));
+    case "interview_done":
+      return rows.filter(r=>validDate(r.interview_done_date));
+    case "offer":
+      return rows.filter(r=>validDate(r.offer_date));
+    case "hired":
+      return rows.filter(isHired);
+    case "action":
+    case "today":
+    case "owner_stagnation":
+      return rows.filter(isActionRequired);
+    case "not_done":
+      return rows.filter(isInterviewNotDone);
+    case "dormant":
+      return rows.filter(isDormant3Days);
+    case "no_contact":
+      return rows.filter(isNoContact);
+    case "decline":
+      return rows.filter(isDecline);
+    case "interview_not_set":
+      return rows.filter(isInterviewNotSet);
+    case "heat_interview_gap":
+      return rows.filter(isHeatInterviewGap);
+    case "heat_hire_gap":
+      return rows.filter(isHeatHireGap);
+    default:
+      return rows;
+  }
+}
+function getListFilterLabel(){
+  const labels={
+    all:"全件",
+    applied:"応募",
+    appointment:"アポ取得",
+    interview_set:"面接設定",
+    interview_done:"面接実施",
+    offer:"内定",
+    hired:"採用・入社",
+    action:"要対応",
+    today:"要対応",
+    not_done:"未実施",
+    dormant:"放置",
+    no_contact:"連絡不通",
+    decline:"面接辞退",
+    interview_not_set:"面接未設定",
+    heat_interview_gap:"面接未到達",
+    heat_hire_gap:"採用未到達",
+    owner_stagnation:"担当停滞"
+  };
+  return labels[currentListFilter] || "全件";
+}
+
+
+
+
+function filteredRows(){
+  if(dashboardFilterActive)setDashboardYearDisplay();
+
+  const y=$("filterYear").value;
+  const m=$("filterMonth").value;
+  const d=$("filterDivision").value;
+  const c=$("filterCenter").value;
+  const o=$("filterOwner").value;
+  const ch=$("filterChannel").value;
+  const job=dashboardJob;
+
+  let arr=allCandidateRows.filter(r=>{
+    if(dashboardFilterActive){
+      if(!r.applied_date)return false;
+      if(dashboardFrom&&r.applied_date<dashboardFrom)return false;
+      if(dashboardTo&&r.applied_date>dashboardTo)return false;
+    }else if(y||m){
+      if(!r.applied_date)return false;
+      const dt=new Date(r.applied_date+"T00:00:00");
+      const fy=dt.getMonth()+1>=4?dt.getFullYear():dt.getFullYear()-1;
+      if(y&&String(fy)!==y)return false;
+      if(m&&String(dt.getMonth()+1).padStart(2,"0")!==m)return false;
+    }
+    return (!d||r.division===d)&&(!c||r.center_name===c)&&(!o||r.owner_name===o)&&(!ch||r.channel===ch)&&(!job||r.job_type===job);
+  });
+
+  arr=applyListFilterRows(arr);
+
+  arr.sort((a,b)=>{
+    const pa=sortPriority(a);
+    const pb=sortPriority(b);
+    if(pa!==pb)return pa-pb;
+
+    if(sortMode==="actionDesc"){
+      const da=dateTime(a.next_action_date,-1);
+      const db=dateTime(b.next_action_date,-1);
+      if(da!==db)return db-da;
+    }else if(sortMode==="appliedDesc"){
+      const da=dateTime(a.applied_date,-1);
+      const db=dateTime(b.applied_date,-1);
+      if(da!==db)return db-da;
+    }else if(sortMode==="appliedAsc"){
+      const da=dateTime(a.applied_date,9999999999999);
+      const db=dateTime(b.applied_date,9999999999999);
+      if(da!==db)return da-db;
+    }else{
+      const da=dateTime(a.next_action_date,9999999999999);
+      const db=dateTime(b.next_action_date,9999999999999);
+      if(da!==db)return da-db;
+    }
+
+    return dateTime(b.applied_date,-1)-dateTime(a.applied_date,-1);
+  });
+
+  return arr;
+}
+function saveListOrder(rows){
+  localStorage.setItem("recruit_list_current_order",JSON.stringify(rows.map(r=>String(r.id))));
+}
+
+function isAdminRole(){
+  return window.RecruitOpsGuard ? window.RecruitOpsGuard.canDelete(currentRole) : ["admin","manager","editor"].includes(String(currentRole||"").toLowerCase());
+}
+
+function getSelectedRows(){
+  return allCandidateRows.filter(r => selectedIds.has(String(r.id)));
+}
+
+function updateBulkSelectCount(){
+  const count = selectedIds.size;
+  const el = $("bulkSelectCount");
+  if(el) el.textContent = "選択 " + count + "件";
+
+  const all = $("bulkSelectAll");
+  if(all){
+    const visibleRows = filteredRows();
+    const visibleIds = visibleRows.map(r => String(r.id));
+    const selectedVisible = visibleIds.filter(id => selectedIds.has(id)).length;
+    all.checked = visibleIds.length > 0 && selectedVisible === visibleIds.length;
+    all.indeterminate = selectedVisible > 0 && selectedVisible < visibleIds.length;
+  }
+
+  const bulkDeleteButton = $("bulkDeleteButton");
+  if(bulkDeleteButton){
+    bulkDeleteButton.style.display = isAdminRole() ? "" : "none";
+  }
+}
+
+function toggleBulkSelection(id, checked){
+  const key = String(id);
+  if(checked) selectedIds.add(key);
+  else selectedIds.delete(key);
+  updateBulkSelectCount();
+}
+
+function toggleBulkSelectAll(checked){
+  filteredRows().forEach(r => {
+    const key = String(r.id);
+    if(checked) selectedIds.add(key);
+    else selectedIds.delete(key);
+  });
+  renderCandidates();
+}
+
+function clearBulkSelection(){
+  selectedIds.clear();
+  renderCandidates();
+}
+
+function setupBulkOptions(){
+  const ownerSelect = $("bulkOwner");
+  if(ownerSelect){
+    const current = ownerSelect.value;
+    const owners = [...new Set((allCandidateRows||[])
+      .map(r => String(r.owner_name||"").trim())
+      .filter(Boolean))]
+      .sort((a,b)=>a.localeCompare(b,"ja"));
+
+    ownerSelect.innerHTML = '<option value="">変更しない</option>' + owners.map(v => '<option value="'+esc(v)+'">'+esc(v)+'</option>').join('');
+    if(owners.includes(current)) ownerSelect.value = current;
+  }
+
+  const reasonSelect = $("bulkDeclineReason");
+  if(reasonSelect){
+    const current = reasonSelect.value;
+    reasonSelect.innerHTML = '<option value="">変更しない</option>';
+
+    const fallback = ["条件不一致","連絡不通","他社決定","本人都合","勤務条件","その他"];
+    fallback.forEach(v => {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      reasonSelect.appendChild(opt);
+    });
+
+    if([...reasonSelect.options].some(o => o.value === current)) reasonSelect.value = current;
+  }
+
+  const all = $("bulkSelectAll");
+  if(all && !all.dataset.bound){
+    all.dataset.bound = "1";
+    all.addEventListener("change", e => toggleBulkSelectAll(e.target.checked));
+  }
+
+  updateBulkSelectCount();
+}
+
+function buildBulkUpdatePayload(){
+  const payload = {};
+  const status = $("bulkStatus")?.value || "";
+  const owner = $("bulkOwner")?.value || "";
+  const decline = $("bulkDeclineReason")?.value || "";
+
+  if(status) payload.status = status;
+  if(owner) payload.owner_name = owner;
+  if(decline) payload.decline_reason = decline;
+
+  return payload;
+}
+
+async function bulkUpdateCandidates(){
+  if(window.RecruitOpsGuard && !window.RecruitOpsGuard.requireWrite(currentRole)) return;
+  const rows = getSelectedRows();
+  if(!rows.length){
+    if(window.RecruitUI) window.RecruitUI.toast("一括更新する応募者を選択してください。", "warning");
+    return;
+  }
+
+  const payload = buildBulkUpdatePayload();
+  if(!Object.keys(payload).length){
+    if(window.RecruitUI) window.RecruitUI.toast("変更内容を選択してください。", "warning");
+    return;
+  }
+
+  const ok = window.RecruitUI
+    ? await window.RecruitUI.confirmAction("選択中の " + rows.length + "件を一括更新します。", {
+        title:"一括更新確認",
+        okText:"更新する",
+        cancelText:"キャンセル",
+        type:"warning"
+      })
+    : confirm("選択中の " + rows.length + "件を一括更新しますか？");
+
+  if(!ok) return;
+
+  try{
+    const ids = rows.map(r => r.id);
+    const { error } = await sb
+      .from("candidates")
+      .update(payload)
+      .in("id", ids);
+
+    if(error) throw error;
+
+    if(window.RecruitAudit && window.RecruitAudit.write){
+      await window.RecruitAudit.write("candidate_bulk_update", "candidates", "bulk", {
+        count: rows.length,
+        ids: ids.map(String),
+        names: rows.map(r => r.name || ""),
+        update: payload
+      });
+    }
+
+    allCandidateRows = allCandidateRows.map(r => selectedIds.has(String(r.id)) ? {...r, ...payload} : r);
+
+    selectedIds.clear();
+    ["bulkStatus","bulkOwner","bulkDeclineReason"].forEach(id => {
+      const el = $(id);
+      if(el) el.value = "";
+    });
+
+    if(window.RecruitUI) window.RecruitUI.toast("一括更新しました", "success");
+    renderCandidates();
+  }catch(e){
+    if(window.RecruitUI) window.RecruitUI.showError("一括更新に失敗しました。\n\n" + (e.message || e));
+  }
+}
+
+async function bulkDeleteCandidates(){
+  const rows = getSelectedRows();
+  if(!rows.length){
+    if(window.RecruitUI) window.RecruitUI.toast("一括削除する応募者を選択してください。", "warning");
+    return;
+  }
+
+  if(!isAdminRole()){
+    if(window.RecruitUI) window.RecruitUI.showError("削除できる権限がありません。");
+    return;
+  }
+
+  const ok = window.RecruitUI
+    ? await window.RecruitUI.confirmAction("選択中の " + rows.length + "件を一括削除します。\n\n※完全削除ではなく一覧から非表示にします。", {
+        title:"一括削除確認",
+        okText:"削除する",
+        cancelText:"キャンセル",
+        type:"warning"
+      })
+    : confirm("選択中の " + rows.length + "件を一括削除しますか？");
+
+  if(!ok) return;
+
+  try{
+    const ids = rows.map(r => r.id);
+    const { error } = await sb
+      .from("candidates")
+      .update({ is_deleted:true })
+      .in("id", ids);
+
+    if(error) throw error;
+
+    if(window.RecruitAudit && window.RecruitAudit.write){
+      await window.RecruitAudit.write("candidate_bulk_delete", "candidates", "bulk", {
+        count: rows.length,
+        ids: ids.map(String),
+        names: rows.map(r => r.name || "")
+      });
+    }
+
+    allCandidateRows = allCandidateRows.filter(r => !selectedIds.has(String(r.id)));
+    selectedIds.clear();
+
+    if(window.RecruitUI) window.RecruitUI.toast("一括削除しました", "success");
+    renderCandidates();
+  }catch(e){
+    if(window.RecruitUI) window.RecruitUI.showError("一括削除に失敗しました。\n\n" + (e.message || e));
+  }
+}
+
+
+function renderCandidates(){
+  saveState();
+  $("filterAllBtn").className=currentListFilter==="all"?"btn-primary":"btn-secondary";
+  $("filterActionBtn").className=currentListFilter!=="all"?"btn-warning":"btn-secondary";
+  updateSortButtons();
+
+  const rows=filteredRows();
+  setupBulkOptions();
+  saveListOrder(rows);
+
+  const tbody=document.querySelector("#candidateTable tbody");
+  const today=todayStr();
+  const actionInRows=rows.filter(isActionRequired).length;
+  $("listCount").textContent="表示 "+rows.length+"件 / 条件 "+getListFilterLabel()+" / 要対応 "+actionInRows+"件";
+  const overInRows=rows.filter(r=>r.next_action_date&&r.next_action_date<today).length;
+  const todayInRows=rows.filter(r=>r.next_action_date===today).length;
+
+  if($("sideKpiTotal"))$("sideKpiTotal").textContent=rows.length;
+  if($("sideKpiAction"))$("sideKpiAction").textContent=actionInRows;
+  if($("sideKpiOver"))$("sideKpiOver").textContent=overInRows;
+  if($("sideKpiToday"))$("sideKpiToday").textContent=todayInRows;
+
+  if(!rows.length){
+    tbody.innerHTML='<tr><td class="empty" colspan="11">表示対象のデータがありません</td></tr>';
+    updateBulkSelectCount();
+    return;
+  }
+
+  tbody.innerHTML="";
+  rows.forEach(r=>{
+    const tr=document.createElement("tr");
+    tr.dataset.id=String(r.id);
+
+    if(isActionRequired(r)){
+      if(!r.next_action_date)tr.classList.add("action-missing");
+      else if(r.next_action_date<today)tr.classList.add("action-over");
+      else if(r.next_action_date===today)tr.classList.add("action-today");
+      else tr.classList.add("action-soon");
+    }
+
+    tr.onclick=()=>{
+      saveNav(r.id);
+      location.href="./detail.html?id="+encodeURIComponent(r.id);
+    };
+
+    const dateClass=r.next_action_date<today?"date-over":r.next_action_date===today?"date-today":"";
+    const checked = selectedIds.has(String(r.id)) ? " checked" : "";
+
+    tr.innerHTML=
+      '<td class="list-check-cell"><input type="checkbox" class="bulk-row-check" data-id="'+esc(r.id)+'" aria-label="選択"'+checked+'></td>'+
+      "<td><strong>"+esc(r.name||"")+"</strong></td>"+
+      "<td>"+formatDate(r.applied_date)+"</td>"+
+      "<td>"+badge(r.status)+"</td>"+
+      "<td>"+esc(r.division||"")+"</td>"+
+      "<td>"+esc(r.center_name||"")+"</td>"+
+      "<td>"+esc(r.channel||"")+"</td>"+
+      "<td>"+esc(r.channel_detail||"")+"</td>"+
+      "<td>"+esc(r.owner_name||"")+"</td>"+
+      '<td><span class="'+dateClass+'">'+formatDate(r.next_action_date)+"</span></td>"+
+      '<td class="list-action-cell"><button class="btn-danger list-delete-btn" type="button" data-requires-role="admin,manager,editor" data-id="'+esc(r.id)+'">削除</button></td>';
+
+    const checkCell = tr.querySelector(".list-check-cell");
+    const checkBox = tr.querySelector(".bulk-row-check");
+    if(checkCell && checkBox){
+      checkCell.addEventListener("click", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if(e.target !== checkBox) checkBox.checked = !checkBox.checked;
+        toggleBulkSelection(r.id, checkBox.checked);
+      });
+      checkBox.addEventListener("click", e => {
+        e.stopPropagation();
+      });
+      checkBox.addEventListener("change", e => {
+        e.stopPropagation();
+        toggleBulkSelection(r.id, e.target.checked);
+      });
+    }
+
+    const deleteBtn = tr.querySelector(".list-delete-btn");
+    if(deleteBtn){
+      deleteBtn.addEventListener("click", async (e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+
+        if(!isAdminRole()){
+          if(window.RecruitUI) window.RecruitUI.showError("削除できる権限がありません。");
+          return;
+        }
+
+        const ok = window.RecruitUI
+          ? await window.RecruitUI.confirmAction(
+              "この応募者を削除しますか？\n\n※完全削除ではなく一覧から非表示にします。",
+              {
+                title:"削除確認",
+                okText:"削除する",
+                cancelText:"キャンセル",
+                type:"warning"
+              }
+            )
+          : confirm("この応募者を削除しますか？");
+
+        if(!ok) return;
+
+        try{
+          const { error } = await sb
+            .from("candidates")
+            .update({ is_deleted:true })
+            .eq("id", r.id);
+
+          if(error) throw error;
+
+          if(window.RecruitAudit && window.RecruitAudit.candidateDelete){
+            await window.RecruitAudit.candidateDelete(r.id, r);
+          }else if(window.writeRecruitAuditLog){
+            await window.writeRecruitAuditLog("candidate_delete", "candidates", r.id, {
+              name:r.name || null,
+              status:r.status || null
+            });
+          }
+
+          allCandidateRows = allCandidateRows.filter(x => String(x.id) !== String(r.id));
+
+          if(window.RecruitUI){
+            window.RecruitUI.toast("削除しました", "success");
+          }
+
+          renderCandidates();
+
+        }catch(err){
+          if(window.RecruitUI){
+            window.RecruitUI.showError("削除に失敗しました。\n\n" + (err.message || err));
+          }else{
+            if(window.RecruitUI){ window.RecruitUI.showError("削除に失敗しました。\n\n" + (err.message || err)); }
+          }
+        }
+      });
+    }
+
+    tbody.appendChild(tr);
+  });
+  updateBulkSelectCount();
+  restoreNav();
+}
+function saveNav(id){
+  const wrap=document.querySelector(".table-wrap");
+  sessionStorage.setItem(NAV,JSON.stringify({
+    restore:true,
+    targetId:String(id),
+    scrollY:window.scrollY,
+    top:wrap?.scrollTop||0,
+    left:wrap?.scrollLeft||0
+  }));
+}
+function restoreNav(){
+  const raw=sessionStorage.getItem(NAV);
+  if(!raw)return;
+  let state;
+  try{state=JSON.parse(raw)}catch(e){return}
+  if(!state?.restore)return;
+
+  requestAnimationFrame(()=>{
+    const wrap=document.querySelector(".table-wrap");
+    if(wrap){
+      wrap.scrollTop=state.top||0;
+      wrap.scrollLeft=state.left||0;
+    }
+    window.scrollTo(0,state.scrollY||0);
+    const tr=document.querySelector('tr[data-id="'+CSS.escape(state.targetId)+'"]');
+    if(tr){
+      tr.classList.add("return-highlight");
+      tr.scrollIntoView({block:"center"});
+      setTimeout(()=>tr.classList.remove("return-highlight"),3000);
+    }
+    sessionStorage.removeItem(NAV);
+  });
+}
+async function loadCandidates(){
+  try{
+    const {data,error}=await sb
+      .from("candidates")
+      .select("id,name,applied_date,status,division,center_name,channel,channel_detail,owner_name,next_action_date,hiring_result,is_deleted,appointment_date,interview1_date,interview_done_date,offer_date,join_date,reject_reason,decline_reason,action_memo")
+      .eq("is_deleted",false)
+      .order("id",{ascending:false});
+    if(error)throw error;
+
+    allCandidateRows=data||[];
+    await setupFilters(allCandidateRows);
+
+    let latestCandidateMarker = null;
+    try {
+      latestCandidateMarker = JSON.parse(sessionStorage.getItem("recruit_list_show_latest_candidate") || "null");
+    } catch(e) {
+      latestCandidateMarker = null;
+    }
+    const shouldShowLatest = latestCandidateMarker && Date.now() - Number(latestCandidateMarker.at || 0) < 10 * 60 * 1000;
+
+    const dashboardApplied=shouldShowLatest ? false : applyDashboardFilterIfExists();
+
+    if(shouldShowLatest){
+      currentListFilter = "all";
+      sortMode = "appliedDesc";
+      clearDashboardRangeFilter();
+      dashboardContextActive = false;
+      ["filterYear","filterMonth","filterDivision","filterCenter","filterOwner","filterChannel"].forEach(id => {
+        const el = $(id);
+        if(el) el.value = "";
+      });
+      localStorage.removeItem(STATE);
+    }
+
+    if(!dashboardApplied && !shouldShowLatest){
+      const state=restoreState();
+      if(state){
+        currentListFilter=state.listFilter||"all";
+        sortMode=state.sortMode || (state.sortAction===false ? "appliedDesc" : "actionAsc");
+        clearDashboardRangeFilter();
+        dashboardContextActive=false;
+        const map={
+          year:"filterYear",
+          month:"filterMonth",
+          division:"filterDivision",
+          center:"filterCenter",
+          owner:"filterOwner",
+          channel:"filterChannel"
+        };
+        Object.entries(map).forEach(([key,id])=>{
+          const el=$(id);
+          if(el)el.value=state[key]||"";
+        });
+      }
+    }
+
+    if(dashboardFilterActive)setDashboardYearDisplay();
+    renderCandidates();
+
+    if(shouldShowLatest && latestCandidateMarker?.id){
+      requestAnimationFrame(() => {
+        const tr = document.querySelector('tr[data-id="' + CSS.escape(String(latestCandidateMarker.id)) + '"]');
+        if(tr){
+          tr.classList.add("return-highlight");
+          tr.scrollIntoView({block:"center"});
+          setTimeout(() => tr.classList.remove("return-highlight"), 3000);
+        }
+        sessionStorage.removeItem("recruit_list_show_latest_candidate");
+      });
+    }
+  }catch(e){
+    RecruitUI.showError("一覧読込失敗: "+(e.message||e));
+    console.error(e);
+  }
+}
+async function initPageAfterLogin(){
+  await loadCandidates();
+}
+["filterYear","filterMonth","filterDivision","filterCenter","filterOwner","filterChannel"].forEach(id=>{
+  document.addEventListener("change",e=>{
+    if(e.target&&e.target.id===id){
+      if(dashboardContextActive){
+        clearDashboardRangeFilter();
+        dashboardContextActive=false;
+      }
+      saveState();
+      renderCandidates();
+    }
+  });
+});
+authInit();
+</script>
+<script src="./sidebar.js?v=20260513_compare_graph"></script>
+</body>
+</html>

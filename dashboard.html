@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>採用管理ダッシュボード</title>
+
+<link rel="stylesheet" href="./assets/css/common.css">
+<link rel="stylesheet" href="./assets/css/header.css">
+<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260508_sidebar2">
+<link rel="stylesheet" href="./assets/css/dashboard.css">
+<script src="./common.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/audit_utils.js"></script>
+<script src="assets/js/ops_guard.js"></script>
+<script src="assets/js/safe_utils.js"></script>
+<script src="./sidebar.js?v=20260513_compare_graph"></script>
+<link rel="stylesheet" href="./assets/css/dashboard_ui.css">
+</head>
+<body class="auth-checking">
+
+<div id="authScreen" class="container hidden">
+  <div class="auth-shell">
+    <h1 class="auth-title">採用管理ダッシュボード</h1>
+    <p class="auth-sub">ログイン後にダッシュボードを表示します。</p>
+    <div class="auth-card">
+      <h2>ログイン</h2>
+      <p class="auth-note">社内担当者のみ利用します。</p>
+      <div class="form-grid">
+        <div>
+          <label for="loginEmail">メールアドレス</label>
+          <input id="loginEmail" type="email" placeholder="example@sline.co.jp">
+        </div>
+        <div>
+          <label for="loginPassword">パスワード</label>
+          <input id="loginPassword" type="password" placeholder="パスワード">
+        </div>
+        <div class="actions">
+          <button class="btn-primary" type="button" onclick="login()">ログイン</button>
+        </div>
+        <div id="authMessage" class="message-box message-info">未ログインです</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="appScreen" class="hidden">
+  <div class="app-layout">
+<aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+
+<main class="main-content">
+      <header class="page-header dashboard-page-header">
+        <div class="dashboard-title-line">
+          <h1>採用管理ダッシュボード</h1>
+          <div class="dashboard-header-meta" aria-label="集計状態">
+            <span class="dashboard-header-chip">対象件数：<span id="summaryRows">0</span></span>
+            <span class="dashboard-header-chip">本部：<span id="summaryDivision">すべて</span></span>
+            <span class="dashboard-header-chip">営業所：<span id="summaryCenter">すべて</span></span>
+            <span class="dashboard-header-chip">媒体 / 担当：<span id="summaryChannelOwner">すべて / すべて</span></span>
+          </div>
+        </div>
+      </header>
+
+      <button class="filter-toggle" type="button" onclick="toggleFilters()">
+        <span>分析条件を開く</span>
+        <span id="filterToggleMark">＋</span>
+      </button>
+
+      <section class="card hidden" id="filterCard">
+        <h2>分析条件</h2>
+        <div class="filter-grid">
+          <div>
+            <label for="filterFiscalYear">年度</label>
+            <select id="filterFiscalYear" onchange="applyFiscalYearSelection()">
+              <option value="current">2026年度</option>
+              <option value="previous">2025年度</option>
+              <option value="all">全期間</option>
+              <option value="custom">期間指定</option>
+            </select>
+          </div>
+          <div>
+            <label for="filterFrom">応募日From</label>
+            <input id="filterFrom" type="date">
+          </div>
+          <div>
+            <label for="filterTo">応募日To</label>
+            <input id="filterTo" type="date">
+          </div>
+          <div>
+            <label for="filterDivision">本部</label>
+            <select id="filterDivision" onchange="updateCenterOptionsForFilter()"><option value="">すべて</option></select>
+          </div>
+          <div>
+            <label for="filterCenter">営業所</label>
+            <select id="filterCenter"><option value="">すべて</option></select>
+          </div>
+          <div>
+            <label for="filterChannel">媒体</label>
+            <select id="filterChannel"><option value="">すべて</option></select>
+          </div>
+          <div>
+            <label for="filterOwner">担当者</label>
+            <select id="filterOwner"><option value="">すべて</option></select>
+          </div>
+          <div>
+            <label for="filterDeleted">削除状態</label>
+            <select id="filterDeleted">
+              <option value="active">有効のみ</option>
+              <option value="all">すべて</option>
+              <option value="deleted">削除済みのみ</option>
+            </select>
+          </div>
+        </div>
+        <div style="height:14px"></div>
+        <div class="actions">
+          <button class="btn-primary" type="button" onclick="loadDashboard()">更新</button>
+          <button class="btn-secondary" type="button" onclick="clearFilters()">条件クリア</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>優先対応</h2>
+        <div class="priority-grid">
+          <div class="priority-card danger dashboard-link-card" onclick="goListFilter('today')" onkeydown="activateDashboardLink(event,'today')" role="button" tabindex="0" aria-label="要対応（今日）の応募者一覧を開く" title="要対応（今日）の応募者一覧を開く">
+            <div class="priority-label">要対応（今日）</div>
+            <div class="priority-value" id="priorityToday">0</div>
+            <div class="priority-sub">期限切れ・今日・未設定</div>
+          </div>
+          <div class="priority-card warning dashboard-link-card" onclick="goListFilter('not_done')" onkeydown="activateDashboardLink(event,'not_done')" role="button" tabindex="0" aria-label="未実施の応募者一覧を開く" title="未実施の応募者一覧を開く">
+            <div class="priority-label">未実施</div>
+            <div class="priority-value" id="priorityNotDone">0</div>
+            <div class="priority-sub">面接設定済み・未実施</div>
+          </div>
+          <div class="priority-card purple dashboard-link-card" onclick="goListFilter('dormant')" onkeydown="activateDashboardLink(event,'dormant')" role="button" tabindex="0" aria-label="放置3日以上の応募者一覧を開く" title="放置3日以上の応募者一覧を開く">
+            <div class="priority-label">放置（3日+）</div>
+            <div class="priority-value" id="priorityDormant">0</div>
+            <div class="priority-sub">応募後3日以上未接触</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>採用進行フロー</h2>
+        <div class="flow-grid">
+          <div class="flow-card flow-applied dashboard-link-card" onclick="goListFilter('applied')" onkeydown="activateDashboardLink(event,'applied')" role="button" tabindex="0" aria-label="応募者一覧を開く" title="応募者一覧を開く">
+            <div class="flow-label">応募</div>
+            <div class="flow-value" id="flowApplied">0</div>
+            <div class="flow-rate">&nbsp;</div>
+          </div>
+          <div class="flow-card flow-appointment dashboard-link-card" onclick="goListFilter('appointment')" onkeydown="activateDashboardLink(event,'appointment')" role="button" tabindex="0" aria-label="アポ取得者の一覧を開く" title="アポ取得者の一覧を開く">
+            <div class="flow-label">アポ取得</div>
+            <div class="flow-value" id="flowAppointment">0</div>
+            <div class="flow-rate" id="rateAppointment">0.0%</div>
+          </div>
+          <div class="flow-card flow-interview-set dashboard-link-card" onclick="goListFilter('interview_set')" onkeydown="activateDashboardLink(event,'interview_set')" role="button" tabindex="0" aria-label="面接設定者の一覧を開く" title="面接設定者の一覧を開く">
+            <div class="flow-label">面接設定</div>
+            <div class="flow-value" id="flowInterviewSet">0</div>
+            <div class="flow-rate" id="rateInterviewSet">0.0%</div>
+          </div>
+          <div class="flow-card flow-interview-done dashboard-link-card" onclick="goListFilter('interview_done')" onkeydown="activateDashboardLink(event,'interview_done')" role="button" tabindex="0" aria-label="面接実施者の一覧を開く" title="面接実施者の一覧を開く">
+            <div class="flow-label">面接実施</div>
+            <div class="flow-value" id="flowInterviewDone">0</div>
+            <div class="flow-rate" id="rateInterviewDone">0.0%</div>
+          </div>
+          <div class="flow-card flow-offer dashboard-link-card" onclick="goListFilter('offer')" onkeydown="activateDashboardLink(event,'offer')" role="button" tabindex="0" aria-label="内定者の一覧を開く" title="内定者の一覧を開く">
+            <div class="flow-label">内定</div>
+            <div class="flow-value" id="flowOffer">0</div>
+            <div class="flow-rate" id="rateOffer">0.0%</div>
+          </div>
+          <div class="flow-card flow-hired final dashboard-link-card" onclick="goListFilter('hired')" onkeydown="activateDashboardLink(event,'hired')" role="button" tabindex="0" aria-label="採用者の一覧を開く" title="採用者の一覧を開く">
+            <div class="flow-label">採用</div>
+            <div class="flow-value" id="flowJoin">0</div>
+            <div class="flow-rate" id="rateJoin">0.0%</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="topbar-row" style="align-items:center;margin-bottom:6px">
+          <div>
+            <h2>原因別対応</h2>
+</div>
+          <button class="btn-primary" type="button" onclick="goListFilter('action')">要対応を確認</button>
+        </div>
+        <div class="reason-grid">
+          <div class="reason-card danger dashboard-link-card" onclick="goListFilter('no_contact')" onkeydown="activateDashboardLink(event,'no_contact')" role="button" tabindex="0" aria-label="連絡不通の応募者一覧を開く" title="連絡不通の応募者一覧を開く">
+            <div class="reason-title">連絡不通 → 再連絡</div>
+            <div class="reason-value" id="reasonNoContact">0</div>
+          </div>
+          <div class="reason-card warning dashboard-link-card" onclick="goListFilter('decline')" onkeydown="activateDashboardLink(event,'decline')" role="button" tabindex="0" aria-label="面接辞退の応募者一覧を開く" title="面接辞退の応募者一覧を開く">
+            <div class="reason-title">面接辞退 → 原因確認</div>
+            <div class="reason-value" id="reasonDecline">0</div>
+          </div>
+          <div class="reason-card warning dashboard-link-card" onclick="goListFilter('interview_not_set')" onkeydown="activateDashboardLink(event,'interview_not_set')" role="button" tabindex="0" aria-label="面接未設定の応募者一覧を開く" title="面接未設定の応募者一覧を開く">
+            <div class="reason-title">面接未設定 → 日程設定</div>
+            <div class="reason-value" id="reasonInterviewNotSet">0</div>
+          </div>
+          <div class="reason-card warning dashboard-link-card" onclick="goListFilter('owner_stagnation')" onkeydown="activateDashboardLink(event,'owner_stagnation')" role="button" tabindex="0" aria-label="担当停滞の応募者一覧を開く" title="担当停滞の応募者一覧を開く">
+            <div class="reason-title">担当停滞 → 対応確認</div>
+            <div class="reason-value" id="reasonOwnerStagnation">0</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="log-box" id="logBox">待機中</div>
+    </main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+function safeDisplayValue(v){return (v===undefined||v===null||String(v)==="undefined"||String(v)==="NaN%")?"―":v;}
+
+const sb = window.getRecruitSupabaseClient();
+
+let currentUser = null;
+let currentRole = null;
+let isInitializing = false;
+let isLoading = false;
+let CENTER_MASTER = {};
+let DIVISION_OPTIONS = [];
+let currentDashboardRows = [];
+let dashboardMasterChannels = [];
+
+
+function setLog(message){
+  const el = document.getElementById("logBox");
+  if (!el) return;
+  const now = new Date();
+  el.textContent = "[" + now.toLocaleTimeString("ja-JP") + "] " + message;
+}
+
+
+function updateConnectionUi(connected){
+  const status = document.getElementById("connectionStatus");
+  if (!status) return;
+  if (connected) {
+    status.innerHTML = '<span class="status-dot"></span>接続済み';
+    status.style.background = "#dcfce7";
+    status.style.color = "#15803d";
+  } else {
+    status.innerHTML = '<span class="status-dot"></span>未ログイン';
+    status.style.background = "#eff6ff";
+    status.style.color = "#1d4ed8";
+  }
+}
+function updateRoleUi(role){
+  const badge = document.getElementById("roleBadge");
+  if (!badge) return;
+  badge.textContent = "権限：" + (role || "editor");
+  const deleted = document.getElementById("filterDeleted");
+  if (deleted) {
+    deleted.disabled = role !== "admin";
+    if (role !== "admin") deleted.value = "active";
+  }
+}
+function showAuth(message = "未ログインです", type = "info"){
+  document.getElementById("authScreen").classList.remove("hidden");
+  document.getElementById("appScreen").classList.add("hidden");
+  const pw = document.getElementById("loginPassword");
+  if (pw) pw.value = "";
+  currentUser = null;
+  currentRole = null;
+  updateConnectionUi(false);
+  setAuthMessage(message, type);
+  document.body.classList.remove("auth-checking");
+}
+function showApp(user, role){
+  document.getElementById("authScreen").classList.add("hidden");
+  document.getElementById("appScreen").classList.remove("hidden");
+  currentUser = user;
+  currentRole = role;
+  updateConnectionUi(true);
+  updateRoleUi(role);
+  document.body.classList.remove("auth-checking");
+}
+async function getSessionUser(){
+  if (currentUser) return currentUser;
+  const { data:{ session }, error } = await sb.auth.getSession();
+  if (error || !session?.user) return null;
+  currentUser = session.user;
+  return currentUser;
+}
+async function getCurrentRole(userId){
+  if (currentRole) return currentRole;
+  const { data, error } = await sb.from("profiles").select("role").eq("user_id", userId).single();
+  if (error) {
+    currentRole = "editor";
+    return currentRole;
+  }
+  currentRole = data?.role || "editor";
+  return currentRole;
+}
+async function refreshAuthState(){
+  const user = await getSessionUser();
+  if (!user) {
+    showAuth("未ログインです。index.html からログインしてください。", "error");
+    return false;
+  }
+  const role = await getCurrentRole(user.id);
+  showApp(user, role);
+  return true;
+}
+async function login(){
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  if (!email || !password) {
+    setAuthMessage("メールアドレスとパスワードを入力してください", "error");
+    return;
+  }
+  try {
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    currentUser = null;
+    currentRole = null;
+    const ok = await refreshAuthState();
+    if (ok) await loadDashboard();
+  } catch (e) {
+    setAuthMessage("ログイン失敗: " + (e.message || e), "error");
+  }
+}
+async function logout(){
+  try { await sb.auth.signOut(); } catch(e) { console.error(e); }
+  finally {
+    currentUser = null;
+    currentRole = null;
+    showAuth("ログアウトしました", "success");
+  }
+}
+function calcRate(num, den){
+  if (!den || den === 0) return "0.0%";
+  return ((num / den) * 100).toFixed(1) + "%";
+}
+function getSessionToday(){
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return y + "-" + m + "-" + d;
+}
+
+function isValidDate(dateStr){
+  if (!dateStr) return false;
+  const year = Number(String(dateStr).substring(0,4));
+  return !Number.isNaN(year) && year >= 2000;
+}
+
+function isActionRequired(row){
+  const status = String(row.status || "").trim();
+  const hiringResult = String(row.hiring_result || "").trim();
+  if (status === "面接実施" && (hiringResult === "採用" || hiringResult === "不採用")) return false;
+  const activeStatuses = ["応募","アポ取得","面接設定","面接実施"];
+  if (!activeStatuses.includes(status)) return false;
+  if (!row.next_action_date) return true;
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const nextDate = new Date(row.next_action_date + "T00:00:00");
+  const diff = (nextDate - today) / (1000 * 60 * 60 * 24);
+  return diff <= 1;
+}
+
+
+function refreshDashboardFiscalYearLabels(){
+  if (window.refreshRecruitFiscalYearSelectLabels) window.refreshRecruitFiscalYearSelectLabels(document);
+  const sel = document.getElementById("filterFiscalYear");
+  if (!sel) return;
+  const now = new Date();
+  const fy = getFiscalYearFromDate(now);
+  Array.from(sel.options || []).forEach(opt => {
+    if (opt.value === "current") opt.textContent = fy + "年度";
+    if (opt.value === "previous") opt.textContent = (fy - 1) + "年度";
+    if (opt.value === "all") opt.textContent = "全期間";
+    if (opt.value === "custom") opt.textContent = "期間指定";
+  });
+}
+
+function getFiscalRangeByType(type){
+  const now = new Date();
+  const fy = getFiscalYearFromDate(now);
+  const raw = String(type || "current").trim();
+  const match = raw.match(/^(?:fy:)?(\d{4})/);
+  if (raw === "previous" || raw === "prev" || raw === "前年度") return { fiscalYear: fy - 1, from: (fy - 1) + "-04-01", to: fy + "-03-31" };
+  if (raw === "all" || raw === "全期間" || raw === "全年度") return { fiscalYear: null, from: "", to: "" };
+  if (raw === "custom" || raw === "期間指定") return {
+    fiscalYear: null,
+    from: document.getElementById("filterFrom").value,
+    to: document.getElementById("filterTo").value
+  };
+  const targetFy = match ? Number(match[1]) : fy;
+  return { fiscalYear: targetFy, from: targetFy + "-04-01", to: (targetFy + 1) + "-03-31" };
+}
+function applyFiscalYearSelection(){
+  const type = document.getElementById("filterFiscalYear").value;
+  const range = getFiscalRangeByType(type);
+  if (type !== "custom") {
+    document.getElementById("filterFrom").value = range.from;
+    document.getElementById("filterTo").value = range.to;
+  }
+}
+function setCurrentFiscalYear(){
+  refreshDashboardFiscalYearLabels();
+  document.getElementById("filterFiscalYear").value = "current";
+  applyFiscalYearSelection();
+}
+function clearFilters(){
+  document.getElementById("filterFiscalYear").value = "current";
+  applyFiscalYearSelection();
+  document.getElementById("filterDivision").value = "";
+  updateCenterOptionsForFilter();
+  document.getElementById("filterCenter").value = "";
+  document.getElementById("filterChannel").value = "";
+  document.getElementById("filterOwner").value = "";
+  if (currentRole === "admin") document.getElementById("filterDeleted").value = "active";
+  loadDashboard();
+}
+function toggleFilters(){
+  const card = document.getElementById("filterCard");
+  const mark = document.getElementById("filterToggleMark");
+  card.classList.toggle("hidden");
+  mark.textContent = card.classList.contains("hidden") ? "＋" : "－";
+}
+async function loadMasterDivisionCenterOptions(){
+
+  if(window.RecruitMaster && typeof window.RecruitMaster.divisionCenter === "function"){
+    const master = await window.RecruitMaster.divisionCenter();
+    return { divisions: master.divisions || [], centersByDivision: master.centersByDivision || {} };
+  }
+  return { divisions:[], centersByDivision:{} };
+}
+async function loadCenterMaster(){
+
+  const master = window.RecruitMaster ? await window.RecruitMaster.divisionCenter() : { centersByDivision:{}, centers:[] };
+  CENTER_MASTER = master.centersByDivision || {};
+  return master.centers || [];
+}
+function updateCenterOptionsForFilter(){
+  const division = document.getElementById("filterDivision").value;
+  const centerSelect = document.getElementById("filterCenter");
+  const current = centerSelect.value;
+  let centers = [];
+  if (division) {
+    centers = CENTER_MASTER[division] || [];
+  } else {
+    Object.values(CENTER_MASTER).forEach(list => centers.push(...list));
+  }
+  centers = [...new Set(centers.filter(Boolean))].sort((a,b) => a.localeCompare(b,"ja"));
+  centerSelect.innerHTML = '<option value="">すべて</option>';
+  centers.forEach(v => centerSelect.innerHTML += '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>');
+  if (centers.includes(current)) centerSelect.value = current;
+}
+function populateSelect(id, values, emptyLabel = "すべて"){
+  const el = document.getElementById(id);
+  if (!el) return;
+  const current = el.value;
+  const list = [...new Set((values || []).filter(Boolean))].sort((a,b) => String(a).localeCompare(String(b),"ja"));
+  el.innerHTML = '<option value="">' + emptyLabel + '</option>';
+  list.forEach(v => el.innerHTML += '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>');
+  if (list.includes(current)) el.value = current;
+}
+
+async function loadDashboardMasterChannels(){
+
+  try{
+    dashboardMasterChannels = window.RecruitMaster ? await window.RecruitMaster.list("channels") : [];
+  }catch(e){
+    console.warn("媒体マスタ読込失敗", e);
+    dashboardMasterChannels = [];
+  }
+}
+function getDashboardChannelOptions(candidateRows=[]){
+  const master=[...new Set((dashboardMasterChannels||[]).filter(Boolean))];
+  if(master.length)return master;
+  return [...new Set((candidateRows||[]).map(r=>String(r.channel||"").trim()).filter(Boolean))]
+    .sort((a,b)=>String(a).localeCompare(String(b),"ja"));
+}
+
+function setText(id, value){
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+function updateDashboardUi(rows){
+  const activeRows = (rows || []).filter(r => !r.is_deleted);
+  const today = getSessionToday();
+
+  const applied = activeRows.filter(r => isValidDate(r.applied_date)).length;
+  const appointment = activeRows.filter(r => isValidDate(r.appointment_date)).length;
+  const interviewSet = activeRows.filter(r => isValidDate(r.interview1_date)).length;
+  const interviewDone = activeRows.filter(r => isValidDate(r.interview_done_date)).length;
+  const offer = activeRows.filter(r => isValidDate(r.offer_date)).length;
+  const join = activeRows.filter(r => isValidDate(r.join_date)).length;
+
+  const priorityToday = activeRows.filter(isActionRequired).length;
+  const priorityNotDone = activeRows.filter(r => isValidDate(r.interview1_date) && !isValidDate(r.interview_done_date) && !isFinal(r)).length;
+  const priorityDormant = activeRows.filter(r => {
+    if (!isValidDate(r.applied_date) || isFinal(r)) return false;
+    if (isValidDate(r.appointment_date) || isValidDate(r.interview1_date) || isValidDate(r.interview_done_date)) return false;
+    const days = daysBetween(r.applied_date, today);
+    return days !== null && days >= 3;
+  }).length;
+
+  const noContact = activeRows.filter(r => {
+    const memo = String(r.action_memo || "");
+    return r.status === "不通" || r.reject_reason === "連絡取れず" || r.decline_reason === "連絡取れず" || memo.includes("不通") || memo.includes("連絡取れず");
+  }).length;
+  const decline = activeRows.filter(r => r.status === "辞退" || !!r.decline_reason).length;
+  const interviewNotSet = activeRows.filter(r => isValidDate(r.appointment_date) && !isValidDate(r.interview1_date) && !isFinal(r)).length;
+  const ownerStagnation = activeRows.filter(r => isActionRequired(r)).length;
+
+  setText("priorityToday", priorityToday);
+  setText("priorityNotDone", priorityNotDone);
+  setText("priorityDormant", priorityDormant);
+
+  setText("flowApplied", applied);
+  setText("flowAppointment", appointment);
+  setText("flowInterviewSet", interviewSet);
+  setText("flowInterviewDone", interviewDone);
+  setText("flowOffer", offer);
+  setText("flowJoin", join);
+
+  setText("rateAppointment", calcRate(appointment, applied));
+  setText("rateInterviewSet", calcRate(interviewSet, appointment));
+  setText("rateInterviewDone", calcRate(interviewDone, interviewSet));
+  setText("rateOffer", calcRate(offer, interviewDone));
+  setText("rateJoin", calcRate(join, applied));
+
+  setText("reasonNoContact", noContact);
+  setText("reasonDecline", decline);
+  setText("reasonInterviewNotSet", interviewNotSet);
+  setText("reasonOwnerStagnation", ownerStagnation);
+
+  setText("summaryRows", rows.length);
+  setText("summaryDivision", document.getElementById("filterDivision").value || "すべて");
+  setText("summaryCenter", document.getElementById("filterCenter").value || "すべて");
+  const ch = document.getElementById("filterChannel").value || "すべて";
+  const ow = document.getElementById("filterOwner").value || "すべて";
+  setText("summaryChannelOwner", ch + " / " + ow);
+}
+async function loadDashboard(){
+  if (isLoading) return;
+  isLoading = true;
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      showAuth("未ログインです。index.html からログインしてください。", "error");
+      return;
+    }
+    const filterDeleted = document.getElementById("filterDeleted").value;
+    const filterDivision = document.getElementById("filterDivision").value;
+    const filterCenter = document.getElementById("filterCenter").value;
+    const filterChannel = document.getElementById("filterChannel").value;
+    const filterOwner = document.getElementById("filterOwner").value;
+    const filterFrom = document.getElementById("filterFrom").value;
+    const filterTo = document.getElementById("filterTo").value;
+
+    let query = sb.from("candidates").select("*").order("id", { ascending:false });
+    if (currentRole === "admin") {
+      if (filterDeleted === "active") query = query.eq("is_deleted", false);
+      else if (filterDeleted === "deleted") query = query.eq("is_deleted", true);
+    } else {
+      query = query.eq("is_deleted", false);
+    }
+    if (filterDivision) query = query.eq("division", filterDivision);
+    if (filterCenter) query = query.eq("center_name", filterCenter);
+    if (filterChannel) query = query.eq("channel", filterChannel);
+    if (filterOwner) query = query.eq("owner_name", filterOwner);
+    if (filterFrom) query = query.gte("applied_date", filterFrom);
+    if (filterTo) query = query.lte("applied_date", filterTo);
+
+    const { data, error } = await query;
+    if (error) throw error;
+    const rows = data || [];
+    currentDashboardRows = rows;
+
+    const { data: allData } = await sb.from("candidates").select("channel, owner_name");
+    if (allData) {
+      await loadDashboardMasterChannels();
+      populateSelect("filterChannel", getDashboardChannelOptions(allData));
+      populateSelect("filterOwner", allData.map(x => x.owner_name));
+      if (filterChannel && getDashboardChannelOptions(allData).includes(filterChannel)) document.getElementById("filterChannel").value = filterChannel;
+      if (filterOwner) document.getElementById("filterOwner").value = filterOwner;
+    }
+
+    updateDashboardUi(rows);
+    updateConnectionUi(true);
+    setLog("ダッシュボード更新成功: " + rows.length + "件");
+  } catch (e) {
+    console.error(e);
+    setPageMessage("ダッシュボード更新失敗: " + (e.message || e), "error");
+    setLog("ダッシュボード更新失敗: " + (e.message || e));
+  } finally {
+    isLoading = false;
+  }
+}
+
+function activateDashboardLink(event, filterType){
+  if (!event) return;
+  const key = event.key || "";
+  if (key === "Enter" || key === " ") {
+    event.preventDefault();
+    goListFilter(filterType);
+  }
+}
+
+function goListFilter(filterType){
+  const payload = {
+    source:"dashboard",
+    filterType:filterType || "action",
+    from:document.getElementById("filterFrom")?.value || "",
+    to:document.getElementById("filterTo")?.value || "",
+    division:document.getElementById("filterDivision")?.value || "",
+    center:document.getElementById("filterCenter")?.value || "",
+    channel:document.getElementById("filterChannel")?.value || "",
+    owner:document.getElementById("filterOwner")?.value || "",
+    savedAt:new Date().toISOString()
+  };
+  try {
+    // dashboardからLISTへ渡す条件は一時情報なのでsessionStorageだけに保存する。
+    // localStorageに残すと、別条件で開いた時に前回年度が復活する原因になる。
+    sessionStorage.setItem("recruit_dashboard_list_filter", JSON.stringify(payload));
+    localStorage.removeItem("recruit_dashboard_list_filter");
+  } catch(e) {
+    console.warn(e);
+  }
+  const params = new URLSearchParams();
+  params.set("source", "dashboard");
+  params.set("filter", payload.filterType);
+  if (payload.from) params.set("from", payload.from);
+  if (payload.to) params.set("to", payload.to);
+  if (payload.division) params.set("division", payload.division);
+  if (payload.center) params.set("center", payload.center);
+  if (payload.channel) params.set("channel", payload.channel);
+  if (payload.owner) params.set("owner", payload.owner);
+  window.location.href = "./list.html?" + params.toString();
+}
+sb.auth.onAuthStateChange((event) => {
+  if (event === "SIGNED_OUT") {
+    currentUser = null;
+    currentRole = null;
+    showAuth("ログアウトしました", "success");
+  }
+});
+(async function init(){
+  if (isInitializing) return;
+  isInitializing = true;
+  try {
+    const ok = await refreshAuthState();
+    if (ok) {
+      await loadCenterMaster();
+      refreshDashboardFiscalYearLabels();
+      setCurrentFiscalYear();
+      await loadDashboard();
+    }
+  } catch (e) {
+    console.error(e);
+    showAuth("初期化に失敗しました", "error");
+  } finally {
+    isInitializing = false;
+    document.body.classList.remove("auth-checking");
+  }
+})();
+</script>
+</body>
+</html>

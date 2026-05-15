@@ -1,0 +1,93 @@
+/* dashboard_compare.css : 比較分析 統合画面 */
+.compare-tabs{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin:0 0 18px;
+}
+.compare-tab{
+  min-height:42px;
+  padding:0 18px;
+  border:1px solid #bfdbfe;
+  border-radius:999px;
+  background:#f8fbff;
+  color:#1d4ed8;
+  font-size:13px;
+  font-weight:950;
+  box-shadow:none;
+}
+.compare-tab.active{
+  background:linear-gradient(135deg,#3b82f6,#6366f1);
+  color:#fff;
+  border-color:transparent;
+  box-shadow:0 12px 24px rgba(37,99,235,.20);
+}
+.compare-kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:14px;
+  margin-bottom:16px;
+}
+.compare-mini-card{
+  min-height:92px;
+  padding:16px;
+  border:1px solid #e5e7eb;
+  border-top:4px solid #3b82f6;
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 8px 18px rgba(15,23,42,.04);
+}
+.compare-mini-card strong{display:block;font-size:26px;line-height:1;font-weight:950;color:#0f172a;margin:6px 0;}
+.compare-mini-card span{font-size:12px;font-weight:900;color:#475569;}
+.compare-mini-card small{font-size:11px;font-weight:800;color:#64748b;}
+.compare-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1.1fr) minmax(420px,.9fr);
+  gap:16px;
+  align-items:start;
+}
+.compare-card-title{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+  margin-bottom:10px;
+}
+.compare-card-title h3{margin:0;color:#0f57ff;font-size:18px;font-weight:950;}
+.compare-card-title p{margin:4px 0 0;color:#64748b;font-size:12px;font-weight:800;}
+.compare-toolbar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:end;
+  margin:0 0 16px;
+}
+.compare-toolbar .analysis-field{min-width:190px;}
+.compare-toolbar .analysis-field select{height:44px;}
+.compare-chart-box{
+  height:330px;
+  min-height:330px;
+  padding:14px;
+  border:1px solid #dbeafe;
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 10px 24px rgba(15,23,42,.04);
+}
+.compare-chart-box canvas{width:100%!important;height:100%!important;}
+.compare-table-wrap{overflow:auto;border:1px solid #dbeafe;border-radius:16px;background:#fff;}
+.compare-table{min-width:760px;width:100%;border-collapse:collapse;}
+.compare-table th{position:sticky;top:0;background:#eef6ff;color:#1e3a8a;font-size:12px;font-weight:950;padding:11px 10px;border-bottom:1px solid #bfdbfe;text-align:left;white-space:nowrap;}
+.compare-table td{padding:11px 10px;border-bottom:1px solid #edf2f7;font-size:13px;font-weight:760;vertical-align:top;}
+.compare-table td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:900;}
+.compare-table .muted{color:#94a3b8;font-weight:800;}
+.compare-table .empty{text-align:center;color:#64748b;font-weight:900;padding:22px;}
+.compare-section.hidden{display:none!important;}
+.compare-note{border:1px solid #dbeafe;border-radius:16px;background:#f8fbff;padding:14px 16px;color:#334155;font-size:13px;font-weight:800;line-height:1.7;}
+.compare-rank-pill{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:22px;padding:0 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:950;}
+@media(max-width:1320px){
+  .compare-layout{grid-template-columns:1fr;}
+}
+@media(max-width:720px){
+  .compare-toolbar .analysis-field{width:100%;min-width:0;}
+  .compare-chart-box{height:280px;min-height:280px;}
+}

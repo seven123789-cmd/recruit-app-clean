@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>媒体分析</title>
+<link href="./assets/css/common.css" rel="stylesheet"/>
+<link href="./assets/css/header.css" rel="stylesheet"/>
+<link href="./assets/css/sidebar.css?v=20260508_sidebar2" rel="stylesheet"/>
+<link href="./assets/css/dashboard_channel.css" rel="stylesheet"/>
+<script src="./common.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/audit_utils.js"></script>
+<script src="assets/js/ops_guard.js"></script>
+<script src="assets/js/safe_utils.js"></script>
+<script src="./sidebar.js?v=20260513_compare_graph"></script>
+<link href="./assets/css/dashboard_ui.css" rel="stylesheet"/>
+</head>
+<body class="auth-checking">
+<div class="container hidden" id="authScreen">
+<div class="auth-shell">
+<h1 class="auth-title">媒体分析</h1>
+<p class="auth-sub">ログイン後に画面を表示します。</p>
+<div class="auth-card">
+<h2>ログイン</h2>
+<div class="form-grid">
+<div class="col-12">
+<label for="loginEmail">メールアドレス</label>
+<input id="loginEmail" placeholder="example@sline.co.jp" type="email"/>
+</div>
+<div class="col-12">
+<label for="loginPassword">パスワード</label>
+<input id="loginPassword" placeholder="パスワード" type="password"/>
+</div>
+<div class="col-12">
+<button class="btn-primary" onclick="login()" type="button">ログイン</button>
+</div>
+<div class="col-12">
+<div class="message-box message-info" id="authMessage">未ログインです</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="hidden" id="appScreen">
+<div class="app-layout">
+<aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+<main class="main-content">
+<header class="page-header dashboard-page-header"><div class="dashboard-title-line"><h1>媒体分析</h1><div aria-label="集計状態" class="dashboard-header-meta"><span class="dashboard-header-chip">対象年度：<span id="sideFiscalYear">-</span></span><span class="dashboard-header-chip">対象件数：<span id="sideRows">0</span></span><span class="dashboard-header-chip">対象本部：<span id="sideDivision">すべて</span></span><span class="dashboard-header-chip">対象営業所：<span id="sideCenter">すべて</span></span><span class="dashboard-header-chip">媒体数：<span id="sideChannelCount">0</span></span><span class="dashboard-header-chip">応募→面接：<span id="sideInterviewRate">0.0%</span></span><span class="dashboard-header-chip">応募→採用：<span id="sideJoinRate">0.0%</span></span><span class="dashboard-header-chip">対象期間：<span id="sidePeriod">-</span></span></div></div></header>
+<section class="channel-control-card analysis-control-card">
+<div class="channel-control-copy analysis-control-copy">
+<p>分析条件</p>
+<h2>媒体ごとの成果を確認</h2>
+</div>
+<div class="channel-control-form analysis-control-form analysis-control-form--4">
+<div class="analysis-field">
+<label for="fy">対象年度</label>
+<select id="fy" onchange="handleFilterChange()">
+<option value="current"></option>
+<option value="previous"></option>
+<option value="all">全期間</option>
+</select>
+</div>
+<div class="analysis-field">
+<label for="division">対象本部</label>
+<select id="division" onchange="handleDivisionChange()"><option value="">すべて</option></select>
+</div>
+<div class="analysis-field">
+<label for="center">対象営業所</label>
+<select id="center" onchange="handleFilterChange()"><option value="">すべて</option></select>
+</div>
+<div class="analysis-field">
+<label for="channel">対象媒体</label>
+<select id="channel" onchange="handleFilterChange()"><option value="">すべて</option></select>
+</div>
+<button class="btn-primary" onclick="loadAnalysis()" type="button">更新</button>
+<div class="period-text analysis-period" id="periodText">対象期間：-</div>
+</div>
+<input id="from" type="hidden"/>
+<input id="to" type="hidden"/>
+</section>
+<section class="card">
+<h2>サマリー</h2>
+<div class="grid-5 summary-grid">
+<div class="metric-card kpi-applied"><div class="label">応募</div><div class="value" id="sumApplied">0</div><div class="sub">対象期間内の応募数</div></div>
+<div class="metric-card kpi-interview"><div class="label">面接実施</div><div class="value" id="sumInterview">0</div><div class="sub">面接まで進んだ人数</div></div>
+<div class="metric-card kpi-hired"><div class="label">採用</div><div class="value" id="sumJoin">0</div><div class="sub">入社日または採用結果</div></div>
+<div class="metric-card kpi-rate-interview"><div class="label">応募→面接</div><div class="value" id="sumInterviewRate">0.0%</div><div class="sub">応募数に対する面接率</div></div>
+<div class="metric-card kpi-rate-hired"><div class="label">応募→採用</div><div class="value" id="sumJoinRate">0.0%</div><div class="sub">応募数に対する採用率</div></div>
+</div>
+</section>
+<section class="insight-card" id="channelInsight">
+<div class="insight-title">重点確認</div>
+<div class="insight-body">読込中です</div>
+</section>
+<section class="card">
+<div class="section-head">
+<div>
+<h2>媒体ランキング</h2>
+<p>応募6件以上の媒体を対象に、応募数・面接到達・採用到達を合わせて確認します。</p>
+</div>
+</div>
+<div class="performance-grid" id="performanceGrid"><div class="empty-box">読込中です</div></div>
+</section>
+<section class="card">
+<div class="section-head">
+<div>
+<h2>参考値（応募5件以下）</h2>
+<p>母数が少ない媒体は、率では評価せず参考値として分けて確認します。</p>
+</div>
+</div>
+<div class="performance-grid" id="referenceGrid"><div class="empty-box">読込中です</div></div>
+</section>
+<section class="card">
+<div class="section-head">
+<div>
+<h2>応募 → 面接 → 採用</h2>
+<p>応募6件以上の媒体から応募数の多い上位5媒体だけを表示します。</p>
+</div>
+</div>
+<div class="chart-box"><canvas id="channelFunnelChart"></canvas></div>
+</section>
+<section class="card">
+<div class="section-head">
+<div>
+<h2>媒体ボトルネック</h2>
+</div>
+</div>
+<div class="bottleneck-grid" id="bottleneckGrid"><div class="empty-box">読込中です</div></div>
+</section>
+<section class="card table-card">
+<div class="table-head"><h2>媒体別KPI明細</h2></div>
+<div class="table-wrap">
+<table>
+<thead id="tableHead"></thead>
+<tbody id="tableBody"><tr><td class="empty">読込中です</td></tr></tbody>
+</table>
+</div>
+</section>
+<div class="message-box message-info hidden" id="pageMessage"></div>
+</main>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const sb = window.getRecruitSupabaseClient();
+
+let currentUser=null;
+let currentRole=null;
+let rows=[];
+let CENTER_MASTER={};
+let channelFunnelChart=null;
+let channelMasterRows=[];
+
+function $(id){return document.getElementById(id)}
+
+function setText(id,value){const el=$(id);if(el)el.textContent=value}
+function setMsg(id,msg,type="info"){const el=$(id);if(!el)return;if(!msg){el.textContent="";el.className="message-box message-info hidden";return}el.textContent=msg;el.className="message-box message-"+type}
+function rate(n,d){return !d ? "0.0%" : ((n/d)*100).toFixed(1)+"%"}
+function rateNum(n,d){return !d ? 0 : Number(((n/d)*100).toFixed(1))}
+function validDate(s){if(!s)return false;const y=Number(String(s).slice(0,4));return y>=2000}
+function isHired(r){return r.hiring_result==="採用"||validDate(r.join_date)}
+
+function fiscalRange(type){const fy=fiscalYear();if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};if(type==="all")return {fy:null,label:"全期間",from:"",to:""};return {fy,label:fy+"年度",from:fy+"-04-01",to:(fy+1)+"-03-31"}}
+function applyFy(){const range=fiscalRange($("fy").value);$("from").value=range.from;$("to").value=range.to;const period=range.from&&range.to ? `${range.from} ～ ${range.to}` : "全期間";setText("periodText","対象期間："+period);setText("sideFiscalYear",range.label);setText("sidePeriod",period)}
+function handleFilterChange(){applyFy();loadAnalysis()}
+function handleDivisionChange(){updateCenterOptions();handleFilterChange()}
+function buildListUrlForChannel(channel,filter="all"){
+  const params=new URLSearchParams();
+  params.set("source","dashboard");
+  params.set("filter",filter);
+  const from=$("from")?.value||"";
+  const to=$("to")?.value||"";
+  const division=$("division")?.value||"";
+  const center=$("center")?.value||"";
+  if(from)params.set("from",from);
+  if(to)params.set("to",to);
+  if(division)params.set("division",division);
+  if(center)params.set("center",center);
+  if(channel)params.set("channel",channel);
+  return "./list.html?"+params.toString();
+}
+function channelLink(channel,filter="all",cls="analysis-link"){
+  const label=String(channel||"未設定");
+  return `<a class="${cls}" href="${esc(buildListUrlForChannel(label,filter))}">${esc(label)}</a>`;
+}
+
+async function getUser(){if(currentUser)return currentUser;const {data:{session}}=await sb.auth.getSession();currentUser=session?.user||null;return currentUser}
+async function getRole(userId){if(currentRole)return currentRole;try{const {data}=await sb.from("profiles").select("role").eq("user_id",userId).single();currentRole=data?.role||"editor"}catch(e){currentRole="editor"}return currentRole}
+function showAuth(msg="未ログインです",type="info"){const a=$("authScreen"),b=$("appScreen");if(a)a.classList.remove("hidden");if(b)b.classList.add("hidden");currentUser=null;currentRole=null;setMsg("authMessage",msg,type);document.body.classList.remove("auth-checking")}
+async function showApp(){const user=await getUser();if(!user){showAuth();return false}await getRole(user.id);$("authScreen")?.classList.add("hidden");$("appScreen")?.classList.remove("hidden");document.body.classList.remove("auth-checking");return true}
+async function login(){const email=$("loginEmail")?.value.trim();const password=$("loginPassword")?.value;if(!email||!password){setMsg("authMessage","メールアドレスとパスワードを入力してください","error");return}try{const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;currentUser=null;currentRole=null;if(await showApp()) await initPageAfterLogin()}catch(e){setMsg("authMessage","ログイン失敗: "+(e.message||e),"error")}}
+async function logout(){try{await sb.auth.signOut()}catch(e){}showAuth("ログアウトしました","success")}
+sb.auth.onAuthStateChange((ev)=>{if(ev==="SIGNED_OUT")showAuth("ログアウトしました","success")});
+async function authInit(){try{if(await showApp()) await initPageAfterLogin()}catch(e){console.error(e);showAuth("初期化に失敗しました","error")}finally{document.body.classList.remove("auth-checking")}}
+
+function setSelectOptions(id,values,blank="すべて"){const el=$(id);if(!el)return;const current=el.value;const list=[...new Set((values||[]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));el.innerHTML=`<option value="">${blank}</option>`;list.forEach(v=>{el.innerHTML+=`<option value="${esc(v)}">${esc(v)}</option>`});if(list.includes(current))el.value=current}
+async function fetchChannelMasterRows(){
+  try{
+    const channels = window.RecruitMaster ? await window.RecruitMaster.list("channels") : [];
+    channelMasterRows = (channels || []).map((name, index) => ({ name:String(name||"").trim(), display_order:index + 1, is_active:true })).filter(r => r.name);
+  }catch(e){
+    console.error("媒体マスタ読込失敗", e);
+    channelMasterRows = [];
+  }
+}
+function getChannelOptionsFromMaster(){
+  return channelMasterRows
+    .map(r=>String(r.name||"").trim())
+    .filter(Boolean);
+}
+async function loadCenterMaster(){
+
+  const master = window.RecruitMaster ? await window.RecruitMaster.divisionCenter() : { centersByDivision:{}, centers:[] };
+  CENTER_MASTER = master.centersByDivision || {};
+  return master.centers || [];
+}
+function bindMasters(data){
+  const divisions=Object.keys(CENTER_MASTER).length ? Object.keys(CENTER_MASTER) : data.map(r=>r.division);
+  setSelectOptions("division",divisions);
+  updateCenterOptions(data);
+  setSelectOptions("channel",getChannelOptionsFromMaster());
+}
+function updateCenterOptions(sourceRows=rows){
+  const div=$("division")?.value||"";
+  const centers=div&&CENTER_MASTER[div] ? CENTER_MASTER[div] : (Object.keys(CENTER_MASTER).length ? Object.values(CENTER_MASTER).flat() : (sourceRows||[]).filter(r=>!div||r.division===div).map(r=>r.center_name));
+  setSelectOptions("center",centers);
+}
+function filtered(data){const f=$("from").value;const t=$("to").value;const d=$("division").value;const c=$("center").value;const ch=$("channel").value;return (data||[]).filter(r=>!r.is_deleted).filter(r=>{if(!validDate(r.applied_date))return false;if(f&&r.applied_date<f)return false;if(t&&r.applied_date>t)return false;if(d&&r.division!==d)return false;if(c&&r.center_name!==c)return false;if(ch&&(r.channel||"未設定")!==ch)return false;return true})}
+function getChannelKind(channel){
+  const text=String(channel||"未設定");
+  if(text.includes("ハローワーク"))return "無料";
+  if(text.includes("紹介"))return "紹介";
+  if(text.includes("リファラル"))return "紹介";
+  if(text.includes("テンリク"))return "有料";
+  if(text.includes("エン"))return "有料";
+  if(text.includes("Indeed"))return "有料";
+  if(text==="未設定")return "未設定";
+  return "その他";
+}
+function groupByChannel(data){
+  const m=new Map();
+  data.forEach(r=>{
+    const key=String(r.channel||"未設定").trim()||"未設定";
+    if(!m.has(key)){
+      m.set(key,{key,kind:getChannelKind(key),applied:0,appointment:0,set:0,interview:0,offer:0,join:0,decline:0,lost:0,hold:0});
+    }
+    const x=m.get(key);
+    if(validDate(r.applied_date))x.applied++;
+    if(validDate(r.appointment_date))x.appointment++;
+    if(validDate(r.interview1_date))x.set++;
+    if(validDate(r.interview_done_date))x.interview++;
+    if(validDate(r.offer_date))x.offer++;
+    if(isHired(r))x.join++;
+    if(r.status==="辞退"||r.decline_reason)x.decline++;
+    if(r.status==="不通"||String(r.action_memo||"").includes("不通"))x.lost++;
+    if(r.status==="保留")x.hold++;
+  });
+  return [...m.values()].sort((a,b)=>b.join-a.join||b.interview-a.interview||b.applied-a.applied||String(a.key).localeCompare(String(b.key),"ja"));
+}
+function updateSummary(data,items){
+  const applied=data.filter(r=>validDate(r.applied_date)).length;
+  const interview=data.filter(r=>validDate(r.interview_done_date)).length;
+  const join=data.filter(isHired).length;
+  const interviewRate=rate(interview,applied);
+  const joinRate=rate(join,applied);
+  setText("sumApplied",applied);
+  setText("sumInterview",interview);
+  setText("sumJoin",join);
+  setText("sumInterviewRate",interviewRate);
+  setText("sumJoinRate",joinRate);
+  setText("sideRows",data.length);
+  setText("sideDivision",$("division").value||"すべて");
+  setText("sideCenter",$("center").value||"すべて");
+  setText("sideChannelCount",items.filter(x=>x.applied>0).length);
+  setText("sideInterviewRate",interviewRate);
+  setText("sideJoinRate",joinRate);
+}
+function calcChannelScore(item){
+  const interviewRate=rateNum(item.interview,item.applied);
+  const joinRate=rateNum(item.join,item.applied);
+  const volumeScore=Math.min(item.applied*3,45);
+  const declinePenalty=Math.min(item.decline*1.5+item.lost*1.5,35);
+  return Number((volumeScore+interviewRate*0.25+joinRate*1.2+item.join*9-declinePenalty).toFixed(1));
+}
+function getChannelLevel(item){
+  const interviewRate=rateNum(item.interview,item.applied);
+  const joinRate=rateNum(item.join,item.applied);
+  if(item.applied<=5)return {label:"参考値",cls:"neutral",action:"母数が少ないため判断保留"};
+  if(item.applied>=10&&joinRate<8)return {label:"要確認",cls:"danger",action:"応募後の質・条件ミスマッチを確認"};
+  if(item.applied>=10&&interviewRate<35)return {label:"要確認",cls:"danger",action:"応募後の初動・日程化を確認"};
+  if(item.applied>=10&&item.lost>=Math.ceil(item.applied*0.25))return {label:"注意",cls:"warning",action:"連絡不通の原因を確認"};
+  return {label:"良好",cls:"success",action:"現行運用を維持"};
+}
+function getBottleneckType(item){
+  const interviewRate=rateNum(item.interview,item.applied);
+  const joinRate=rateNum(item.join,item.applied);
+  if(item.applied<=5)return {level:"参考",label:"参考値",detail:`応募 ${item.applied}件のため率評価は保留`,action:"件数が増えてから判断",cls:"neutral"};
+  if(item.applied>=10&&joinRate<8)return {level:"重点",label:"採用転換が弱い",detail:`応募→採用 ${joinRate.toFixed(1)}%`,action:"求人内容・条件説明・面接後フォローを確認",cls:"danger"};
+  if(item.applied>=10&&interviewRate<35)return {level:"重点",label:"面接化が弱い",detail:`応募→面接 ${interviewRate.toFixed(1)}%`,action:"応募後の初動速度・日程提示を確認",cls:"danger"};
+  if(item.lost>=5)return {level:"注意",label:"不通が多い",detail:`不通 ${item.lost}件`,action:"連絡方法・時間帯を確認",cls:"warning"};
+  if(item.decline>=5)return {level:"注意",label:"辞退が多い",detail:`辞退 ${item.decline}件`,action:"辞退理由と求人訴求を確認",cls:"warning"};
+  return {level:"良好",label:"流れ良好",detail:`応募→採用 ${joinRate.toFixed(1)}%`,action:"現行運用を維持",cls:"success"};
+}
+function problemSort(a,b){
+  const rank={danger:0,warning:1,success:2,neutral:3};
+  const ar=rank[a.b.cls]??9;
+  const br=rank[b.b.cls]??9;
+  if(ar!==br)return ar-br;
+  if(rateNum(a.item.join,a.item.applied)!==rateNum(b.item.join,b.item.applied))return rateNum(a.item.join,a.item.applied)-rateNum(b.item.join,b.item.applied);
+  return b.item.applied-a.item.applied;
+}
+function renderPerformanceCards(items){
+  const box=$("performanceGrid");
+  const list=[...items].filter(x=>x.applied>=6).sort((a,b)=>calcChannelScore(b)-calcChannelScore(a)||b.join-a.join||b.applied-a.applied).slice(0,5);
+  if(!list.length){box.innerHTML='<div class="empty-box">応募6件以上の媒体がありません</div>';return}
+  box.innerHTML=list.map((x,i)=>{
+    const level=getChannelLevel(x);
+    const interviewRate=rate(x.interview,x.applied);
+    const joinRate=rate(x.join,x.applied);
+    const score=Math.max(0,Math.round(calcChannelScore(x)));
+    const interviewCls=rateNum(x.interview,x.applied)>=50?"good":"bad";
+    const joinCls=rateNum(x.join,x.applied)>=10?"good":"bad";
+    return `<article class="performance-card ${level.cls}">
+      <div class="performance-head">
+        <div class="performance-name">
+          <span class="rank-no">${i+1}</span>
+          <div><h3>${channelLink(x.key)}</h3><p>${esc(x.kind)}</p></div>
+        </div>
+        <strong>${score}<small>pt</small></strong>
+      </div>
+      <div class="performance-metrics">
+        <div><span>応募</span><b>${x.applied}</b></div>
+        <div><span>面接</span><b>${x.interview}</b></div>
+        <div><span>採用</span><b>${x.join}</b></div>
+      </div>
+      <div class="performance-rates">
+        <div class="${interviewCls}"><span>応募→面接</span><b>${interviewRate}</b></div>
+        <div class="${joinCls}"><span>応募→採用</span><b>${joinRate}</b></div>
+      </div>
+      <div class="performance-foot"><span class="mini-status ${level.cls}">${esc(level.label)}</span><em>${esc(level.action)}</em></div>
+    </article>`;
+  }).join("");
+}
+function renderReferenceCards(items){
+  const box=$("referenceGrid");
+  const list=[...items].filter(x=>x.applied>0&&x.applied<=5).sort((a,b)=>b.applied-a.applied||b.join-a.join||String(a.key).localeCompare(String(b.key),"ja"));
+  if(!list.length){box.innerHTML='<div class="empty-box">参考値対象はありません</div>';return}
+  box.innerHTML=list.map(x=>{
+    return `<article class="performance-card neutral">
+      <div class="performance-head">
+        <div class="performance-name">
+          <span class="rank-no">参</span>
+          <div><h3>${channelLink(x.key)}</h3><p>${esc(x.kind)}</p></div>
+        </div>
+        <strong>${x.applied}<small>件</small></strong>
+      </div>
+      <div class="performance-metrics">
+        <div><span>応募</span><b>${x.applied}</b></div>
+        <div><span>面接</span><b>${x.interview}</b></div>
+        <div><span>採用</span><b>${x.join}</b></div>
+      </div>
+      <div class="performance-rates">
+        <div class="good"><span>応募→面接</span><b>${rate(x.interview,x.applied)}</b></div>
+        <div class="good"><span>応募→採用</span><b>${rate(x.join,x.applied)}</b></div>
+      </div>
+      <div class="performance-foot"><span class="mini-status neutral">参考値</span><em>母数が少ないため判断保留</em></div>
+    </article>`;
+  }).join("");
+}
+const chartValueLabelPlugin={id:"chartValueLabelPlugin",afterDatasetsDraw(chart){
+  const {ctx,chartArea}=chart;
+  const maxValue=Number(chart.options.plugins?.valueLabelLimit?.maxValue||0);
+  ctx.save();
+  ctx.font="800 10.5px Segoe UI, Meiryo, sans-serif";
+  ctx.textBaseline="middle";
+  ctx.textAlign="left";
+  chart.data.datasets.forEach((dataset,datasetIndex)=>{
+    const meta=chart.getDatasetMeta(datasetIndex);
+    meta.data.forEach((bar,index)=>{
+      const value=dataset.data[index];
+      if(!value)return;
+      if(maxValue>=30&&value<Math.ceil(maxValue*0.04))return;
+      const pos=bar.tooltipPosition();
+      const text=String(value);
+      const textWidth=ctx.measureText(text).width;
+      const labelX=Math.min(pos.x+8,chartArea.right-textWidth-4);
+      ctx.fillStyle=dataset.backgroundColor||"#334155";
+      ctx.fillText(text,labelX,pos.y);
+    });
+  });
+  ctx.restore();
+}};
+function renderChannelFunnelChart(items){
+  const box=document.querySelector(".chart-box");
+  if(box&&!box.querySelector("canvas"))box.innerHTML='<canvas id="channelFunnelChart"></canvas>';
+  const canvas=$("channelFunnelChart");
+  const list=[...items].filter(x=>x.applied>=6).sort((a,b)=>b.applied-a.applied||b.join-a.join).slice(0,5);
+  if(channelFunnelChart)channelFunnelChart.destroy();
+  if(!list.length){if(box)box.innerHTML='<div class="empty-box">応募6件以上の媒体がありません</div>';return}
+  const maxValue=Math.max(...list.flatMap(x=>[x.applied,x.interview,x.join]),1);
+  channelFunnelChart=new Chart(canvas,{
+    type:"bar",
+    plugins:[chartValueLabelPlugin],
+    data:{
+      labels:list.map(x=>x.key),
+      datasets:[
+        {label:"応募",data:list.map(x=>x.applied),backgroundColor:"#2563eb",borderRadius:7,barThickness:13,maxBarThickness:13},
+        {label:"面接実施",data:list.map(x=>x.interview),backgroundColor:"#f59e0b",borderRadius:7,barThickness:13,maxBarThickness:13},
+        {label:"採用",data:list.map(x=>x.join),backgroundColor:"#16a34a",borderRadius:7,barThickness:13,maxBarThickness:13}
+      ]
+    },
+    options:{
+      indexAxis:"y",
+      responsive:true,
+      maintainAspectRatio:false,
+      layout:{padding:{right:18}},
+      interaction:{mode:"nearest",intersect:false},
+      datasets:{bar:{grouped:true,categoryPercentage:0.72,barPercentage:0.76}},
+      plugins:{
+        valueLabelLimit:{maxValue},
+        legend:{position:"top",labels:{usePointStyle:true,pointStyle:"circle",boxWidth:10,boxHeight:10,color:"#334155",font:{size:11,weight:"700"}}},
+        tooltip:{enabled:true,callbacks:{label:(ctx)=>ctx.dataset.label+": "+ctx.parsed.x+"件"}}
+      },
+      scales:{
+        x:{beginAtZero:true,suggestedMax:Math.ceil(maxValue*1.12),grid:{color:"#e2e8f0"},ticks:{color:"#64748b",font:{size:11,weight:"700"}}},
+        y:{grid:{display:false},ticks:{color:"#0f172a",font:{size:11,weight:"850"}}}
+      }
+    }
+  });
+}
+function updateInsight(items){
+  const box=$("channelInsight");
+  const problem=[...items].filter(x=>x.applied>0).map(x=>({item:x,b:getBottleneckType(x)})).sort(problemSort)[0];
+  if(!problem){box.className="insight-card neutral";box.innerHTML='<div class="insight-title">重点確認</div><div class="insight-body">対象データがありません。</div>';return}
+  const joinRate=rate(problem.item.join,problem.item.applied);
+  box.className="insight-card "+problem.b.cls;
+  box.innerHTML=`<div class="insight-title">重点確認</div><div class="insight-body">最優先：${esc(problem.item.key)}（採用率 ${joinRate}）<span>${esc(problem.b.action)}</span></div>`;
+}
+function renderBottleneck(items){
+  const box=$("bottleneckGrid");
+  const list=[...items].filter(x=>x.applied>0).map(x=>({item:x,b:getBottleneckType(x)})).sort(problemSort).slice(0,8);
+  if(!list.length){box.innerHTML='<div class="empty-box">データがありません</div>';return}
+  box.innerHTML=list.map(({item:x,b})=>`<div class="bottleneck-card ${b.cls}">
+    <strong>${channelLink(x.key)}</strong>
+    <span>${esc(b.level)}｜${esc(b.label)}</span>
+    <p>${esc(b.detail)} / 応募 ${x.applied}・面接 ${x.interview}・採用 ${x.join}</p>
+    <small>${esc(b.action)}</small>
+  </div>`).join("");
+}
+function renderTable(items){
+  const head=["媒体","種別","応募","アポ取得","面接設定","面接実施","内定","採用","辞退","不通","保留","応募→面接","応募→採用","判定"];
+  $("tableHead").innerHTML="<tr>"+head.map(h=>"<th>"+h+"</th>").join("")+"</tr>";
+  if(!items.length){$("tableBody").innerHTML='<tr><td class="empty" colspan="14">データがありません</td></tr>';return}
+  $("tableBody").innerHTML=items.map(x=>{
+    const level=getChannelLevel(x);
+    return `<tr>
+      <td><strong>${channelLink(x.key)}</strong></td>
+      <td>${esc(x.kind)}</td>
+      <td>${x.applied}</td>
+      <td>${x.appointment}</td>
+      <td>${x.set}</td>
+      <td>${x.interview}</td>
+      <td>${x.offer}</td>
+      <td>${x.join}</td>
+      <td>${x.decline}</td>
+      <td>${x.lost}</td>
+      <td>${x.hold}</td>
+      <td>${rate(x.interview,x.applied)}</td>
+      <td>${rate(x.join,x.applied)}</td>
+      <td><span class="mini-status ${level.cls}">${esc(level.label)}</span></td>
+    </tr>`;
+  }).join("");
+}
+
+function applyInboundParamsOnce(){
+  if(window.__inboundParamsApplied)return;
+  window.__inboundParamsApplied=true;
+  const params=new URLSearchParams(window.location.search);
+  const setSelect=(id,names)=>{
+    const el=$(id);
+    if(!el)return;
+    const keys=Array.isArray(names)?names:[names];
+    const raw=keys.map(k=>params.get(k)).find(v=>v!==null&&v!=="");
+    if(!raw)return;
+    const value=raw.trim();
+    if(!value)return;
+    if(![...el.options].some(o=>o.value===value)){
+      const option=document.createElement("option");
+      option.value=value;
+      option.textContent=value;
+      el.appendChild(option);
+    }
+    el.value=value;
+  };
+  const fy=params.get("fy");
+  if(fy&&$("fy"))$("fy").value=fy;
+  setSelect("division",["division","divisionFilter"]);
+  setSelect("divisionFilter",["division","divisionFilter"]);
+  setSelect("center",["center","centerFilter"]);
+  setSelect("centerFilter",["center","centerFilter"]);
+  setSelect("channel",["channel","channelFilter"]);
+  setSelect("ownerFilter",["owner","ownerFilter"]);
+  setSelect("jobType",["job","jobType"]);
+  if($("fy"))applyFy();
+}
+
+async function loadAnalysis(){
+  try{
+    setMsg("pageMessage","","info");
+    await Promise.all([fetchChannelMasterRows(), loadCenterMaster()]);
+    const {data,error}=await sb.from("candidates").select("*").order("id",{ascending:false});
+    if(error)throw error;
+    rows=data||[];
+    bindMasters(rows);
+    applyInboundParamsOnce();
+    const data2=filtered(rows);
+    const items=groupByChannel(data2);
+    updateSummary(data2,items);
+    renderPerformanceCards(items);
+    renderReferenceCards(items);
+    updateInsight(items);
+    renderChannelFunnelChart(items);
+    renderBottleneck(items);
+    renderTable(items);
+  }catch(e){
+    console.error(e);
+    setMsg("pageMessage","読込失敗: "+(e.message||e),"error");
+  }
+}
+async function initPageAfterLogin(){applyFy();await loadAnalysis()}
+authInit();
+</script>
+<script src="dashboard_summary_links.js"></script>
+</body>
+</html>

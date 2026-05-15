@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マスター設定</title>
+<link rel="stylesheet" href="./assets/css/common.css">
+<link rel="stylesheet" href="./assets/css/header.css">
+<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260508_sidebar2">
+<link rel="stylesheet" href="./assets/css/dashboard_ui.css">
+<link rel="stylesheet" href="./assets/css/admin_settings.css?v=20260509_master_dropdown_color_unified">
+<script src="./common.js"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/audit_utils.js"></script>
+<script src="assets/js/ops_guard.js"></script>
+<script src="assets/js/safe_utils.js"></script>
+<script src="./sidebar.js?v=20260513_compare_graph"></script>
+</head>
+<body class="auth-checking">
+
+<div id="authScreen" class="container hidden">
+  <div class="auth-shell">
+    <h1 class="auth-title">マスター設定</h1>
+    <p class="auth-sub">ログイン後に画面を表示します。</p>
+    <div class="auth-card">
+      <h2>ログイン</h2>
+      <div class="form-grid">
+        <div class="col-12">
+          <label for="loginEmail">メールアドレス</label>
+          <input id="loginEmail" type="email" placeholder="example@sline.co.jp">
+        </div>
+        <div class="col-12">
+          <label for="loginPassword">パスワード</label>
+          <input id="loginPassword" type="password" placeholder="パスワード">
+        </div>
+        <div class="col-12">
+          <button class="btn-primary" type="button" onclick="login()">ログイン</button>
+        </div>
+        <div class="col-12">
+          <div id="authMessage" class="message-box message-info">未ログインです</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="accessDeniedScreen" class="container hidden">
+  <div class="auth-shell">
+    <h1 class="auth-title">管理者専用画面</h1>
+    <p class="auth-sub">この画面は管理者権限を持つユーザーだけが利用できます。</p>
+    <div class="auth-card">
+      <h2>アクセスできません</h2>
+      <p class="admin-note">パスワード追加ではなく、ログイン中ユーザーの権限で制御します。権限付与は管理者がこの画面から行います。</p>
+      <button class="btn-secondary" type="button" onclick="location.href='./dashboard.html'">ダッシュボードへ戻る</button>
+    </div>
+  </div>
+</div>
+
+<div id="appScreen" class="hidden">
+  <div class="app-layout">
+    <aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+
+    <main class="main-content">
+      <header class="page-header">
+        <div class="header-row">
+          <div>
+            <h1>マスター設定</h1>
+            <p class="page-lead">権限・本部/営業所・選択肢・媒体費・採用目標を管理者だけがまとめて設定します。</p>
+          </div>
+        </div>
+      </header>
+
+      <section class="analysis-section admin-hero">
+        <div>
+          <p class="eyebrow">ADMIN SETTINGS</p>
+          <h2>運用に必要な設定を一元管理</h2>
+          <p>各分析画面でも編集できる項目を、管理者向けにまとめて確認・登録・修正できる画面です。</p>
+        </div>
+        <div class="admin-actions">
+          <button class="btn-primary" type="button" onclick="reloadAll()">最新状態を読込</button>
+          <button class="btn-secondary" type="button" onclick="location.href='./data_backup.html'">バックアップへ</button>
+        </div>
+      </section>
+
+      <section class="admin-tabs" role="tablist" aria-label="設定メニュー">
+        <button class="admin-tab active" type="button" data-tab="profiles" onclick="switchTab('profiles')">権限マスタ</button>
+        <button class="admin-tab" type="button" data-tab="divisions" onclick="switchTab('divisions')">本部マスタ</button>
+        <button class="admin-tab" type="button" data-tab="centers" onclick="switchTab('centers')">営業所マスタ</button>
+        <button class="admin-tab" type="button" data-tab="job_type" onclick="switchTab('job_type')">職種マスタ</button>
+        <button class="admin-tab" type="button" data-tab="owner" onclick="switchTab('owner')">担当者マスタ</button>
+        <button class="admin-tab" type="button" data-tab="channel" onclick="switchTab('channel')">媒体マスタ</button>
+        <button class="admin-tab" type="button" data-tab="channel_detail" onclick="switchTab('channel_detail')">媒体詳細マスタ</button>
+        <button class="admin-tab" type="button" data-tab="status" onclick="switchTab('status')">ステータスマスタ</button>
+        <button class="admin-tab" type="button" data-tab="decline_reason" onclick="switchTab('decline_reason')">辞退理由マスタ</button>
+        <button class="admin-tab" type="button" data-tab="reject_reason" onclick="switchTab('reject_reason')">不採用理由マスタ</button>
+        <button class="admin-tab" type="button" data-tab="costs" onclick="switchTab('costs')">媒体費マスタ</button>
+        <button class="admin-tab" type="button" data-tab="targets" onclick="switchTab('targets')">採用目標マスタ</button>
+        <button class="admin-tab" type="button" data-tab="audit" onclick="switchTab('audit')">監査ログ</button>
+      </section>
+
+      <section id="tab-divisions" class="analysis-section admin-panel hidden">
+        <div class="admin-panel-head">
+          <div>
+            <p class="eyebrow">DIVISION MASTER</p>
+            <h2>本部マスタ</h2>
+            <p class="admin-note">本部名・表示色・表示順を管理します。営業所マスタはここで登録した本部へ紐づけます。</p>
+          </div>
+          <div class="admin-panel-count"><span id="divisionCount">-</span>件</div>
+        </div>
+        <div class="admin-form-grid division-form-grid">
+          <input id="divisionId" type="hidden">
+          <label>本部名<input id="divisionName" type="text" placeholder="例：家電物流事業部"></label>
+          <label>表示順<input id="divisionOrder" type="number" placeholder="10"></label>
+          <label>状態
+            <select id="divisionActive" class="admin-mini-select">
+              <option value="true">使用中</option>
+              <option value="false">停止</option>
+            </select>
+          </label>
+          <div class="division-color-field">
+            <span class="field-caption">本部色</span>
+            <div id="divisionColorChoices" class="color-choice-row" aria-label="本部色"></div>
+            <input id="divisionColor" type="hidden" value="#2563eb">
+          </div>
+          <div class="admin-form-actions">
+            <button class="btn-primary" type="button" onclick="saveDivision()">本部を保存</button>
+            <button class="btn-secondary" type="button" onclick="clearDivisionForm()">クリア</button>
+          </div>
+        </div>
+        <div class="admin-table-scroll">
+          <table class="data-table">
+            <thead><tr><th>本部</th><th>色</th><th>表示順</th><th>状態</th><th>操作</th></tr></thead>
+            <tbody id="divisionsBody"><tr><td class="empty" colspan="5">読込中です</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="tab-centers" class="analysis-section admin-panel hidden">
+        <div class="admin-panel-head">
+          <div>
+            <p class="eyebrow">CENTER MASTER</p>
+            <h2>営業所マスタ</h2>
+            <p class="admin-note">営業所は本部マスタから所属本部を選択して登録します。本部の直接入力は廃止します。</p>
+          </div>
+          <div class="admin-panel-count"><span id="centerCount">-</span>件</div>
+        </div>
+        <div class="admin-form-grid center-form-grid">
+          <input id="centerId" type="hidden">
+          <label>所属本部
+            <select id="centerDivisionId" class="admin-mini-select">
+              <option value="">本部を選択</option>
+            </select>
+          </label>
+          <label>営業所<input id="centerName" type="text" placeholder="例：北埼玉センター"></label>
+          <label>営業所コード<input id="centerCode" type="text" placeholder="例：110001"></label>
+          <label>表示順<input id="centerOrder" type="number" placeholder="10"></label>
+          <label>状態
+            <select id="centerActive" class="admin-mini-select">
+              <option value="true">使用中</option>
+              <option value="false">停止</option>
+            </select>
+          </label>
+          <div class="admin-form-actions">
+            <button class="btn-primary" type="button" onclick="saveCenter()">営業所を保存</button>
+            <button class="btn-secondary" type="button" onclick="clearCenterForm()">クリア</button>
+          </div>
+        </div>
+        <div class="admin-table-scroll">
+          <table class="data-table">
+            <thead><tr><th>所属本部</th><th>営業所</th><th>コード</th><th>表示順</th><th>状態</th><th>操作</th></tr></thead>
+            <tbody id="centersBody"><tr><td class="empty" colspan="6">読込中です</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="tab-options" class="analysis-section admin-panel hidden">
+        <div class="admin-panel-head">
+          <div>
+            <p class="eyebrow" id="optionPanelEyebrow">OPTION MASTER</p>
+            <h2 id="optionPanelTitle">選択肢マスタ</h2>
+            <p id="optionPanelLead" class="admin-note">各マスタは上部タブから直接切り替えて管理します。</p>
+          </div>
+          <div class="admin-panel-side">
+            <div class="admin-panel-count"><span id="optionCurrentCount">-</span>件</div>
+            <button class="btn-primary" type="button" onclick="openNewOptionMaster()">追加</button>
+          </div>
+        </div>
+        <div class="admin-table-scroll">
+          <table class="data-table">
+            <thead><tr><th>名称</th><th>色</th><th>表示順</th><th>状態</th><th>更新日</th><th>操作</th></tr></thead>
+            <tbody id="optionsBody"><tr><td class="empty" colspan="6">読込中です</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="tab-costs" class="analysis-section admin-panel hidden">
+        <div class="section-head">
+          <div>
+            <h2>媒体費契約マスタ</h2>
+            <p>エン転職などの「2か月でいくら」の契約費を、期間指定で登録します。既存DB構造を壊さないため、契約総額を月別に配賦して channel_costs に保存します。</p>
+          </div>
+        </div>
+        <div class="admin-form-grid admin-contract-grid">
+          <input id="costId" type="hidden">
+          <label>契約開始日<input id="costContractStart" type="date"></label>
+          <label>契約終了日<input id="costContractEnd" type="date"></label>
+          <label>媒体<input id="costChannel" type="text" placeholder="例：エン転職"></label>
+          <label>契約総額<input id="costAmount" type="number" placeholder="例：800000"></label>
+          <label>本部（任意）<input id="costDivisionNote" type="text" placeholder="例：家電物流事業部"></label>
+          <label>営業所（任意）<input id="costCenterNote" type="text" placeholder="例：福島センター"></label>
+          <label>職種（任意）<input id="costJobNote" type="text" placeholder="例：外商員"></label>
+          <div class="admin-form-actions">
+            <button class="btn-primary" type="button" onclick="saveCostContract()">契約期間で保存</button>
+            <button class="btn-secondary" type="button" onclick="clearCostForm()">新規入力</button>
+          </div>
+        </div>
+        <div id="costContractHelp" class="admin-help-box">例：4/1〜5/31・800,000円の場合、4月と5月へ400,000円ずつ配賦します。採用単価分析では対象期間に該当する月別費用を合算します。</div>
+        <div class="table-wrap admin-table-scroll">
+          <table>
+            <thead><tr><th>年度</th><th>対象月</th><th>媒体</th><th>費用</th><th>状態</th><th>操作</th></tr></thead>
+            <tbody id="costsBody"><tr><td class="empty" colspan="6">読込中です</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="tab-targets" class="analysis-section admin-panel hidden">
+        <div class="section-head">
+          <div>
+            <h2>採用目標マスタ</h2>
+            <p>年度・本部・営業所・職種ごとの採用目標値です。</p>
+          </div>
+        </div>
+        <div class="admin-form-grid">
+          <input id="targetId" type="hidden">
+          <label>年度<input id="targetFiscalYear" type="number" placeholder="2026"></label>
+          <label>本部<input id="targetDivision" type="text" placeholder="例：家電物流事業部"></label>
+          <label>営業所<input id="targetCenter" type="text" placeholder="例：北埼玉センター"></label>
+          <label>営業所コード<input id="targetCenterCode" type="text" placeholder="例：110001"></label>
+          <label>略称コード<input id="targetShortCode" type="text" placeholder="例：001"></label>
+          <label>職種<input id="targetJobType" type="text" placeholder="例：外商員"></label>
+          <label>目標人数<input id="targetCount" type="number" placeholder="10"></label>
+          <div class="admin-form-actions">
+            <button class="btn-primary" type="button" onclick="saveTarget()">保存</button>
+            <button class="btn-secondary" type="button" onclick="clearTargetForm()">新規入力</button>
+          </div>
+        </div>
+        <div class="table-wrap admin-table-scroll">
+          <table>
+            <thead><tr><th>年度</th><th>本部</th><th>営業所</th><th>職種</th><th>目標</th><th>状態</th><th>操作</th></tr></thead>
+            <tbody id="targetsBody"><tr><td class="empty" colspan="7">読込中です</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+
+
+      <section id="tab-audit" class="analysis-section admin-panel hidden">
+        <div class="section-head audit-section-head">
+          <div>
+            <h2>監査ログ</h2>
+            
+          </div>
+          <span class="audit-count-badge"><strong id="auditLogCount">-</strong>件</span>
+        </div>
+        <div class="audit-filter-grid">
+          <label>操作種別
+            <select id="auditActionFilter" onchange="loadAuditLogs()">
+              <option value="">すべて</option>
+              <option value="login">ログイン</option>
+              <option value="role_update">権限変更</option>
+              <option value="account_disable">アカウント停止</option>
+              <option value="account_enable">アカウント再開</option>
+              <option value="account_delete">ユーザー削除</option>
+              <option value="center_save">営業所マスタ保存</option>
+              <option value="cost_save">媒体費保存</option>
+              <option value="target_save">採用目標保存</option>
+              <option value="backup_create">バックアップ作成</option>
+              <option value="backup_delete">バックアップ削除</option>
+              <option value="restore_execute">復元実行</option>
+              <option value="audit_retention_cleanup">ログ保持整理</option>
+              <option value="candidate_update">応募者更新</option>
+              <option value="candidate_status_update">ステータス変更</option>
+              <option value="candidate_delete">応募者削除</option>
+            </select>
+          </label>
+          <label>対象
+            <select id="auditTargetFilter" onchange="loadAuditLogs()">
+              <option value="">すべて</option>
+              <option value="profiles">権限マスタ</option>
+              <option value="candidates">応募者</option>
+              <option value="master_divisions">本部マスタ</option>
+              <option value="master_centers">営業所マスタ</option>
+              <option value="master_job_types">職種マスタ</option>
+              <option value="master_owners">担当者マスタ</option>
+              <option value="master_channels">媒体マスタ</option>
+              <option value="master_channel_details">媒体詳細マスタ</option>
+              <option value="master_statuses">ステータスマスタ</option>
+              <option value="master_decline_reasons">辞退理由マスタ</option>
+              <option value="master_reject_reasons">不採用理由マスタ</option>
+              <option value="channel_costs">媒体費マスタ</option>
+              <option value="recruitment_targets">採用目標マスタ</option>
+              <option value="system_backups">バックアップ</option>
+              <option value="restore">復元</option>
+              <option value="auth">認証</option>
+              <option value="audit_logs">監査ログ</option>
+            </select>
+          </label>
+          <label>キーワード
+            <input id="auditKeyword" type="search" placeholder="メール・対象ID・詳細で検索">
+          </label>
+          <div class="audit-filter-actions">
+            <button class="btn-secondary" type="button" onclick="loadAuditLogs()">ログ読込</button>
+            <button class="btn-secondary" type="button" onclick="cleanupOldAuditLogs()">180日超ログ整理</button>
+          </div>
+        </div>
+        <div class="table-wrap admin-table-scroll audit-table-wrap">
+          <table>
+            <thead><tr><th>日時</th><th>実行者</th><th>操作</th><th>対象</th><th>詳細</th></tr></thead>
+            <tbody id="auditLogsBody"><tr><td class="empty" colspan="5">監査ログタブを開くと読み込みます</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="analysis-section">
+        <div class="section-head"><h2>処理ログ</h2></div>
+        <div id="logBox" class="log-box">ログを表示します。</div>
+      </section>
+    </main>
+  </div>
+</div>
+
+
+<div id="deleteAccountModal" class="admin-modal hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="deleteAccountTitle">
+  <div class="admin-modal-backdrop" onclick="closeDeleteAccountModal()"></div>
+  <div class="admin-modal-card">
+    <div class="admin-modal-head">
+      <p class="eyebrow">ACCOUNT DELETE</p>
+      <h2 id="deleteAccountTitle">アカウント削除の確認</h2>
+    </div>
+    <div class="admin-warning-box">
+      この操作を実行すると、対象ユーザーのアプリ権限情報を削除します。
+      削除後は管理画面上の権限付与対象から外れます。
+    </div>
+    <dl class="admin-confirm-list">
+      <div><dt>メール</dt><dd id="deleteAccountEmail">-</dd></div>
+      <div><dt>現在の権限</dt><dd id="deleteAccountRole">-</dd></div>
+      <div><dt>ユーザーID</dt><dd id="deleteAccountUserId">-</dd></div>
+    </dl>
+    <p class="admin-modal-note">※ 自分自身のアカウントは削除できません。Supabase Auth本体の完全削除は、サービスロールを使うバックエンド処理が必要です。</p>
+    <div class="admin-modal-actions">
+      <button class="btn-secondary" type="button" onclick="closeDeleteAccountModal()">キャンセル</button>
+      <button class="btn-danger" type="button" onclick="confirmDeleteAccount()">削除する</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="disableAccountModal" class="admin-modal hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="disableAccountTitle">
+  <div class="admin-modal-backdrop" onclick="closeDisableAccountModal()"></div>
+  <div class="admin-modal-card">
+    <div class="admin-modal-head">
+      <p class="eyebrow">ACCOUNT STATUS</p>
+      <h2 id="disableAccountTitle">アカウント停止の確認</h2>
+    </div>
+    <div class="admin-warning-box">
+      削除ではなく、アプリ利用を一時停止します。再開すれば同じユーザーIDのまま利用できます。
+    </div>
+    <dl class="admin-confirm-list">
+      <div><dt>メール</dt><dd id="disableAccountEmail">-</dd></div>
+      <div><dt>現在の権限</dt><dd id="disableAccountRole">-</dd></div>
+      <div><dt>ユーザーID</dt><dd id="disableAccountUserId">-</dd></div>
+    </dl>
+    <label class="admin-modal-label">停止理由
+      <textarea id="disableAccountReason" rows="3" placeholder="例：退職、異動、確認中、誤操作防止など"></textarea>
+    </label>
+    <p class="admin-modal-note">※ 自分自身のアカウントは停止できません。停止後はログイン済みでも管理画面・バックアップ画面の利用を拒否します。</p>
+    <div class="admin-modal-actions">
+      <button class="btn-secondary" type="button" onclick="closeDisableAccountModal()">キャンセル</button>
+      <button class="btn-danger" type="button" onclick="confirmDisableAccount()">停止する</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="optionMasterModal" class="admin-modal hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="optionFormTitle">
+  <div class="admin-modal-backdrop" onclick="closeOptionModal()"></div>
+  <div class="admin-modal-card option-modal-card">
+    <div class="admin-modal-head">
+      <p class="eyebrow">MASTER OPTION</p>
+      <h2 id="optionFormTitle">新規登録</h2>
+      <p id="optionFormSub">職種・媒体・媒体詳細を追加します。</p>
+    </div>
+    <div class="admin-form-grid master-option-grid modal-option-grid">
+      <input id="optionId" type="hidden">
+      <label>区分
+        <input id="optionKindLabel" type="text" value="職種マスタ" readonly>
+        <input id="optionKind" type="hidden" value="job_type">
+      </label>
+      <label>名称<input id="optionName" type="text" placeholder="例：外商員 / テンリク / Indeed"></label>
+      <label>表示順<input id="optionOrder" type="number" placeholder="10"></label>
+      <label>状態
+        <select id="optionActive">
+          <option value="true">使用中</option>
+          <option value="false">停止</option>
+        </select>
+      </label>
+    </div>
+    <div class="admin-modal-actions">
+      <button class="btn-secondary" type="button" onclick="closeOptionModal()">キャンセル</button>
+      <button class="btn-primary" type="button" onclick="saveOptionMaster()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./admin_settings.js?v=20260509_master_color_fix"></script>
+</body>
+</html>

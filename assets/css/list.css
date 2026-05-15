@@ -1,0 +1,266 @@
+/* list.css : page specific styles only */
+
+/* ===== 一覧フィルタ・操作ボタン ===== */
+.btn-primary{
+  background:linear-gradient(135deg,#3b82f6,#6366f1);
+  color:#ffffff;
+  box-shadow:0 10px 22px rgba(99,102,241,.24);
+}
+
+.btn-secondary{
+  background:#eaf2ff;
+  color:#1e3a8a;
+  border:1px solid #bfdbfe;
+}
+
+.btn-warning{
+  background:#fff7ed;
+  color:#c2410c;
+  border:1px solid #fed7aa;
+}
+
+.btn-danger{
+  background:#ffe4e6;
+  color:#be123c;
+  border:1px solid #fecdd3;
+}
+
+/* ===== 色付けルール：前の一覧UIを維持 ===== */
+tbody tr.return-highlight{
+  background:#dbeafe!important;
+  outline:3px solid #2563eb;
+  outline-offset:-3px;
+}
+
+tbody tr.action-over{
+  background:#fff1f2;
+}
+
+tbody tr.action-over td:first-child{
+  box-shadow:inset 7px 0 0 #dc2626;
+}
+
+tbody tr.action-today,
+tbody tr.action-soon{
+  background:#fff7ed;
+}
+
+tbody tr.action-today td:first-child,
+tbody tr.action-soon td:first-child{
+  box-shadow:inset 7px 0 0 #f97316;
+}
+
+tbody tr.action-missing{
+  background:#fffdf0;
+}
+
+tbody tr.action-missing td:first-child{
+  box-shadow:inset 7px 0 0 #facc15;
+}
+
+.date-over{
+  color:#dc2626;
+  font-weight:950;
+}
+
+.date-today{
+  color:#ea580c;
+  font-weight:950;
+}
+
+/* ===== ログイン ===== */
+.auth-shell{
+  max-width:520px;
+  margin:48px auto 0;
+}
+
+.auth-title{
+  margin:0 0 8px;
+  font-size:28px;
+  color:#ffffff;
+}
+
+.auth-sub{
+  margin:0 0 20px;
+  color:rgba(255,255,255,.82);
+}
+
+.auth-card{
+  background:#ffffff;
+  border:1px solid rgba(226,232,240,.9);
+  border-radius:22px;
+  box-shadow:var(--shadow);
+  padding:24px;
+}
+
+@media(max-width:1100px){
+  .col-2,
+  .col-3,
+  .col-4,
+  .col-6{
+    grid-column:span 12;
+  }
+}
+
+/* ===== 一括更新 ===== */
+.bulk-action-card{
+  padding:18px 20px;
+}
+.bulk-action-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:14px;
+}
+.bulk-action-head h2{
+  margin:0 0 4px;
+}
+.bulk-action-sub{
+  margin:0;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
+}
+.bulk-count-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:86px;
+  padding:8px 12px;
+  border:1px solid #dbeafe;
+  border-radius:999px;
+  background:#ffffff;
+  color:#2563eb;
+  font-weight:900;
+  box-shadow:0 10px 22px rgba(37,99,235,.10);
+}
+.bulk-action-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(160px,1fr)) auto;
+  gap:12px;
+  align-items:end;
+}
+.bulk-action-buttons{
+  display:flex;
+  gap:8px;
+  justify-content:flex-end;
+  white-space:nowrap;
+}
+.bulk-message{
+  margin-top:10px;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:800;
+}
+.select-col{
+  width:46px;
+  text-align:center;
+}
+.select-col input{
+  width:18px;
+  height:18px;
+  cursor:pointer;
+  accent-color:#2563eb;
+}
+@media(max-width:1100px){
+  .bulk-action-grid{
+    grid-template-columns:1fr;
+  }
+  .bulk-action-buttons{
+    justify-content:flex-start;
+    flex-wrap:wrap;
+  }
+}
+
+/* LIST operation column */
+.list-action-col,
+.list-action-cell{
+  width:86px;
+  min-width:86px;
+  text-align:center;
+  white-space:nowrap;
+}
+.list-delete-btn{
+  padding:7px 12px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+  line-height:1;
+  cursor:pointer;
+}
+
+/* LIST bulk action */
+.bulk-action-card{
+  margin-top:18px;
+}
+.bulk-action-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:14px;
+}
+.bulk-action-note{
+  color:#64748b;
+  font-size:13px;
+  font-weight:700;
+  margin-top:4px;
+}
+.bulk-select-count{
+  min-width:96px;
+  padding:9px 12px;
+  border-radius:999px;
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-size:13px;
+  font-weight:900;
+  text-align:center;
+}
+.bulk-action-bar{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(160px,1fr)) auto;
+  gap:12px;
+  align-items:end;
+}
+.bulk-field label{
+  display:block;
+  color:#334155;
+  font-size:12px;
+  font-weight:900;
+  margin-bottom:6px;
+}
+.bulk-field select{
+  width:100%;
+}
+.bulk-buttons{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.bulk-danger{
+  white-space:nowrap;
+}
+.list-check-col,
+.list-check-cell{
+  width:48px;
+  min-width:48px;
+  text-align:center;
+  white-space:nowrap;
+}
+.list-check-cell input,
+.list-check-col input{
+  width:16px;
+  height:16px;
+  cursor:pointer;
+}
+@media(max-width:1100px){
+  .bulk-action-bar{
+    grid-template-columns:1fr 1fr;
+  }
+  .bulk-buttons{
+    justify-content:flex-start;
+  }
+}
