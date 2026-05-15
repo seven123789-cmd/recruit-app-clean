@@ -1875,16 +1875,46 @@ function showAuth(message = "未ログインです", type = "info") {
   document.body.classList.remove("auth-checking");
 }
 
-async function getCurrentRole(userId){
-  if(currentRole) return currentRole;
-  try{
-    const {data,error}=await sb.from("profiles").select("role,is_active").eq("user_id",userId).single();
-    if(error) throw error;
-    if(data && data.is_active===false){
+async function ensureUserProfile(user){
+  if(!user?.id) return "editor";
+  const email=user.email||"";
+  const now=new Date().toISOString();
+  const {data,error}=await sb.from("profiles").select("role,is_active").eq("user_id",user.id).maybeSingle();
+  if(data){
+    if(data.is_active===false){
       showAuth("このアカウントは停止されています。管理者へ確認してください", "error");
       return "viewer";
     }
-    currentRole=data?.role||"editor";
+    return data.role||"editor";
+  }
+  if(error&&error.code!=="PGRST116") throw error;
+  const payload={
+    user_id:user.id,
+    email,
+    role:"editor",
+    is_active:true,
+    created_at:now,
+    updated_at:now
+  };
+  const {error:insertError}=await sb.from("profiles").insert(payload);
+  if(insertError&&insertError.code!=="23505") throw insertError;
+  return "editor";
+}
+async function getCurrentRole(userId){
+  if(currentRole) return currentRole;
+  try{
+    const user=await getSessionUser();
+    if(user?.id&&String(user.id)===String(userId)){
+      currentRole=await ensureUserProfile(user);
+    }else{
+      const {data,error}=await sb.from("profiles").select("role,is_active").eq("user_id",userId).maybeSingle();
+      if(error&&error.code!=="PGRST116") throw error;
+      if(data && data.is_active===false){
+        showAuth("このアカウントは停止されています。管理者へ確認してください", "error");
+        return "viewer";
+      }
+      currentRole=data?.role||"editor";
+    }
   }catch(e){
     currentRole="editor";
   }
@@ -1956,9 +1986,16 @@ async function signup(){
   }
   try {
     if (!sb || !sb.auth) throw new Error("認証クライアントを初期化できませんでした。ページを再読み込みしてください");
-    const { error } = await sb.auth.signUp({ email, password });
+    const { data, error } = await sb.auth.signUp({ email, password });
     if (error) throw error;
-    setAuthMessage("新規登録しました。初回は editor で作成されます。必要に応じて管理者へ権限変更を依頼してください。", "success");
+    if (data?.user) {
+      try {
+        await ensureUserProfile(data.user);
+      } catch (profileError) {
+        console.warn("プロフィール作成はログイン時に再実行します", profileError);
+      }
+    }
+    setAuthMessage("新規登録しました。初回は editor で権限マスタへ作成されます。ログイン後に表示されない場合は、管理者へ権限確認を依頼してください。", "success");
   } catch (e) {
     setAuthMessage("新規登録失敗: " + (e.message || e), "error");
   }
