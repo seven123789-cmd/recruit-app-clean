@@ -465,9 +465,7 @@ function renderCharts(monthly){
 function renderRows(monthly){
   $("tableHead").innerHTML =
     "<tr>" +
-    ["月","応募","面接実施","採用","応募→面接","応募→採用"]
-      .map((h, i) => `<th style="text-align:${i === 0 ? 'left' : 'center'}">${h}</th>`)
-      .join("") +
+    ["月","応募","面接実施","採用","応募→面接","応募→採用"].map(h => "<th>" + h + "</th>").join("") +
     "</tr>";
 
   if(!monthly.length){
@@ -477,14 +475,15 @@ function renderRows(monthly){
 
   $("tableBody").innerHTML = monthly.map(x => {
     const zero = x.applied + x.interview + x.join === 0;
+    const c = 'style="text-align:center"';
     return `
       <tr class="${zero ? "zero-month" : ""}">
         <td>${esc(monthLabel(x.key))}</td>
-        <td>${monthlyCountLink(x.applied, x.key, "applied")}</td>
-        <td>${monthlyCountLink(x.interview, x.key, "interview_done")}</td>
-        <td>${monthlyCountLink(x.join, x.key, "hired")}</td>
-        <td>${monthlyRateLink(rate(x.interview, x.applied), x.key, "heat_interview_gap")}</td>
-        <td>${monthlyRateLink(rate(x.join, x.applied), x.key, "heat_hire_gap")}</td>
+        <td ${c}>${monthlyCountLink(x.applied, x.key, "applied")}</td>
+        <td ${c}>${monthlyCountLink(x.interview, x.key, "interview_done")}</td>
+        <td ${c}>${monthlyCountLink(x.join, x.key, "hired")}</td>
+        <td ${c}>${monthlyRateLink(rate(x.interview, x.applied), x.key, "heat_interview_gap")}</td>
+        <td ${c}>${monthlyRateLink(rate(x.join, x.applied), x.key, "heat_hire_gap")}</td>
       </tr>`;
   }).join("");
 }
