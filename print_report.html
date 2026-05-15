@@ -250,11 +250,11 @@ async function renderHqAnalysis(report, rows, cond){
     const divisions = hqAggregate(rows,"division").slice(0,8).map(x=>x.key).filter(x=>x!=="未設定");
     divisions.forEach((d, idx)=>{
       const dRows = rows.filter(r => (r.division || "未設定") === d);
-      const dMedia = hqFlowRows(dRows,"channel").slice(0,14);
-      const dJob = hqFlowRows(dRows,"job").slice(0,14);
-      const body2 = kpiStrip(dRows, metric("本部", d, "媒体・職種内訳")) +
-        `<section class="two-columns hq-two-columns"><div><h2>媒体別</h2>${table(["媒体","応募","面接","採用","面接率","採用率"], dMedia)}</div><div><h2>職種別</h2>${table(["職種","応募","面接","採用","面接率","採用率"], dJob)}</div></section>`;
-      pages.push(page({...report,title:`本部分析：${d} ${idx+1}/${divisions.length}`},cond,body2,`${d}の媒体・職種別フロー。`));
+      const dMedia = hqStageRows(dRows,"channel").slice(0,14);
+      const dJob = hqStageRows(dRows,"job").slice(0,14);
+      const body2 = hqConversionBlock(dRows, d) +
+        `<section class="two-columns hq-two-columns"><div><h2>媒体別</h2>${table(["媒体","応募","アポ","面接","採用"], dMedia)}</div><div><h2>職種別</h2>${table(["職種","応募","アポ","面接","採用"], dJob)}</div></section>`;
+      pages.push(page({...report,title:`本部分析：${d} ${idx+1}/${divisions.length}`},cond,body2,`${d}の応募→アポ→面接→採用を確認。`));
     });
     return pages.join("");
   }
