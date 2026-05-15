@@ -270,7 +270,7 @@ function collectPrintCenterState(){
     channel:valueOf("reportChannel"),
     owner:valueOf("reportOwner"),
     job:valueOf("reportJob"),
-    view:document.querySelector('input[name="viewMode"]:checked')?.value || "graph",
+    view:currentViewMode(),
     advancedOpen:!!document.getElementById("advancedFilters")?.open,
     scrollY:window.scrollY || 0
   };
@@ -301,7 +301,7 @@ function restorePrintCenterState(){
     setValue("reportChannel", state.channel);
     setValue("reportOwner", state.owner);
     setValue("reportJob", state.job);
-    const view = state.view || "graph";
+    const view = currentReportObject().type === "hq" ? "table" : (state.view || "graph");
     const radio = document.querySelector(`input[name="viewMode"][value="${view}"]`);
     if(radio) radio.checked = true;
     const details = document.getElementById("advancedFilters");
@@ -328,6 +328,14 @@ function valueOf(id){
 
 function currentReportObject(){
   return REPORTS.find(x => x.report === currentReport) || REPORTS[0];
+}
+
+function isHqReport(report){
+  return (report || currentReportObject()).type === "hq";
+}
+
+function currentViewMode(){
+  return isHqReport() ? "table" : (document.querySelector('input[name="viewMode"]:checked')?.value || "graph");
 }
 
 function periodLabel(mode){
@@ -392,7 +400,10 @@ function renderReports(){
     });
   });
 
-  document.getElementById("layoutMode").classList.add("show");
+  const layoutMode = document.getElementById("layoutMode");
+  if(layoutMode){
+    layoutMode.classList.toggle("show", currentReportObject().type !== "hq");
+  }
   updateSelected();
 }
 
@@ -413,6 +424,12 @@ function applyConditionMode(){
   document.getElementById("conditionGuide").textContent = report.type === "hq" ? "本部合算から媒体・職種別の応募→面接→採用を確認。" : periodGuide(mode);
   const hqNote = document.getElementById("hqFlowNote");
   if(hqNote) hqNote.hidden = report.type !== "hq";
+  const layoutMode = document.getElementById("layoutMode");
+  if(layoutMode) layoutMode.classList.toggle("show", report.type !== "hq");
+  if(report.type === "hq"){
+    const tableRadio = document.querySelector('input[name="viewMode"][value="table"]');
+    if(tableRadio) tableRadio.checked = true;
+  }
 }
 
 function updateSelected(){
@@ -441,11 +458,12 @@ function conditions(){
     channel:valueOf("reportChannel") || "すべて",
     owner:valueOf("reportOwner") || "すべて",
     job:valueOf("reportJob") || "すべて",
-    view:document.querySelector('input[name="viewMode"]:checked')?.value || "graph"
+    view:currentViewMode()
   };
 }
 
-function viewModeLabel(view){
+function viewModeLabel(view, report){
+  if(isHqReport(report)) return "導線・ファネル固定";
   return view === "table" ? "表重視" : "グラフ重視";
 }
 
@@ -462,10 +480,10 @@ function previewLayout(report, view){
     return {
       cls:"is-hq-flow",
       kpi:true,
-      chart:view === "graph" ? "本部別・媒体別フロー" : "媒体 × 職種 フロー表",
-      tables:["本部合算", "媒体別職種導線"],
+      chart:"導線率・ミニファネル",
+      tables:["本部別導線", "媒体別・職種別内訳"],
       list:"",
-      content:"本部 / 媒体 / 職種フロー"
+      content:"導線率 / ミニファネル / 内訳表"
     };
   }
   if(report.type === "list"){
@@ -567,7 +585,7 @@ function updatePrintPreview(){
   const layout = previewLayout(report, cond.view);
   mini.className = `paper-mini ${layout.cls}`;
   title.textContent = report.title;
-  scope.textContent = `${formatRangeText(cond)} / ${viewModeLabel(cond.view)}`;
+  scope.textContent = isHqReport(report) ? `${formatRangeText(cond)} / 導線・ファネル固定` : `${formatRangeText(cond)} / ${viewModeLabel(cond.view, report)}`;
   chart.textContent = layout.chart;
   chart.style.display = layout.chart ? "flex" : "none";
   tables.innerHTML = layout.tables.map(text => `<div>${text}</div>`).join("");
@@ -584,7 +602,7 @@ function updateConditionSummary(){
   const report = currentReportObject();
   document.getElementById("summaryRange").textContent = formatRangeText(cond);
   document.getElementById("summaryFilters").textContent = filters.length ? filters.join(" / ") : "指定なし";
-  document.getElementById("settingViewMode").textContent = viewModeLabel(cond.view);
+  document.getElementById("settingViewMode").textContent = viewModeLabel(cond.view, report);
   document.getElementById("settingPageEstimate").textContent = estimatePageText(report, cond);
   document.getElementById("advancedSummary").textContent = filters.length ? `${filters.length}件指定` : "指定なし";
   updatePrintPreview();

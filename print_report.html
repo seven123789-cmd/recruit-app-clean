@@ -243,7 +243,7 @@ async function renderHqAnalysis(report, rows, cond){
   if(!div){
     const divisionRows = hqFlowRows(rows, "division");
     const mediaRows = hqFlowRows(rows, "channel").slice(0,12);
-    const body = allKpi + chips +
+    const body = allKpi + chips + hqConversionBlock(rows, "全本部合算") +
       `<section class="detail-table hq-flow-table"><h2>全本部 合算 <small>本部別の応募→面接→採用</small></h2>${table(["本部","応募","面接","採用","面接率","採用率"], divisionRows)}</section>` +
       `<section class="detail-table hq-flow-table"><h2>媒体別 合算 <small>上位媒体</small></h2>${table(["媒体","応募","面接","採用","面接率","採用率"], mediaRows)}</section>`;
     pages.push(page({...report,title:"本部分析：全本部合算"},cond,body,"全本部の採用導線を確認。"));
@@ -262,7 +262,7 @@ async function renderHqAnalysis(report, rows, cond){
   if(div && !ch){
     const mediaRows = hqFlowRows(rows,"channel");
     const jobRows = hqStageRows(rows,"job");
-    const body = allKpi + chips +
+    const body = allKpi + chips + hqConversionBlock(rows, div) +
       `<section class="detail-table hq-flow-table"><h2>${esc(div)} 媒体別 <small>本部全体の成果比較</small></h2>${table(["媒体","応募","面接","採用","面接率","採用率"], mediaRows)}</section>` +
       `<section class="detail-table hq-flow-table"><h2>${esc(div)} 職種別 <small>職種ごとの実数内訳</small></h2>${table(["職種","応募","アポ","面接","採用"], jobRows)}</section>`;
     pages.push(page({...report,title:`本部分析：${div}`},cond,body,`${div}全体の媒体・職種別フロー。`));
@@ -361,7 +361,7 @@ async function loadRows(){
   if(error)throw error;
   return (data||[]).filter(isActiveReportRow);
 }
-async function init(){const rawCond=readJsonParam("conditions");const cond=normalizeConditions(rawCond);const key=getParam("report")||"summary_monthly";const report=REPORTS[key]||REPORTS.summary_monthly;if(!rawCond.periodMode){cond.periodMode=report.family==="list"?"list":report.mode==="trend"?"trend":"monthly";}$("screenTitle").textContent=report.title+" プレビュー";document.title=report.title+" 印刷";try{const all=await loadRows();const rows=applyConditions(all,cond,report);let html="";if(report.family==="list")html=renderList(report,rows,cond);else if(report.family==="summary")html=await renderSummary(report,rows,cond);else if(report.family==="hq")html=await renderHqAnalysis(report,rows,cond);else html=await renderSingle(report,rows,cond);$("reportRoot").innerHTML=html;if(getParam("print")==="1")setTimeout(()=>window.print(),500)}catch(e){$("reportRoot").innerHTML=`<section class="report-page"><div class="empty big">帳票データの取得に失敗しました。<br>${esc(e.message||e)}</div></section>`}}
+async function init(){const rawCond=readJsonParam("conditions");const cond=normalizeConditions(rawCond);const key=getParam("report")||"summary_monthly";const report=REPORTS[key]||REPORTS.summary_monthly;if(report.family==="hq"){cond.view="table";}if(!rawCond.periodMode){cond.periodMode=report.family==="list"?"list":report.mode==="trend"?"trend":"monthly";}$("screenTitle").textContent=report.title+" プレビュー";document.title=report.title+" 印刷";try{const all=await loadRows();const rows=applyConditions(all,cond,report);let html="";if(report.family==="list")html=renderList(report,rows,cond);else if(report.family==="summary")html=await renderSummary(report,rows,cond);else if(report.family==="hq")html=await renderHqAnalysis(report,rows,cond);else html=await renderSingle(report,rows,cond);$("reportRoot").innerHTML=html;if(getParam("print")==="1")setTimeout(()=>window.print(),500)}catch(e){$("reportRoot").innerHTML=`<section class="report-page"><div class="empty big">帳票データの取得に失敗しました。<br>${esc(e.message||e)}</div></section>`}}
 document.addEventListener("DOMContentLoaded",init);
 </script>
 </body>
