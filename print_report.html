@@ -224,12 +224,10 @@ function hqFlowPageTitle(cond){
 function hqScopeChips(cond){
   const div = normalizeAll(cond.division) || "全本部";
   const ch = normalizeAll(cond.channel) || "全媒体";
-  return `<section class="hq-flow-scope">
-    <div><span>組織</span><strong>${esc(div)}</strong></div>
-    <b>→</b>
-    <div><span>媒体</span><strong>${esc(ch)}</strong></div>
-    <b>→</b>
-    <div><span>内訳</span><strong>職種別フロー</strong></div>
+  return `<section class="hq-flow-scope compact">
+    <span><b>組織</b><strong>${esc(div)}</strong></span>
+    <span><b>媒体</b><strong>${esc(ch)}</strong></span>
+    <span><b>内訳</b><strong>職種別フロー</strong></span>
   </section>`;
 }
 async function renderHqAnalysis(report, rows, cond){
@@ -242,10 +240,9 @@ async function renderHqAnalysis(report, rows, cond){
 
   if(!div){
     const divisionRows = hqFlowRows(rows, "division");
-    const mediaRows = hqFlowRows(rows, "channel").slice(0,12);
+    const mediaRows = hqFlowRows(rows, "channel").slice(0,5);
     const body = allKpi + chips + hqConversionBlock(rows, "全本部合算") +
-      `<section class="detail-table hq-flow-table"><h2>全本部 合算 <small>本部別の応募→面接→採用</small></h2>${table(["本部","応募","面接","採用","面接率","採用率"], divisionRows)}</section>` +
-      `<section class="detail-table hq-flow-table"><h2>媒体別 合算 <small>上位媒体</small></h2>${table(["媒体","応募","面接","採用","面接率","採用率"], mediaRows)}</section>`;
+      `<section class="two-columns hq-two-columns hq-summary-tables"><div><h2>全本部 合算 <small>本部別</small></h2>${table(["本部","応募","面接","採用","面接率","採用率"], divisionRows)}</div><div><h2>媒体別 合算 <small>上位媒体</small></h2>${table(["媒体","応募","面接","採用","面接率","採用率"], mediaRows)}</div></section>`;
     pages.push(page({...report,title:"本部分析：全本部合算"},cond,body,"全本部の採用導線を確認。"));
     const divisions = hqAggregate(rows,"division").slice(0,8).map(x=>x.key).filter(x=>x!=="未設定");
     divisions.forEach((d, idx)=>{
