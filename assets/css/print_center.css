@@ -1176,3 +1176,21 @@
 .output-control-panel .paper-mini{
   display:none;
 }
+
+
+/* 2026-05-16 帳票条件：基本は年度＋月、日付指定は詳細条件内 */
+.basic-condition-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.advanced-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+#advancedFilters:not([open]) .advanced-grid{
+  display:none;
+}
+@media(max-width:900px){
+  .basic-condition-grid,
+  .advanced-grid{
+    grid-template-columns:1fr;
+  }
+}

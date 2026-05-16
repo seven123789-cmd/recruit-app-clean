@@ -79,12 +79,7 @@
                   <option>10月</option><option>11月</option><option>12月</option><option>1月</option><option>2月</option><option>3月</option>
                 </select>
               </label>
-              <label class="condition-field" data-field="from">応募日From
-                <input id="reportFrom" type="date">
-              </label>
-              <label class="condition-field" data-field="to">応募日To
-                <input id="reportTo" type="date">
-              </label>
+
             </div>
 
             <details class="advanced-filters" id="advancedFilters">
@@ -93,6 +88,17 @@
                 <small id="advancedSummary">指定なし</small>
               </summary>
               <div class="advanced-grid">
+                <label>日付種類
+                  <select id="reportDateType">
+                    <option value="applied_date">応募日</option>
+                  </select>
+                </label>
+                <label>開始日
+                  <input id="reportFrom" type="date">
+                </label>
+                <label>終了日
+                  <input id="reportTo" type="date">
+                </label>
                 <label>本部
                   <select id="reportDivision" data-filter-select="division">
                     <option value="すべて">すべて</option>
@@ -360,31 +366,26 @@ function periodLabel(mode){
 }
 
 function periodGuide(mode){
-  if(mode === "trend") return "年度を主軸に、必要時だけ期間指定。";
-  if(mode === "list") return "応募日From/Toを主軸に指定。";
+  if(mode === "trend") return "年度と月を主軸に、詳細時だけ日付で絞り込み。";
+  if(mode === "list") return "年度と月を主軸に、詳細時だけ日付で絞り込み。";
   return "年度と月を主軸に集計。";
 }
 
 function fieldsForMode(mode){
-  if(mode === "list") return ["from", "to"];
-  if(mode === "trend") return ["fiscalYear", "from", "to"];
   return ["fiscalYear", "month"];
 }
 
 function formatRangeText(cond){
   const fiscal = normalizeFiscalYearValue(cond.fiscalYear);
-  if(cond.periodMode === "list"){
-    return `応募日 ${cond.from || "指定なし"} ～ ${cond.to || "指定なし"}`;
-  }
-  if(cond.periodMode === "trend"){
-    const extra = (cond.from || cond.to) ? ` / 応募日 ${cond.from || "指定なし"} ～ ${cond.to || "指定なし"}` : "";
-    return `${fiscal === "全期間" ? "全期間" : fiscal + " 推移"}${extra}`;
-  }
-  return `${fiscal} ${cond.month}`;
+  const base = `${fiscal} ${cond.month || "全月"}`;
+  const extra = (cond.from || cond.to) ? ` / 応募日 ${cond.from || "指定なし"} ～ ${cond.to || "指定なし"}` : "";
+  if(cond.periodMode === "trend") return `${base} 推移${extra}`;
+  return `${base}${extra}`;
 }
 
 function selectedFilters(cond){
   const items = [];
+  if(cond.from || cond.to) items.push(`応募日：${cond.from || "指定なし"}～${cond.to || "指定なし"}`);
   if(cond.division !== "すべて") items.push(`本部：${cond.division}`);
   if(cond.center !== "すべて") items.push(`営業所：${cond.center}`);
   if(cond.channel !== "すべて") items.push(`媒体：${cond.channel}`);

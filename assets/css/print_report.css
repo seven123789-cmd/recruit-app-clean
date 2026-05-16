@@ -882,3 +882,152 @@ tbody tr:last-child td{
     grid-template-columns:.85fr 1fr;
   }
 }
+
+
+/* 2026-05-16 本部分析印刷：年度＋月運用に合わせた1枚サマリー再調整 */
+.report-root{
+  display:block;
+}
+.report-page{
+  width:276mm;
+  height:198mm;
+  padding:6mm 8mm 8mm;
+}
+.report-header{
+  grid-template-columns:minmax(0,1fr) minmax(86mm,126mm);
+  gap:12px;
+  padding-bottom:3mm;
+  margin-bottom:3mm;
+}
+.report-header h1{
+  font-size:19px;
+  line-height:1.12;
+}
+.report-header p{
+  font-size:10.5px;
+  line-height:1.35;
+}
+.report-meta span{
+  padding:3px 6px;
+  font-size:8px;
+}
+.kpi-strip{
+  gap:6px;
+  margin-bottom:2.5mm;
+}
+.kpi-card{
+  min-height:16mm;
+  padding:5px 8px;
+  border-radius:12px;
+}
+.kpi-card strong{
+  font-size:18px;
+  margin:2px 0;
+}
+.hq-flow-scope{
+  justify-content:center;
+  gap:5px;
+  margin:0 0 2mm;
+}
+.hq-flow-scope span{
+  padding:3px 8px;
+}
+.hq-flow-scope strong{
+  max-width:42mm;
+}
+.hq-conversion-panel{
+  margin:2mm 0 2.5mm;
+  padding:5px 7px;
+  border-radius:14px;
+  box-shadow:none;
+}
+.hq-conversion-head{
+  margin-bottom:5px;
+}
+.hq-conversion-head h2{
+  font-size:12px;
+}
+.hq-conversion-head p{
+  font-size:8.5px;
+  line-height:1.2;
+}
+.hq-conversion-badge{
+  padding:4px 8px;
+  font-size:8.5px;
+}
+.hq-conversion-body{
+  grid-template-columns:.82fr 1fr;
+  gap:8px;
+}
+.hq-conversion-rates{
+  gap:4px;
+}
+.hq-rate-row{
+  min-height:11mm;
+  padding:4px 7px;
+  border-radius:11px;
+  border-left-width:4px;
+}
+.hq-rate-row span{
+  font-size:9.2px;
+}
+.hq-rate-row strong{
+  font-size:13.5px;
+}
+.hq-rate-row small{
+  font-size:8.5px;
+}
+.hq-mini-funnel{
+  gap:4px;
+  padding:6px 8px;
+  border-radius:13px;
+}
+.hq-funnel-row{
+  grid-template-columns:34px 1fr 34px;
+  gap:7px;
+}
+.hq-funnel-track{
+  height:9px;
+}
+.hq-funnel-row span,
+.hq-funnel-row strong{
+  font-size:9px;
+}
+.hq-summary-page .hq-summary-tables{
+  display:grid;
+  grid-template-columns:1.04fr .96fr;
+  gap:6px;
+  margin-top:2mm;
+}
+.hq-summary-page .hq-summary-tables>div{
+  min-width:0;
+  padding:5px 6px;
+  border-radius:13px;
+}
+.hq-summary-page .hq-summary-tables h2{
+  margin-bottom:3px;
+  font-size:10.8px;
+}
+.hq-summary-page .hq-summary-tables .report-table th,
+.hq-summary-page .hq-summary-tables .report-table td{
+  padding:2.7px 4px;
+  font-size:7.7px;
+  line-height:1.05;
+}
+.hq-summary-page .report-footer{
+  left:8mm;
+  right:8mm;
+  bottom:2.8mm;
+}
+@media print{
+  .report-page{
+    width:297mm;
+    height:210mm;
+    padding:6mm 9mm 8mm;
+  }
+  .hq-summary-page .hq-summary-tables .report-table th,
+  .hq-summary-page .hq-summary-tables .report-table td{
+    padding:2.8px 4px;
+    font-size:7.8px;
+  }
+}
