@@ -2,30 +2,34 @@
 (function(){
 
 function normalize(role){
-  return String(role || localStorage.getItem("recruit_user_role") || "editor").toLowerCase();
+  return String(role || window.currentRole || "viewer").toLowerCase();
 }
 
 function currentRole(){
-  return normalize(window.currentRole || localStorage.getItem("recruit_user_role") || "editor");
+  return normalize(window.currentRole || "viewer");
 }
 
 function canRead(role = currentRole()){
-  return ["admin","manager","editor","viewer"].includes(normalize(role));
+  return ["admin","editor","viewer"].includes(normalize(role));
 }
 
 function canWrite(role = currentRole()){
-  return ["admin","manager","editor"].includes(normalize(role));
+  return ["admin","editor"].includes(normalize(role));
 }
 
 function canImport(role = currentRole()){
-  return ["admin","manager"].includes(normalize(role));
+  return normalize(role) === "admin";
 }
 
 function canDelete(role = currentRole()){
-  return ["admin","manager","editor"].includes(normalize(role));
+  return normalize(role) === "admin";
 }
 
 function canManageMaster(role = currentRole()){
+  return normalize(role) === "admin";
+}
+
+function canExport(role = currentRole()){
   return normalize(role) === "admin";
 }
 
@@ -44,7 +48,11 @@ function requireWrite(role = currentRole()){
 }
 
 function requireImport(role = currentRole()){
-  return canImport(role) || deny("CSV取り込みはadminまたはmanager権限のみ実行できます。");
+  return canImport(role) || deny("CSV取り込みはadmin権限のみ実行できます。");
+}
+
+function requireExport(role = currentRole()){
+  return canExport(role) || deny("CSV出力・印刷はadmin権限のみ実行できます。");
 }
 
 function requireDelete(role = currentRole()){
@@ -57,7 +65,7 @@ function requireMaster(role = currentRole()){
 
 function setRole(role){
   const r = normalize(role);
-  localStorage.setItem("recruit_user_role", r);
+  window.currentRole = r;
   applyToPage(r);
   return r;
 }
@@ -123,7 +131,16 @@ function applyToPage(role = currentRole()){
 
   const page = currentRecruitPage();
   if((page === "admin_settings.html" || page === "data_backup.html" || page === "backup.html") && r !== "admin"){
-    location.replace("./dashboard.html");
+    if(window.__recruitRoleResolved){
+      location.replace("./dashboard.html");
+    }
+    return;
+  }
+
+  if((page === "data_io.html" || page === "print_center.html" || page === "print_report.html") && !canExport(r)){
+    if(window.__recruitRoleResolved){
+      location.replace("./dashboard.html");
+    }
     return;
   }
 
@@ -145,10 +162,12 @@ window.RecruitOpsGuard = {
   canRead,
   canWrite,
   canImport,
+  canExport,
   canDelete,
   canManageMaster,
   requireWrite,
   requireImport,
+  requireExport,
   requireDelete,
   requireMaster,
   applyToPage
@@ -159,13 +178,33 @@ window.RecruitOpsGuard = {
 window.RecruitRole = Object.assign(window.RecruitOpsGuard, {
   isViewer: role => normalize(role) === "viewer",
   isAdmin: role => normalize(role) === "admin",
-  isManager: role => normalize(role) === "manager",
+  isManager: role => false,
+  canExport,
+  requireExport,
   apply: applyToPage
 });
 
+async function resolveAndApply(){
+  if(window.RecruitAuth && typeof window.RecruitAuth.getCurrentRole === "function"){
+    try{
+      await window.RecruitAuth.getCurrentRole();
+    }catch(e){
+      console.warn("role resolve failed", e);
+      window.__recruitRoleResolved = true;
+    }
+  }else{
+    window.__recruitRoleResolved = true;
+  }
+  applyToPage(window.currentRole || "viewer");
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  window.setTimeout(() => applyToPage(), 100);
-  window.setTimeout(() => applyToPage(), 800);
+  window.setTimeout(resolveAndApply, 100);
+  window.setTimeout(resolveAndApply, 800);
+});
+
+window.addEventListener("recruit:role-ready", ev => {
+  applyToPage(ev.detail && ev.detail.role ? ev.detail.role : window.currentRole);
 });
 
 })();

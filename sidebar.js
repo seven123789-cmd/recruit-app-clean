@@ -115,16 +115,34 @@
     });
   }
 
-  function getStoredRole(){
-    try{
-      return String(localStorage.getItem("recruit_user_role") || "").toLowerCase();
-    }catch(e){
-      return "";
-    }
+  function getResolvedRole(){
+    return String(window.currentRole || "").toLowerCase();
   }
 
   function isAdminRole(){
-    return getStoredRole() === "admin";
+    return getResolvedRole() === "admin";
+  }
+
+  async function resolveRoleBeforeRender(){
+    const client = window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : null;
+    if(window.RecruitAuth && typeof window.RecruitAuth.getCurrentRole === "function"){
+      try{
+        await window.RecruitAuth.getCurrentRole();
+      }catch(e){
+        console.warn("sidebar role fetch failed", e);
+      }
+    }else if(client && client.auth){
+      try{
+        const { data:{ session } = {} } = await client.auth.getSession();
+        const user = session && session.user ? session.user : null;
+        if(user){
+          const { data } = await client.from("profiles").select("role,is_active").eq("user_id", user.id).maybeSingle();
+          window.currentRole = data && data.is_active !== false && data.role ? String(data.role).toLowerCase() : "viewer";
+        }
+      }catch(e){
+        console.warn("sidebar fallback role fetch failed", e);
+      }
+    }
   }
 
   function renderSidebar(){
@@ -164,11 +182,18 @@
     bindLogout(sidebar);
   }
 
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", renderSidebar);
-  }else{
+  async function renderSidebarWithRole(){
+    await resolveRoleBeforeRender();
     renderSidebar();
   }
 
-  window.renderDashboardSidebar = renderSidebar;
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", renderSidebarWithRole);
+  }else{
+    renderSidebarWithRole();
+  }
+
+  window.addEventListener("recruit:role-ready", renderSidebar);
+
+  window.renderDashboardSidebar = renderSidebarWithRole;
 })();

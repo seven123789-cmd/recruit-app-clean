@@ -22,6 +22,78 @@
     return result && result.data && result.data.session ? result.data.session : null;
   }
 
+
+  async function fetchRecruitProfile(client){
+    try{
+      const { data:{ session } = {} } = await client.auth.getSession();
+      const user = session && session.user ? session.user : null;
+      if(!user){
+        window.currentRole = null;
+        window.currentProfile = null;
+        window.__recruitRoleResolved = true;
+        return null;
+      }
+
+      let profile = null;
+      let error = null;
+
+      const byUserId = await client
+        .from("profiles")
+        .select("user_id,email,role,is_active")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      profile = byUserId.data || null;
+      error = byUserId.error || null;
+
+      if((!profile || error) && user.email){
+        const byEmail = await client
+          .from("profiles")
+          .select("user_id,email,role,is_active")
+          .eq("email", user.email)
+          .maybeSingle();
+        if(byEmail.data){
+          profile = byEmail.data;
+          error = null;
+        }else if(byEmail.error && !error){
+          error = byEmail.error;
+        }
+      }
+
+      if(error){
+        console.warn("Recruit profile fetch failed", error);
+      }
+
+      const role = profile && profile.is_active !== false && profile.role ? String(profile.role).toLowerCase() : "viewer";
+      window.currentProfile = profile || { user_id:user.id, email:user.email || null, role, is_active:true };
+      window.currentRole = role;
+      window.__recruitRoleResolved = true;
+
+      try{
+        sessionStorage.setItem("recruit_user_role_cache", role);
+      }catch(e){}
+
+      window.dispatchEvent(new CustomEvent("recruit:role-ready", { detail:{ role, profile:window.currentProfile } }));
+      return window.currentProfile;
+    }catch(e){
+      console.warn("Recruit profile fetch unexpected error", e);
+      window.currentRole = "viewer";
+      window.currentProfile = null;
+      window.__recruitRoleResolved = true;
+      window.dispatchEvent(new CustomEvent("recruit:role-ready", { detail:{ role:"viewer", profile:null } }));
+      return null;
+    }
+  }
+
+  function roleCan(role, action){
+    const r = String(role || window.currentRole || "viewer").toLowerCase();
+    if(action === "admin") return r === "admin";
+    if(action === "edit") return r === "admin" || r === "editor";
+    if(action === "export") return r === "admin";
+    if(action === "delete") return r === "admin";
+    return ["admin","editor","viewer"].includes(r);
+  }
+
   function enhanceRecruitAuthClient(client){
     if(!client || !client.auth || client.__recruitAuthEnhanced){
       return client;
@@ -93,6 +165,28 @@
     window.RecruitAuth.getUser = async function(){
       const { data:{ session } = {} } = await client.auth.getSession();
       return session && session.user ? session.user : null;
+    };
+    window.RecruitAuth.getCurrentProfile = function(){
+      return fetchRecruitProfile(client);
+    };
+    window.RecruitAuth.refreshRole = function(){
+      return fetchRecruitProfile(client);
+    };
+    window.RecruitAuth.getCurrentRole = async function(){
+      const profile = await fetchRecruitProfile(client);
+      return profile && profile.role ? String(profile.role).toLowerCase() : (window.currentRole || "viewer");
+    };
+    window.RecruitAuth.can = function(action, role){
+      return roleCan(role, action);
+    };
+    window.RecruitAuth.isAdmin = function(role){
+      return roleCan(role, "admin");
+    };
+    window.RecruitAuth.canEdit = function(role){
+      return roleCan(role, "edit");
+    };
+    window.RecruitAuth.canExport = function(role){
+      return roleCan(role, "export");
     };
     window.RecruitAuth.markExplicitSignOut = function(){
       _explicitSignOutUntil = Date.now() + 5000;
