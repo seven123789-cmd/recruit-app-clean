@@ -125,10 +125,9 @@ async function getRole(userId){
   try{
     const {data}=await sb.from("profiles").select("role,email,is_active").eq("user_id",userId).single();
     if(data && data.is_active===false){throw new Error("このアカウントは停止されています。管理者へ確認してください。")}
-    currentRole=data?.role||"editor";
+    currentRole=data?.role||"viewer";
     if(window.RecruitOpsGuard) window.RecruitOpsGuard.setRole(currentRole);
-  }catch(e){currentRole="editor"}
-  try{localStorage.setItem("recruit_user_role",currentRole||"editor")}catch(e){}
+  }catch(e){currentRole="viewer"}
   return currentRole;
 }
 function showAuth(msg="未ログインです",type="info"){
@@ -151,11 +150,9 @@ async function showApp(){
   if(!user){showAuth();return false}
   await getRole(user.id);
   if(!isAdmin()){
-    try{localStorage.setItem("recruit_user_role",currentRole||"editor")}catch(e){}
-    showAccessDenied();
+      showAccessDenied();
     return false;
   }
-  try{localStorage.setItem("recruit_user_role",currentRole||"admin")}catch(e){}
   $("authScreen")?.classList.add("hidden");
   $("accessDeniedScreen")?.classList.add("hidden");
   $("appScreen")?.classList.remove("hidden");

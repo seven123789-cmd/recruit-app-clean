@@ -77,7 +77,7 @@
 
   async function getRole(user){
     const {data}=await sb.from("profiles").select("role,is_active,email").eq("user_id",user.id).maybeSingle();
-    if(data?.role)localStorage.setItem("recruit_user_role",data.role);
+    if(data?.role) window.currentRole = String(data.role).toLowerCase();
     if(data?.is_active===false)throw new Error("このアカウントは停止されています。");
     return data?.role||"viewer";
   }

@@ -174,7 +174,7 @@
           <div class="bulk-buttons">
             <button class="btn-primary" type="button" onclick="bulkUpdateCandidates()">一括更新</button>
             <button class="btn-secondary" type="button" onclick="clearBulkSelection()">選択解除</button>
-            <button class="btn-danger bulk-danger" type="button" id="bulkDeleteButton" data-requires-role="admin,manager,editor" onclick="bulkDeleteCandidates()">一括削除</button>
+            <button class="btn-danger bulk-danger" type="button" id="bulkDeleteButton" data-requires-role="admin" onclick="bulkDeleteCandidates()">一括削除</button>
           </div>
         </div>
       </section>
@@ -391,10 +391,10 @@ async function getRole(userId){
   if(currentRole)return currentRole;
   try{
     const {data}=await sb.from("profiles").select("role").eq("user_id",userId).single();
-    currentRole=data?.role||"editor";
+    currentRole=data?.role||"viewer";
     if(window.RecruitOpsGuard) window.RecruitOpsGuard.setRole(currentRole);
   }catch(e){
-    currentRole="editor";
+    currentRole="viewer";
     if(window.RecruitOpsGuard) window.RecruitOpsGuard.setRole(currentRole);
   }
   return currentRole;
@@ -838,7 +838,7 @@ function saveListOrder(rows){
 }
 
 function isAdminRole(){
-  return window.RecruitOpsGuard ? window.RecruitOpsGuard.canDelete(currentRole) : ["admin","manager","editor"].includes(String(currentRole||"").toLowerCase());
+  return window.RecruitOpsGuard ? window.RecruitOpsGuard.canDelete(currentRole) : String(currentRole||"").toLowerCase() === "admin";
 }
 
 function getSelectedRows(){
@@ -1107,7 +1107,7 @@ function renderCandidates(){
       "<td>"+esc(r.channel_detail||"")+"</td>"+
       "<td>"+esc(r.owner_name||"")+"</td>"+
       '<td><span class="'+dateClass+'">'+formatDate(r.next_action_date)+"</span></td>"+
-      '<td class="list-action-cell"><button class="btn-danger list-delete-btn" type="button" data-requires-role="admin,manager,editor" data-id="'+esc(r.id)+'">削除</button></td>';
+      '<td class="list-action-cell"><button class="btn-danger list-delete-btn" type="button" data-requires-role="admin" data-id="'+esc(r.id)+'">削除</button></td>';
 
     const checkCell = tr.querySelector(".list-check-cell");
     const checkBox = tr.querySelector(".bulk-row-check");

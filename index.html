@@ -605,10 +605,10 @@ async function getCurrentRole(userId){
   }
   const { data, error } = await sb.from("profiles").select("role").eq("user_id", userId).maybeSingle();
   if (error && error.code !== "PGRST116") {
-    currentRole = "editor";
+    currentRole = "viewer";
     return currentRole;
   }
-  currentRole = data?.role || "editor";
+  currentRole = data?.role || "viewer";
   return currentRole;
 }
 async function refreshAuthState(){

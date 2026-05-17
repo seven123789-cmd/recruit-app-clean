@@ -391,8 +391,8 @@ async function getRole(userId){
   if(currentRole)return currentRole;
   try{
     const {data}=await sb.from("profiles").select("role").eq("user_id",userId).single();
-    currentRole=data?.role||"editor";
-  }catch(e){currentRole="editor"}
+    currentRole=data?.role||"viewer";
+  }catch(e){currentRole="viewer"}
   return currentRole;
 }
 function showAuth(msg="未ログインです",type="info"){

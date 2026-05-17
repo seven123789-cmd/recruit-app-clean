@@ -769,7 +769,7 @@
     if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.normalize === "function"){
       return window.RecruitOpsGuard.normalize(role);
     }
-    return String(role || localStorage.getItem("recruit_user_role") || "editor").toLowerCase();
+    return String(role || window.currentRole || "viewer").toLowerCase();
   }
 
   function isRecruitViewer(role){
@@ -790,7 +790,7 @@
     if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.isManager === "function"){
       return window.RecruitOpsGuard.isManager(role);
     }
-    return normalizeRecruitRole(role) === "manager";
+    return false;
   }
 
   function applyRecruitRoleGuard(role){

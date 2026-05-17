@@ -1913,12 +1913,12 @@ async function getCurrentRole(userId){
         showAuth("このアカウントは停止されています。管理者へ確認してください", "error");
         return "viewer";
       }
-      currentRole=data?.role||"editor";
+      currentRole=data?.role||"viewer";
     }
   }catch(e){
-    currentRole="editor";
+    currentRole="viewer";
   }
-  try{localStorage.setItem("recruit_user_role",currentRole||"editor")}catch(e){}
+  if(window.RecruitOpsGuard) window.RecruitOpsGuard.setRole(currentRole);
   return currentRole;
 }
 

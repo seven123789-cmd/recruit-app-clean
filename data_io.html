@@ -95,8 +95,8 @@
               <button class="btn-secondary" type="button" id="cancelImportButton" onclick="cancelImportCsv()" disabled>選択をクリア</button>
               <button class="btn-secondary" type="button" id="previewImportButton" onclick="previewImportCsv()">プレビュー</button>
               <button class="btn-secondary is-hidden" type="button" id="downloadErrorCsvButton" onclick="downloadImportErrorCsv()" disabled>エラーCSV</button>
-              <button id="runImportButton" class="btn-primary" data-requires-role="admin,manager" type="button" onclick="runImportCsv()" disabled>取込実行</button>
-              <button id="undoLastImportButton" class="btn-secondary danger is-hidden" data-requires-role="admin,manager" type="button" onclick="restoreLastImportBackup()" disabled>直前取込を取消</button>
+              <button id="runImportButton" class="btn-primary" data-requires-role="admin" type="button" onclick="runImportCsv()" disabled>取込実行</button>
+              <button id="undoLastImportButton" class="btn-secondary danger is-hidden" data-requires-role="admin" type="button" onclick="restoreLastImportBackup()" disabled>直前取込を取消</button>
             </div>
           </div>
         </div>
@@ -136,7 +136,7 @@
             <span class="io-kicker">Export</span>
             <h2>CSV出力</h2>
           </div>
-          <button class="btn-primary" type="button" onclick="exportCandidatesCsv()">CSVをダウンロード</button>
+          <button class="btn-primary" data-requires-role="admin" type="button" onclick="exportCandidatesCsv()">CSVをダウンロード</button>
         </div>
         <div class="io-export-grid">
           <label>
@@ -578,6 +578,7 @@ async function populateExportYearOptions(){
 }
 
 async function exportCandidatesCsv(){
+  if(window.RecruitOpsGuard && !window.RecruitOpsGuard.requireExport()) return;
   const includeDeleted=document.getElementById('exportIncludeDeleted').value==='true';
   const fy=document.getElementById('exportYear').value;
   let q=sb.from('candidates').select('*').order('applied_date',{ascending:false});

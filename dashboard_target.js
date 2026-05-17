@@ -44,9 +44,9 @@ async function getRole(userId){
   if(currentRole)return currentRole;
   try{
     const {data}=await sb.from("profiles").select("role").eq("user_id",userId).single();
-    currentRole=data?.role||"editor";
+    currentRole=data?.role||"viewer";
   }catch(e){
-    currentRole="editor";
+    currentRole="viewer";
   }
   return currentRole;
 }

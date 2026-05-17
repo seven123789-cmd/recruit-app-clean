@@ -287,10 +287,10 @@ async function getCurrentRole(userId){
   if (currentRole) return currentRole;
   const { data, error } = await sb.from("profiles").select("role").eq("user_id", userId).single();
   if (error) {
-    currentRole = "editor";
+    currentRole = "viewer";
     return currentRole;
   }
-  currentRole = data?.role || "editor";
+  currentRole = data?.role || "viewer";
   return currentRole;
 }
 async function refreshAuthState(){
