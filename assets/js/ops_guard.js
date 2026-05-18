@@ -122,8 +122,25 @@ function disableViewerWriteControls(page){
   }
 }
 
+function clearViewerDisabledControls(){
+  document.querySelectorAll(".viewer-disabled").forEach(el => {
+    el.disabled = false;
+    el.classList.remove("viewer-disabled");
+    el.removeAttribute("aria-disabled");
+  });
+
+  const msg = document.getElementById("pageMessage");
+  if(msg && msg.dataset.viewerNotice){
+    delete msg.dataset.viewerNotice;
+    msg.textContent = "";
+    msg.className = "message-box";
+    msg.style.display = "none";
+  }
+}
+
 function applyToPage(role = currentRole()){
   const r = normalize(role);
+  clearViewerDisabledControls();
   document.body.classList.toggle("role-viewer", r === "viewer");
   document.body.classList.toggle("role-editor", r === "editor");
   document.body.classList.toggle("role-manager", r === "manager");

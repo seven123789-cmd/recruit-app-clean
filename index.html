@@ -462,7 +462,7 @@ function updateConnectionUi(connected){
 function updateRoleUi(role){
   const badge = document.getElementById("roleBadge");
   if (!badge) return;
-  badge.textContent = "権限：" + (role || "editor");
+  badge.textContent = "権限：" + (role || "viewer");
 }
 function isAllowedEmailDomain(email){
   return /^[A-Za-z0-9._%+-]+@sline\.co\.jp$/i.test(email);
@@ -557,6 +557,7 @@ function showAuth(message = "未ログインです", type = "info"){
   if (pw) pw.value = "";
   currentUser = null;
   currentRole = null;
+  window.currentRole = null;
   updateConnectionUi(false);
   setAuthMessage(message, type);
   document.body.classList.remove("auth-checking");
@@ -565,9 +566,13 @@ function showApp(user, role){
   document.getElementById("authScreen").classList.add("hidden");
   document.getElementById("appScreen").classList.remove("hidden");
   currentUser = user;
-  currentRole = role;
+  currentRole = role || window.currentRole || "viewer";
+  window.currentRole = currentRole;
   updateConnectionUi(true);
-  updateRoleUi(role);
+  updateRoleUi(currentRole);
+  if (window.RecruitOpsGuard && typeof window.RecruitOpsGuard.applyToPage === "function") {
+    window.RecruitOpsGuard.applyToPage(currentRole);
+  }
   document.body.classList.remove("auth-checking");
 }
 async function getSessionUser(){
@@ -609,6 +614,26 @@ async function getCurrentRole(userId){
     return currentRole;
   }
   currentRole = data?.role || "viewer";
+  return currentRole;
+}
+async function resolveCurrentRoleForAction(){
+  let role = currentRole || window.currentRole || null;
+
+  if (!role && window.RecruitAuth && typeof window.RecruitAuth.getCurrentRole === "function") {
+    try {
+      role = await window.RecruitAuth.getCurrentRole();
+    } catch (e) {
+      console.warn("role resolve for action failed", e);
+    }
+  }
+
+  currentRole = role || "viewer";
+  window.currentRole = currentRole;
+
+  if (window.RecruitOpsGuard && typeof window.RecruitOpsGuard.applyToPage === "function") {
+    window.RecruitOpsGuard.applyToPage(currentRole);
+  }
+
   return currentRole;
 }
 async function refreshAuthState(){
@@ -978,7 +1003,8 @@ function validateEntry(payload, centerRaw, divisionRaw, channelRaw){
   return { errors, warnings };
 }
 async function addData(){
-  if(window.RecruitOpsGuard && !window.RecruitOpsGuard.requireWrite(currentRole)) return;
+  const role = await resolveCurrentRoleForAction();
+  if(window.RecruitOpsGuard && !window.RecruitOpsGuard.requireWrite(role)) return;
   const user = await getSessionUser();
   if (!user) {
     showAuth("未ログインです。再度ログインしてください", "error");
@@ -1103,6 +1129,7 @@ sb.auth.onAuthStateChange((event) => {
   if (event === "SIGNED_OUT") {
     currentUser = null;
     currentRole = null;
+    window.currentRole = null;
     showAuth("ログアウトしました", "success");
   }
 });
