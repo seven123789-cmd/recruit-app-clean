@@ -231,7 +231,7 @@ let selectedStatusFilters=new Set();
 let dashboardJob="";
 const selectedIds = new Set();
 
-const ACTIVE_STATUSES=["応募","アポ取得","面接設定","面接実施"];
+const ACTIVE_STATUSES=["応募","書類選考","アポ取得","面接設定","面接実施"];
 const STATE="recruit_list_filter_state";
 const NAV="recruit_list_navigation_state";
 
@@ -283,6 +283,18 @@ function badge(v){
   const cls=v?"badge":"badge badge-empty";
   const style=v?` style="color:${esc(color)};border-color:${esc(hexToRgba(color,.34))};background:${esc(hexToRgba(color,.10))}"`:"";
   return `<span class="${cls}"${style}>${esc(t)}</span>`;
+}
+function resultBadge(v){
+  const t=String(v||"").trim();
+  if(!t)return "";
+  const cls=t==="採用"?"result-badge result-hired":t==="不採用"?"result-badge result-rejected":"result-badge result-other";
+  return `<span class="${cls}">${esc(t)}</span>`;
+}
+function statusResultCell(row){
+  const statusHtml=badge(row.status);
+  const resultHtml=resultBadge(row.hiring_result);
+  if(!resultHtml)return statusHtml;
+  return `<div class="status-result-cell">${statusHtml}${resultHtml}</div>`;
 }
 
 function getFiscalYearFromAppliedDate(dateStr){
@@ -567,6 +579,13 @@ async function loadListMasterStatuses(rows=[]){
     listMasterStatuses=[...new Set((rows||[]).map(r=>String(r.status||"").trim()).filter(Boolean))]
       .sort((a,b)=>String(a).localeCompare(String(b),"ja"))
       .map((name,index)=>({name,color:"#64748b",display_order:index+1}));
+  }
+
+  if(!listMasterStatuses.some(row=>row.name==="書類選考")){
+    const baseOrder=["応募","書類選考","アポ取得","面接設定","面接実施","内定","入社","辞退","不通","保留"];
+    const order=baseOrder.indexOf("書類選考")+1;
+    listMasterStatuses.push({name:"書類選考",color:"#0369a1",display_order:order});
+    listMasterStatuses.sort((a,b)=>(Number(a.display_order||999)-Number(b.display_order||999)) || String(a.name).localeCompare(String(b.name),"ja"));
   }
 
   statusColorMap=Object.fromEntries(listMasterStatuses.map(row=>[row.name,normalizeStatusColor(row.color)]));
@@ -1100,7 +1119,7 @@ function renderCandidates(){
       '<td class="list-check-cell"><input type="checkbox" class="bulk-row-check" data-id="'+esc(r.id)+'" aria-label="選択"'+checked+'></td>'+
       "<td><strong>"+esc(r.name||"")+"</strong></td>"+
       "<td>"+formatDate(r.applied_date)+"</td>"+
-      "<td>"+badge(r.status)+"</td>"+
+      "<td>"+statusResultCell(r)+"</td>"+
       "<td>"+esc(r.division||"")+"</td>"+
       "<td>"+esc(r.center_name||"")+"</td>"+
       "<td>"+esc(r.channel||"")+"</td>"+
