@@ -284,19 +284,6 @@ function badge(v){
   const style=v?` style="color:${esc(color)};border-color:${esc(hexToRgba(color,.34))};background:${esc(hexToRgba(color,.10))}"`:"";
   return `<span class="${cls}"${style}>${esc(t)}</span>`;
 }
-function resultBadge(v){
-  const t=String(v||"").trim();
-  if(!t)return "";
-  const cls=t==="採用"?"result-badge result-hired":t==="不採用"?"result-badge result-rejected":"result-badge result-other";
-  return `<span class="${cls}">${esc(t)}</span>`;
-}
-function statusResultCell(row){
-  const statusHtml=badge(row.status);
-  const resultHtml=resultBadge(row.hiring_result);
-  if(!resultHtml)return statusHtml;
-  return `<div class="status-result-cell">${statusHtml}${resultHtml}</div>`;
-}
-
 function getFiscalYearFromAppliedDate(dateStr){
   if(!dateStr)return "";
   const dt=new Date(dateStr+"T00:00:00");
@@ -1119,7 +1106,7 @@ function renderCandidates(){
       '<td class="list-check-cell"><input type="checkbox" class="bulk-row-check" data-id="'+esc(r.id)+'" aria-label="選択"'+checked+'></td>'+
       "<td><strong>"+esc(r.name||"")+"</strong></td>"+
       "<td>"+formatDate(r.applied_date)+"</td>"+
-      "<td>"+statusResultCell(r)+"</td>"+
+      "<td>"+badge(r.status)+"</td>"+
       "<td>"+esc(r.division||"")+"</td>"+
       "<td>"+esc(r.center_name||"")+"</td>"+
       "<td>"+esc(r.channel||"")+"</td>"+

@@ -1517,6 +1517,8 @@
         <button class="quick-status-btn blue" type="button" onclick="quickSetStatus('アポ取得')">アポ取得</button>
         <button class="quick-status-btn orange" type="button" onclick="quickSetStatus('面接設定')">面接設定</button>
         <button class="quick-status-btn orange" type="button" onclick="quickSetStatus('面接実施')">面接実施</button>
+        <button class="quick-status-btn pink" type="button" onclick="quickSetStatus('不採用')">不採用</button>
+        <button class="quick-status-btn gray" type="button" onclick="quickSetStatus('保留')">保留</button>
         <button class="quick-status-btn purple" type="button" onclick="quickSetStatus('内定')">内定</button>
         <button class="quick-status-btn green" type="button" onclick="quickSetStatus('入社')">入社</button>
         <button class="quick-status-btn pink" type="button" onclick="quickSetStatus('辞退')">辞退</button>
@@ -2823,6 +2825,11 @@ function quickSetStatus(status) {
     document.getElementById("nextActionDate").value = "";
   }
 
+  if (status === "不採用") {
+    document.getElementById("hiringResult").value = "不採用";
+    document.getElementById("nextActionDate").value = "";
+  }
+
   if (status === "辞退" || status === "不通") {
     document.getElementById("nextActionDate").value = "";
   }
@@ -2869,7 +2876,11 @@ function handleStatusChange() {
     if (hiringResult && !hiringResult.value) hiringResult.value = "採用";
   }
 
-  const closedStatuses = ["不通","辞退","入社"];
+  if (status === "不採用") {
+    if (hiringResult) hiringResult.value = "不採用";
+  }
+
+  const closedStatuses = ["不通","辞退","不採用","入社"];
 
   if (closedStatuses.includes(status) && nextActionDate) {
     nextActionDate.value = "";
