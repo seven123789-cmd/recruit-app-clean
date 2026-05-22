@@ -41,9 +41,41 @@
     return fiscalYear(d);
   }
 
+  const RECRUIT_STATUS_MASTER_DEFAULTS = [
+    { name:"応募", display_order:10, color:"#2563eb" },
+    { name:"書類選考", display_order:20, color:"#0ea5e9" },
+    { name:"アポ取得", display_order:30, color:"#0891b2" },
+    { name:"面接設定", display_order:40, color:"#f97316" },
+    { name:"面接実施", display_order:50, color:"#ca8a04" },
+    { name:"内定", display_order:60, color:"#7c3aed" },
+    { name:"採用", display_order:70, color:"#16a34a" },
+    { name:"入社", display_order:80, color:"#15803d" },
+    { name:"辞退", display_order:90, color:"#db2777" },
+    { name:"不採用", display_order:100, color:"#b91c1c" },
+    { name:"不通", display_order:110, color:"#374151" },
+    { name:"保留", display_order:120, color:"#c2410c" }
+  ];
+
+  function recruitStatusDefaultNames(){
+    return RECRUIT_STATUS_MASTER_DEFAULTS.map(row => row.name);
+  }
+
+  function mergeRecruitStatusNames(values){
+    const current = [...new Set((values || []).map(v => String(v || "").trim()).filter(Boolean))];
+    const extras = recruitStatusDefaultNames().filter(name => !current.includes(name));
+    const merged = current.concat(extras);
+    const orderMap = new Map(RECRUIT_STATUS_MASTER_DEFAULTS.map(row => [row.name, Number(row.display_order || 9999)]));
+    return merged.sort((a,b) => (orderMap.get(a) || 9999) - (orderMap.get(b) || 9999) || String(a).localeCompare(String(b), "ja"));
+  }
+
+  function recruitStatusDefaultColor(name){
+    return RECRUIT_STATUS_MASTER_DEFAULTS.find(row => row.name === name)?.color || "#64748b";
+  }
+
   function isFinal(row){
     const r = row || {};
-    return ["入社","辞退","不通"].includes(String(r.status || "")) || r.hiring_result === "不採用";
+    const status = String(r.status || "");
+    return ["入社","辞退","不通","不採用"].includes(status) || r.hiring_result === "不採用";
   }
 
 
@@ -87,6 +119,10 @@
   window.daysBetween = window.daysBetween || daysBetween;
   window.fiscalYear = window.fiscalYear || fiscalYear;
   window.getFiscalYearFromDate = window.getFiscalYearFromDate || getFiscalYearFromDate;
+  window.RECRUIT_STATUS_MASTER_DEFAULTS = window.RECRUIT_STATUS_MASTER_DEFAULTS || RECRUIT_STATUS_MASTER_DEFAULTS;
+  window.recruitStatusDefaultNames = window.recruitStatusDefaultNames || recruitStatusDefaultNames;
+  window.mergeRecruitStatusNames = window.mergeRecruitStatusNames || mergeRecruitStatusNames;
+  window.recruitStatusDefaultColor = window.recruitStatusDefaultColor || recruitStatusDefaultColor;
   window.isFinal = window.isFinal || isFinal;
   window.getRecruitCurrentFiscalYear = window.getRecruitCurrentFiscalYear || getRecruitCurrentFiscalYear;
   window.formatRecruitFiscalYearLabel = window.formatRecruitFiscalYearLabel || formatRecruitFiscalYearLabel;
@@ -311,6 +347,37 @@
 
   window.clearRecruitMasterCache = window.clearRecruitMasterCache || clearRecruitMasterCache;
 
+  async function ensureDefaultStatusMasterRows(client, currentStatuses){
+    if(!client || !Array.isArray(window.RECRUIT_STATUS_MASTER_DEFAULTS)) return;
+    const existing = new Set((currentStatuses || []).map(v => String(v || "").trim()).filter(Boolean));
+    const missing = window.RECRUIT_STATUS_MASTER_DEFAULTS.filter(row => !existing.has(row.name));
+    if(!missing.length) return;
+    try{
+      const { data:{ session } } = await client.auth.getSession();
+      const userId = session?.user?.id || "";
+      if(!userId) return;
+      const { data: profile } = await client
+        .from("profiles")
+        .select("role,is_active")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if(String(profile?.role || "").toLowerCase() !== "admin" || profile?.is_active === false) return;
+
+      const now = new Date().toISOString();
+      const rows = missing.map(row => ({
+        name: row.name,
+        display_order: row.display_order,
+        color: row.color,
+        is_active: true,
+        updated_at: now
+      }));
+      const { error } = await client.from("master_statuses").insert(rows);
+      if(error) throw error;
+    }catch(e){
+      console.warn("ステータスマスタの既定値追加をスキップしました", e);
+    }
+  }
+
   async function loadRecruitMasters(force=false){
     if(recruitMasterCache && !force){
       const loadedAt = new Date(recruitMasterCache.loadedAt || 0).getTime();
@@ -330,7 +397,9 @@
       loadMasterNames(client, "declineReasons"),
       loadMasterNames(client, "rejectReasons")
     ]);
-    recruitMasterCache = { ...divisionCenter, channels, channelDetails, jobTypes, owners, statuses, declineReasons, rejectReasons, loadedAt: new Date().toISOString() };
+    await ensureDefaultStatusMasterRows(client, statuses);
+    const mergedStatuses = mergeRecruitStatusNames(statuses);
+    recruitMasterCache = { ...divisionCenter, channels, channelDetails, jobTypes, owners, statuses: mergedStatuses, declineReasons, rejectReasons, loadedAt: new Date().toISOString() };
     return recruitMasterCache;
   }
 

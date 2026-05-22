@@ -840,7 +840,6 @@
 .badge-empty{background:#f1f5f9;color:#64748b}
 .badge-応募{background:#dbeafe;color:#1d4ed8}
 .badge-アポ取得{background:#ede9fe;color:#6d28d9}
-.badge-書類選考{background:#f0f9ff;color:#0369a1}
 .badge-面接設定{background:#e0f2fe;color:#0369a1}
 .badge-面接実施{background:#fef3c7;color:#b45309}
 .badge-内定{background:#ede9fe;color:#7c3aed}
@@ -1517,12 +1516,13 @@
         <button class="quick-status-btn blue" type="button" onclick="quickSetStatus('アポ取得')">アポ取得</button>
         <button class="quick-status-btn orange" type="button" onclick="quickSetStatus('面接設定')">面接設定</button>
         <button class="quick-status-btn orange" type="button" onclick="quickSetStatus('面接実施')">面接実施</button>
-        <button class="quick-status-btn pink" type="button" onclick="quickSetStatus('不採用')">不採用</button>
-        <button class="quick-status-btn gray" type="button" onclick="quickSetStatus('保留')">保留</button>
         <button class="quick-status-btn purple" type="button" onclick="quickSetStatus('内定')">内定</button>
+        <button class="quick-status-btn green" type="button" onclick="quickSetStatus('採用')">採用</button>
         <button class="quick-status-btn green" type="button" onclick="quickSetStatus('入社')">入社</button>
         <button class="quick-status-btn pink" type="button" onclick="quickSetStatus('辞退')">辞退</button>
+        <button class="quick-status-btn pink" type="button" onclick="quickSetStatus('不採用')">不採用</button>
         <button class="quick-status-btn gray" type="button" onclick="quickSetStatus('不通')">不通</button>
+        <button class="quick-status-btn orange" type="button" onclick="quickSetStatus('保留')">保留</button>
       </div>
 
       <input id="lastActionDate" type="hidden">
@@ -2115,7 +2115,7 @@ async function loadOptionMasters(){
     JOB_TYPE_OPTIONS = normalizeMasterOptions(masters.jobTypes);
     CHANNEL_OPTIONS = normalizeMasterOptions(masters.channels);
     CHANNEL_DETAIL_OPTIONS = normalizeMasterOptions(masters.channelDetails);
-    STATUS_OPTIONS = ensureStatusOptions(normalizeMasterOptions(masters.statuses));
+    STATUS_OPTIONS = normalizeMasterOptions(masters.statuses);
     DECLINE_REASON_OPTIONS = normalizeMasterOptions(masters.declineReasons);
     REJECT_REASON_OPTIONS = normalizeMasterOptions(masters.rejectReasons);
   } else {
@@ -2130,7 +2130,7 @@ async function loadOptionMasters(){
     JOB_TYPE_OPTIONS = normalizeMasterOptions(jobTypes);
     CHANNEL_OPTIONS = normalizeMasterOptions(channels);
     CHANNEL_DETAIL_OPTIONS = normalizeMasterOptions(channelDetails);
-    STATUS_OPTIONS = ensureStatusOptions(normalizeMasterOptions(statuses));
+    STATUS_OPTIONS = normalizeMasterOptions(statuses);
     DECLINE_REASON_OPTIONS = normalizeMasterOptions(declineReasons);
     REJECT_REASON_OPTIONS = normalizeMasterOptions(rejectReasons);
   }
@@ -2148,12 +2148,6 @@ async function loadOptionMasters(){
 
 function normalizeMasterOptions(values){
   return [...new Set((values || []).map(v => String(v || "").trim()).filter(Boolean))];
-}
-
-function ensureStatusOptions(options){
-  const base = ["応募", "書類選考", "アポ取得", "面接設定", "面接実施", "内定", "入社", "辞退", "不通", "保留"];
-  const merged = normalizeMasterOptions([...(options || []), ...base]);
-  return merged;
 }
 
 function renderJobTypeOptions(){
@@ -2331,7 +2325,7 @@ function setFieldValue(id, value) {
 function getActionAdvice(row) {
   const status = String(row.status || "").trim();
   const hiringResult = String(row.hiring_result || "").trim();
-  const activeStatuses = ["応募","書類選考","アポ取得","面接設定","面接実施"];
+  const activeStatuses = ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
 
   if (status === "面接実施" && (hiringResult === "採用" || hiringResult === "不採用")) {
     return null;
@@ -2372,9 +2366,7 @@ function getActionAdvice(row) {
   let action = "状況を更新";
 
   if (status === "応募") {
-    action = "書類確認・連絡";
-  } else if (status === "書類選考") {
-    action = "書類結果を更新";
+    action = "連絡・アポ設定";
   } else if (status === "アポ取得") {
     action = "面接日を確定";
   } else if (status === "面接設定") {
@@ -2611,7 +2603,7 @@ async function moveActionCandidate(step) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const activeStatuses = ["応募","書類選考","アポ取得","面接設定","面接実施"];
+    const activeStatuses = ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
 
    function isActionRow(row) {
       if (!row) return false;
@@ -2772,7 +2764,7 @@ function collectPayload() {
   };
 
 // ===== 終了・結果確定は次回対応日を自動クリア =====
-const closedStatuses = ["不通","辞退","入社"];
+const closedStatuses = ["不通","辞退","不採用","入社"];
 const interviewResultFixed =
   payload.status === "面接実施" &&
   (payload.hiring_result === "採用" || payload.hiring_result === "不採用");
@@ -2800,7 +2792,8 @@ function markReturnToList(){
 function quickSetStatus(status) {
   const today = new Date().toISOString().slice(0, 10);
 
-  document.getElementById("status").value = status;
+  const statusEl = document.getElementById("status");
+  if (statusEl) statusEl.value = status;
 
   if (status === "アポ取得") {
     if (!document.getElementById("appointmentDate").value) document.getElementById("appointmentDate").value = today;
@@ -2815,6 +2808,11 @@ function quickSetStatus(status) {
   }
 
   if (status === "内定") {
+    if (!document.getElementById("offerDate").value) document.getElementById("offerDate").value = today;
+    document.getElementById("hiringResult").value = "採用";
+  }
+
+  if (status === "採用") {
     if (!document.getElementById("offerDate").value) document.getElementById("offerDate").value = today;
     document.getElementById("hiringResult").value = "採用";
   }
@@ -2874,10 +2872,6 @@ function handleStatusChange() {
   if (status === "入社") {
     if (joinDate && !joinDate.value) joinDate.value = today;
     if (hiringResult && !hiringResult.value) hiringResult.value = "採用";
-  }
-
-  if (status === "不採用") {
-    if (hiringResult) hiringResult.value = "不採用";
   }
 
   const closedStatuses = ["不通","辞退","不採用","入社"];
@@ -2956,7 +2950,7 @@ function validatePayload(payload) {
   // 進行中：次回対応日が必須
   // 終了・結果確定：次回対応日不要
   // 内定は入社前辞退があるため、選考結果=採用は強制しない
-  const activeStatuses = ["応募","書類選考","アポ取得","面接設定"];
+  const activeStatuses = ["応募","書類選考","アポ取得","面接設定","採用"];
 
   const interviewInProgress =
     payload.status === "面接実施" && !payload.hiring_result;
@@ -2989,8 +2983,12 @@ function validatePayload(payload) {
     messages.push("内定なのに内定日が未入力です。");
   }
 
-  if (payload.status === "入社" && payload.hiring_result !== "採用") {
-    messages.push("入社の場合は、選考結果を採用にしてください。");
+  if ((payload.status === "採用" || payload.status === "入社") && payload.hiring_result !== "採用") {
+    messages.push("採用・入社の場合は、選考結果を採用にしてください。");
+  }
+
+  if (payload.status === "不採用" && payload.hiring_result !== "不採用") {
+    messages.push("不採用の場合は、選考結果を不採用にしてください。");
   }
 
   if (payload.status === "入社" && !payload.interview_done_date) {

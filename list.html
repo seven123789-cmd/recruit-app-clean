@@ -231,7 +231,7 @@ let selectedStatusFilters=new Set();
 let dashboardJob="";
 const selectedIds = new Set();
 
-const ACTIVE_STATUSES=["応募","書類選考","アポ取得","面接設定","面接実施"];
+const ACTIVE_STATUSES=["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
 const STATE="recruit_list_filter_state";
 const NAV="recruit_list_navigation_state";
 
@@ -256,6 +256,7 @@ function validDate(s){
 
 function isActionRequired(r){
   const st=String(r.status||"");
+  if(["入社","辞退","不採用","不通","保留"].includes(st))return false;
   if(st==="面接実施"&&(r.hiring_result==="採用"||r.hiring_result==="不採用"))return false;
   if(!ACTIVE_STATUSES.includes(st))return false;
   if(!r.next_action_date)return true;
@@ -284,6 +285,7 @@ function badge(v){
   const style=v?` style="color:${esc(color)};border-color:${esc(hexToRgba(color,.34))};background:${esc(hexToRgba(color,.10))}"`:"";
   return `<span class="${cls}"${style}>${esc(t)}</span>`;
 }
+
 function getFiscalYearFromAppliedDate(dateStr){
   if(!dateStr)return "";
   const dt=new Date(dateStr+"T00:00:00");
@@ -559,21 +561,33 @@ async function loadListMasterStatuses(rows=[]){
   }catch(e){
     console.warn("ステータスマスタ読込失敗", e);
     const names=window.RecruitMaster ? await window.RecruitMaster.list("statuses").catch(()=>[]) : [];
-    listMasterStatuses=(names||[]).map((name,index)=>({name:String(name||"").trim(),color:"#64748b",display_order:index+1})).filter(row=>row.name);
+    listMasterStatuses=(names||[]).map((name,index)=>({
+      name:String(name||"").trim(),
+      color:window.recruitStatusDefaultColor ? window.recruitStatusDefaultColor(String(name||"").trim()) : "#64748b",
+      display_order:index+1
+    })).filter(row=>row.name);
   }
 
   if(!listMasterStatuses.length){
     listMasterStatuses=[...new Set((rows||[]).map(r=>String(r.status||"").trim()).filter(Boolean))]
       .sort((a,b)=>String(a).localeCompare(String(b),"ja"))
-      .map((name,index)=>({name,color:"#64748b",display_order:index+1}));
+      .map((name,index)=>({
+        name,
+        color:window.recruitStatusDefaultColor ? window.recruitStatusDefaultColor(name) : "#64748b",
+        display_order:index+1
+      }));
   }
 
-  if(!listMasterStatuses.some(row=>row.name==="書類選考")){
-    const baseOrder=["応募","書類選考","アポ取得","面接設定","面接実施","内定","入社","辞退","不通","保留"];
-    const order=baseOrder.indexOf("書類選考")+1;
-    listMasterStatuses.push({name:"書類選考",color:"#0369a1",display_order:order});
-    listMasterStatuses.sort((a,b)=>(Number(a.display_order||999)-Number(b.display_order||999)) || String(a.name).localeCompare(String(b.name),"ja"));
-  }
+  const currentRowsByName=new Map(listMasterStatuses.map(row=>[row.name,row]));
+  const mergedNames=window.mergeRecruitStatusNames ? window.mergeRecruitStatusNames(listMasterStatuses.map(row=>row.name)) : listMasterStatuses.map(row=>row.name);
+  listMasterStatuses=mergedNames.map((name,index)=>{
+    const current=currentRowsByName.get(name);
+    return {
+      name,
+      color:normalizeStatusColor(current?.color || (window.recruitStatusDefaultColor ? window.recruitStatusDefaultColor(name) : "#64748b")),
+      display_order:Number(current?.display_order || (index+1)*10)
+    };
+  });
 
   statusColorMap=Object.fromEntries(listMasterStatuses.map(row=>[row.name,normalizeStatusColor(row.color)]));
 }
