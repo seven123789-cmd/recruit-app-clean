@@ -351,7 +351,7 @@ function isActionRequired(row){
   const status = String(row.status || "").trim();
   const hiringResult = String(row.hiring_result || "").trim();
   if (status === "採用") return false;
-  if (["採用","不採用","辞退","不通","保留"].includes(hiringResult)) return false;
+  if (["採用","入社済","不採用","辞退","不通","保留"].includes(hiringResult)) return false;
   const activeStatuses = ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
   if (!activeStatuses.includes(status)) return false;
   if (!row.next_action_date) return true;

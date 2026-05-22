@@ -134,7 +134,7 @@
             <div class="list-status-filter-head">
               <div>
                 <span class="list-filter-label">選考結果</span>
-                <span class="list-filter-note">未判定・保留・辞退・不採用・採用・不通を複数選択可</span>
+                <span class="list-filter-note">進行中・保留・辞退・不採用・不通・採用・入社済を複数選択可</span>
               </div>
               <button class="btn-secondary list-status-clear" type="button" onclick="clearResultFilters()">選考結果解除</button>
             </div>
@@ -243,7 +243,7 @@ let dashboardJob="";
 const selectedIds = new Set();
 
 const ACTIVE_STATUSES=["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
-const HIRING_RESULT_OPTIONS=["未判定","保留","辞退","不採用","不通","採用","入社済"];
+const HIRING_RESULT_OPTIONS=["進行中","保留","辞退","不採用","不通","採用","入社済"];
 const STATE="recruit_list_filter_state";
 const NAV="recruit_list_navigation_state";
 
@@ -268,9 +268,9 @@ function validDate(s){
 
 function isActionRequired(r){
   const st=String(r.status||"").trim();
-  const result=String(r.hiring_result||"").trim();
+  const result=normalizeHiringResult(r);
   if(st === "採用")return false;
-  if(["採用","不採用","辞退","不通","保留"].includes(result))return false;
+  if(result !== "進行中")return false;
   if(!ACTIVE_STATUSES.includes(st))return false;
   if(!r.next_action_date)return true;
   return daysBetween(todayStr(),r.next_action_date)<=1;
@@ -300,11 +300,11 @@ function normalizeHiringResult(row){
   const result=String(row?.hiring_result||"").trim();
   if(result) return result;
   const legacyStatus=String(row?.status||"").trim();
-  return ["保留","辞退","不採用","不通"].includes(legacyStatus) ? legacyStatus : "未判定";
+  return ["保留","辞退","不採用","不通","採用","入社済"].includes(legacyStatus) ? legacyStatus : "進行中";
 }
 function resultBadge(row){
   const result=normalizeHiringResult(row);
-  const cls=result==="採用"?"result-hired":result==="不採用"?"result-rejected":result==="辞退"?"result-declined":result==="不通"?"result-no-contact":result==="保留"?"result-hold":"result-pending";
+  const cls=result==="入社済"?"result-joined":result==="採用"?"result-hired":result==="不採用"?"result-rejected":result==="辞退"?"result-declined":result==="不通"?"result-no-contact":result==="保留"?"result-hold":"result-pending";
   return `<span class="result-badge ${cls}">${esc(result)}</span>`;
 }
 function statusResultCell(row){

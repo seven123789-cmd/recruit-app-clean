@@ -1562,12 +1562,13 @@
         <div>
           <label for="hiringResult">選考結果</label>
           <select id="hiringResult">
-            <option value="未判定">未判定</option>
+            <option value="進行中">進行中</option>
             <option value="保留">保留</option>
             <option value="辞退">辞退</option>
             <option value="不採用">不採用</option>
-            <option value="採用">採用</option>
             <option value="不通">不通</option>
+            <option value="採用">採用</option>
+            <option value="入社済">入社済</option>
           </select>
         </div>
 
@@ -1766,7 +1767,7 @@ let CHANNEL_OPTIONS = [];
 let CHANNEL_DETAIL_OPTIONS = [];
 let STATUS_OPTIONS = [];
 const STAGE_STATUS_OPTIONS = ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
-const HIRING_RESULT_OPTIONS = ["未判定","保留","辞退","不採用","不通","採用","入社済"];
+const HIRING_RESULT_OPTIONS = ["進行中","保留","辞退","不採用","不通","採用","入社済"];
 let DECLINE_REASON_OPTIONS = [];
 let REJECT_REASON_OPTIONS = [];
 
@@ -2189,8 +2190,9 @@ function normalizeDetailHiringResult(value){
   const raw = String(value || "").trim();
   if (window.normalizeRecruitHiringResult) return window.normalizeRecruitHiringResult(raw);
   if (raw === "合格") return "採用";
-  if (!raw || raw === "未設定") return "未判定";
-  return HIRING_RESULT_OPTIONS.includes(raw) ? raw : "未判定";
+  if (!raw || raw === "未設定" || raw === "進行中") return "進行中";
+  if (raw === "合格") return "採用";
+  return HIRING_RESULT_OPTIONS.includes(raw) ? raw : "進行中";
 }
 
 function renderHiringResultOptions(){
@@ -2198,7 +2200,7 @@ function renderHiringResultOptions(){
   if (!select) return;
   const current = normalizeDetailHiringResult(select.dataset.currentValue || select.value || "");
   select.innerHTML = HIRING_RESULT_OPTIONS.map(name => '<option value="' + escapeAttr(name) + '">' + escapeHtml(name) + '</option>').join("");
-  select.value = HIRING_RESULT_OPTIONS.includes(current) ? current : "未判定";
+  select.value = HIRING_RESULT_OPTIONS.includes(current) ? current : "進行中";
   delete select.dataset.currentValue;
 }
 
@@ -2235,7 +2237,7 @@ function setSelectValuePreserve(id, value){
     option.textContent = normalized + "（現在値）";
     select.appendChild(option);
   }
-  select.value = normalized || (id === "hiringResult" ? "未判定" : "");
+  select.value = normalized || (id === "hiringResult" ? "進行中" : "");
   select.dataset.currentValue = normalized;
 }
 
@@ -2361,7 +2363,7 @@ function getActionAdvice(row) {
   const hiringResult = String(row.hiring_result || "").trim();
   const activeStatuses = ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
 
-  if (["採用","不採用","辞退","不通","保留"].includes(hiringResult) || status === "採用") {
+  if (["採用","入社済","不採用","辞退","不通","保留"].includes(hiringResult) || status === "採用") {
     return null;
   }
 
@@ -2649,7 +2651,7 @@ async function moveActionCandidate(step) {
       const hiringResult = String(row.hiring_result || "").trim();
 
       if (status === "採用") return false;
-      if (["採用","不採用","辞退","不通","保留"].includes(hiringResult)) return false;
+      if (["採用","入社済","不採用","辞退","不通","保留"].includes(hiringResult)) return false;
 
       if (!activeStatuses.includes(status)) return false;
 
@@ -2789,7 +2791,7 @@ function collectPayload() {
     join_date: document.getElementById("joinDate").value || null,
 
     status: normalizeDetailStageStatus(document.getElementById("status").value) || null,
-    hiring_result: normalizeDetailHiringResult(document.getElementById("hiringResult").value) || "未判定",
+    hiring_result: normalizeDetailHiringResult(document.getElementById("hiringResult").value) || "進行中",
     reject_reason: document.getElementById("rejectReason").value || null,
     decline_reason: document.getElementById("declineReason").value || null,
     last_action_date: document.getElementById("lastActionDate").value || null,
@@ -2802,7 +2804,7 @@ function collectPayload() {
 // ===== 旧ステータス互換：辞退・不採用・不通・保留・入社は選考結果へ寄せる =====
 const legacyResultStatuses = ["保留","辞退","不採用","不通"];
 if (legacyResultStatuses.includes(payload.status)) {
-  if (!payload.hiring_result || payload.hiring_result === "未判定") payload.hiring_result = payload.status;
+  if (!payload.hiring_result || payload.hiring_result === "進行中") payload.hiring_result = payload.status;
   if (payload.interview_done_date) payload.status = "面接実施";
   else if (payload.interview1_date) payload.status = "面接設定";
   else if (payload.appointment_date) payload.status = "アポ取得";
@@ -2811,23 +2813,21 @@ if (legacyResultStatuses.includes(payload.status)) {
 }
 if (payload.status === "入社") {
   payload.status = "採用";
-  payload.hiring_result = "入社済";
+  payload.hiring_result = "採用";
 }
+if (payload.status === "採用") payload.hiring_result = "採用";
+if (["採用","入社済"].includes(payload.hiring_result)) payload.status = "採用";
+
+// ===== 入社日・採用・終了結果の自動連動 =====
 if (payload.join_date) {
   payload.status = "採用";
   payload.hiring_result = "入社済";
 }
-if (!payload.join_date && payload.hiring_result === "入社済") {
-  payload.hiring_result = "採用";
-}
-if (payload.status === "採用" && (!payload.hiring_result || payload.hiring_result === "未判定")) payload.hiring_result = "採用";
-if (["採用","入社済"].includes(payload.hiring_result)) payload.status = "採用";
 
-// ===== 終了・結果確定は次回対応日を自動クリア =====
-const closedStatuses = ["採用"];
+// 終了・結果確定は次回対応日を自動クリア
 const resultFixed = ["採用","入社済","不採用","辞退","不通","保留"].includes(payload.hiring_result);
 
-if (closedStatuses.includes(payload.status) || resultFixed) {
+if (payload.status === "採用" || resultFixed) {
   payload.next_action_date = null;
 }
 
@@ -2888,12 +2888,6 @@ function quickSetResult(result) {
   const nextActionDate = document.getElementById("nextActionDate");
   if (resultEl) resultEl.value = result;
   if ((["採用","入社済","不採用","辞退","不通","保留"].includes(result)) && nextActionDate) nextActionDate.value = "";
-  if (result === "入社済") {
-    const statusEl = document.getElementById("status");
-    if (statusEl && statusEl.value !== "採用") statusEl.value = "採用";
-    const joinDate = document.getElementById("joinDate");
-    if (joinDate && !joinDate.value) joinDate.value = new Date().toISOString().slice(0, 10);
-  }
   if (result === "採用") {
     const statusEl = document.getElementById("status");
     if (statusEl && statusEl.value !== "採用") statusEl.value = "採用";
@@ -2906,8 +2900,7 @@ function quickSetResult(result) {
 }
 
 function handleStatusChange() {
-  const statusEl = document.getElementById("status");
-  const status = statusEl ? statusEl.value : "";
+  const status = document.getElementById("status").value;
   const today = new Date().toISOString().slice(0, 10);
 
   const appointmentDate = document.getElementById("appointmentDate");
@@ -2937,22 +2930,7 @@ function handleStatusChange() {
 
   if (status === "採用") {
     if (offerDate && !offerDate.value) offerDate.value = today;
-    if (hiringResult && (!hiringResult.value || hiringResult.value === "未判定")) hiringResult.value = "採用";
-  }
-
-  if (joinDate && joinDate.value && hiringResult) {
-    hiringResult.value = "入社済";
-  }
-
-  if (joinDate && !joinDate.dataset.joinSyncBound) {
-    joinDate.dataset.joinSyncBound = "1";
-    joinDate.addEventListener("change", function(){
-      if (hiringResult) hiringResult.value = this.value ? "入社済" : (status === "採用" ? "採用" : "未判定");
-      if (this.value && statusEl) statusEl.value = "採用";
-      if (nextActionDate && this.value) nextActionDate.value = "";
-      handleStatusChange();
-      markDirty();
-    });
+    if (hiringResult) hiringResult.value = "採用";
   }
 
   const closedStatuses = ["採用"];
@@ -3028,16 +3006,10 @@ function validatePayload(payload) {
   }
 
   // ===== ステータス連動チェック =====
-  // 進行中：次回対応日が必須
-  // 終了・結果確定：次回対応日不要
-  // 内定は入社前辞退があるため、選考結果=採用は強制しない
-  const activeStatuses = ["応募","書類選考","アポ取得","面接設定"];
-
-  const interviewInProgress =
-    payload.status === "面接実施" && !payload.hiring_result;
-
-  if ((activeStatuses.includes(payload.status) || interviewInProgress) && !payload.next_action_date) {
-    messages.push("進行中ステータスでは、次回対応日を入力してください。");
+  // 選考結果=進行中の案件だけ、次回対応日を必須にする。
+  // 保留・辞退・不採用・不通・採用・入社済は終了/保留扱いのため次回対応日は不要。
+  if (payload.hiring_result === "進行中" && payload.status !== "採用" && !payload.next_action_date) {
+    messages.push("選考結果が進行中の場合は、次回対応日を入力してください。");
   }
 
   if (payload.status === "アポ取得" && !payload.appointment_date) {
@@ -3064,12 +3036,16 @@ function validatePayload(payload) {
     messages.push("内定なのに内定日が未入力です。");
   }
 
-  if (payload.status === "採用" && payload.hiring_result !== "採用") {
-    messages.push("採用ステータスの場合は、選考結果を採用にしてください。");
+  if (payload.status === "採用" && !["採用","入社済"].includes(payload.hiring_result)) {
+    messages.push("採用ステータスの場合は、選考結果を採用または入社済にしてください。");
   }
 
-  if (payload.hiring_result === "採用" && payload.status !== "採用") {
-    messages.push("選考結果が採用の場合は、ステータスも採用にしてください。");
+  if (["採用","入社済"].includes(payload.hiring_result) && payload.status !== "採用") {
+    messages.push("選考結果が採用または入社済の場合は、ステータスも採用にしてください。");
+  }
+
+  if (payload.hiring_result === "入社済" && !payload.join_date) {
+    messages.push("選考結果が入社済なのに入社日が未入力です。");
   }
 
   if (payload.hiring_result === "辞退" && !payload.decline_reason) {

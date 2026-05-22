@@ -52,8 +52,8 @@
   ];
 
   const RECRUIT_DEPRECATED_STATUS_NAMES = ["入社","辞退","不採用","不通","保留"];
-  const RECRUIT_HIRING_RESULT_DEFAULTS = ["未判定","保留","辞退","不採用","採用","不通"];
-  const RECRUIT_LEGACY_RESULT_MAP = { "合格":"採用", "未設定":"未判定", "":"未判定" };
+  const RECRUIT_HIRING_RESULT_DEFAULTS = ["進行中","保留","辞退","不採用","不通","採用","入社済"];
+  const RECRUIT_LEGACY_RESULT_MAP = { "合格":"採用", "進行中":"進行中", "未設定":"進行中", "":"進行中" };
 
   function recruitStatusDefaultNames(){
     return RECRUIT_STATUS_MASTER_DEFAULTS.map(row => row.name);
@@ -70,7 +70,7 @@
   function normalizeRecruitHiringResult(value){
     const raw = String(value ?? "").trim();
     const mapped = Object.prototype.hasOwnProperty.call(RECRUIT_LEGACY_RESULT_MAP, raw) ? RECRUIT_LEGACY_RESULT_MAP[raw] : raw;
-    return RECRUIT_HIRING_RESULT_DEFAULTS.includes(mapped) ? mapped : "未判定";
+    return RECRUIT_HIRING_RESULT_DEFAULTS.includes(mapped) ? mapped : "進行中";
   }
 
   function normalizeRecruitStageStatus(value){
@@ -127,7 +127,7 @@
   function isFinal(row){
     const r = row || {};
     const status = String(r.status || "").trim();
-    return isRecruitHired(r) || ["不採用","辞退","不通","保留"].includes(String(r.hiring_result || "").trim()) || ["不採用","辞退","不通","保留","入社"].includes(status);
+    return isRecruitHired(r) || ["不採用","辞退","不通","保留","採用","入社済"].includes(String(r.hiring_result || "").trim()) || ["不採用","辞退","不通","保留","入社"].includes(status);
   }
 
 

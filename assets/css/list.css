@@ -385,6 +385,12 @@ tbody tr.action-missing td:first-child{
   border-color:#fecdd3;
   color:#be123c;
 }
+
+.result-badge.result-joined{
+  color:#047857;
+  border-color:#a7f3d0;
+  background:#ecfdf5;
+}
 .result-badge.result-pending{
   background:#f8fafc;
   border-color:#e2e8f0;

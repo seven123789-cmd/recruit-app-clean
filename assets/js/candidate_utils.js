@@ -39,7 +39,7 @@ function isFinal(row){
   if(window.isFinal) return window.isFinal(row);
   const status=String(row?.status||"");
   const result=String(row?.hiring_result||"");
-  return status === "採用" || ["採用","不採用","辞退","不通","保留"].includes(result) || ["辞退","不採用","不通","保留"].includes(status) || !!row?.join_date;
+  return status === "採用" || ["採用","入社済","不採用","辞退","不通","保留"].includes(result) || ["辞退","不採用","不通","保留"].includes(status) || !!row?.join_date;
 }
 
 function setChoiceActive(selector, value, attrName){
