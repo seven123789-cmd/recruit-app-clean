@@ -1566,7 +1566,6 @@
         <div>
           <label for="hiringResult">選考結果</label>
           <select id="hiringResult">
-            <option value="">未設定</option>
             <option value="未判定">未判定</option>
             <option value="保留">保留</option>
             <option value="辞退">辞退</option>
@@ -1770,6 +1769,8 @@ let JOB_TYPE_OPTIONS = [];
 let CHANNEL_OPTIONS = [];
 let CHANNEL_DETAIL_OPTIONS = [];
 let STATUS_OPTIONS = [];
+const STAGE_STATUS_OPTIONS = ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
+const HIRING_RESULT_OPTIONS = ["未判定","保留","辞退","不採用","採用","不通"];
 let DECLINE_REASON_OPTIONS = [];
 let REJECT_REASON_OPTIONS = [];
 
@@ -2118,7 +2119,7 @@ async function loadOptionMasters(){
     JOB_TYPE_OPTIONS = normalizeMasterOptions(masters.jobTypes);
     CHANNEL_OPTIONS = normalizeMasterOptions(masters.channels);
     CHANNEL_DETAIL_OPTIONS = normalizeMasterOptions(masters.channelDetails);
-    STATUS_OPTIONS = normalizeMasterOptions(masters.statuses);
+    STATUS_OPTIONS = window.mergeRecruitStatusNames ? window.mergeRecruitStatusNames(masters.statuses) : normalizeMasterOptions(masters.statuses);
     DECLINE_REASON_OPTIONS = normalizeMasterOptions(masters.declineReasons);
     REJECT_REASON_OPTIONS = normalizeMasterOptions(masters.rejectReasons);
   } else {
@@ -2133,7 +2134,7 @@ async function loadOptionMasters(){
     JOB_TYPE_OPTIONS = normalizeMasterOptions(jobTypes);
     CHANNEL_OPTIONS = normalizeMasterOptions(channels);
     CHANNEL_DETAIL_OPTIONS = normalizeMasterOptions(channelDetails);
-    STATUS_OPTIONS = normalizeMasterOptions(statuses);
+    STATUS_OPTIONS = window.mergeRecruitStatusNames ? window.mergeRecruitStatusNames(statuses) : normalizeMasterOptions(statuses);
     DECLINE_REASON_OPTIONS = normalizeMasterOptions(declineReasons);
     REJECT_REASON_OPTIONS = normalizeMasterOptions(rejectReasons);
   }
@@ -2142,6 +2143,7 @@ async function loadOptionMasters(){
   renderChannelOptions();
   renderChannelDetailOptions();
   renderDetailMasterSelect("status", STATUS_OPTIONS, "選択");
+  renderHiringResultOptions();
   renderDetailMasterSelect("declineReason", DECLINE_REASON_OPTIONS, "未選択");
   renderDetailMasterSelect("rejectReason", REJECT_REASON_OPTIONS, "未選択");
   if (window.RecruitMaster && typeof window.RecruitMaster.applyToPage === "function" && masters) {
@@ -2178,34 +2180,66 @@ function renderChannelDetailOptions(){
   list.innerHTML = CHANNEL_DETAIL_OPTIONS.map(name => '<option value="' + escapeAttr(name) + '">').join("");
 }
 
+function normalizeDetailStageStatus(value){
+  const raw = String(value || "").trim();
+  if (window.normalizeRecruitStageStatus) return window.normalizeRecruitStageStatus(raw);
+  if (STAGE_STATUS_OPTIONS.includes(raw)) return raw;
+  if (raw === "入社") return "採用";
+  if (["辞退","不採用","不通","保留"].includes(raw)) return "";
+  return raw;
+}
+
+function normalizeDetailHiringResult(value){
+  const raw = String(value || "").trim();
+  if (window.normalizeRecruitHiringResult) return window.normalizeRecruitHiringResult(raw);
+  if (raw === "合格") return "採用";
+  if (!raw || raw === "未設定") return "未判定";
+  return HIRING_RESULT_OPTIONS.includes(raw) ? raw : "未判定";
+}
+
+function renderHiringResultOptions(){
+  const select = document.getElementById("hiringResult");
+  if (!select) return;
+  const current = normalizeDetailHiringResult(select.dataset.currentValue || select.value || "");
+  select.innerHTML = HIRING_RESULT_OPTIONS.map(name => '<option value="' + escapeAttr(name) + '">' + escapeHtml(name) + '</option>').join("");
+  select.value = HIRING_RESULT_OPTIONS.includes(current) ? current : "未判定";
+  delete select.dataset.currentValue;
+}
+
 function renderDetailMasterSelect(id, values, blankLabel){
   const select = document.getElementById(id);
   if (!select) return;
-  const current = select.dataset.currentValue || select.value || "";
-  const list = normalizeMasterOptions(values);
+  let current = select.dataset.currentValue || select.value || "";
+  let list = normalizeMasterOptions(values);
+  if (id === "status") {
+    list = window.mergeRecruitStatusNames ? window.mergeRecruitStatusNames(list) : STAGE_STATUS_OPTIONS.slice();
+    current = normalizeDetailStageStatus(current);
+  }
   let html = '<option value="">' + escapeHtml(blankLabel || "選択") + '</option>';
   list.forEach(name => {
     html += '<option value="' + escapeAttr(name) + '">' + escapeHtml(name) + '</option>';
   });
-  if (current && !list.includes(current)) {
+  if (current && !list.includes(current) && id !== "status") {
     html += '<option value="' + escapeAttr(current) + '">' + escapeHtml(current) + '（現在値）</option>';
   }
   select.innerHTML = html;
-  select.value = current || "";
+  select.value = current && list.includes(current) ? current : "";
   delete select.dataset.currentValue;
 }
 
 function setSelectValuePreserve(id, value){
   const select = document.getElementById(id);
   if (!select) return;
-  const normalized = valueOrBlank(value);
-  if (normalized && ![...select.options].some(option => option.value === normalized)) {
+  let normalized = valueOrBlank(value);
+  if (id === "status") normalized = normalizeDetailStageStatus(normalized);
+  if (id === "hiringResult") normalized = normalizeDetailHiringResult(normalized);
+  if (normalized && ![...select.options].some(option => option.value === normalized) && id !== "status" && id !== "hiringResult") {
     const option = document.createElement("option");
     option.value = normalized;
     option.textContent = normalized + "（現在値）";
     select.appendChild(option);
   }
-  select.value = normalized;
+  select.value = normalized || (id === "hiringResult" ? "未判定" : "");
   select.dataset.currentValue = normalized;
 }
 
@@ -2495,7 +2529,8 @@ function fillCandidate(row) {
   setFieldValue("joinDate", row.join_date);
   setFieldValue("status", row.status);
   renderDetailMasterSelect("status", STATUS_OPTIONS, "選択");
-  setFieldValue("hiringResult", row.hiring_result);
+  renderHiringResultOptions();
+  setFieldValue("hiringResult", normalizeDetailHiringResult(row.hiring_result));
   setFieldValue("rejectReason", row.reject_reason);
   renderDetailMasterSelect("rejectReason", REJECT_REASON_OPTIONS, "未選択");
   setFieldValue("declineReason", row.decline_reason);
@@ -2757,8 +2792,8 @@ function collectPayload() {
     offer_date: document.getElementById("offerDate").value || null,
     join_date: document.getElementById("joinDate").value || null,
 
-    status: document.getElementById("status").value || null,
-    hiring_result: document.getElementById("hiringResult").value || null,
+    status: normalizeDetailStageStatus(document.getElementById("status").value) || null,
+    hiring_result: normalizeDetailHiringResult(document.getElementById("hiringResult").value) || "未判定",
     reject_reason: document.getElementById("rejectReason").value || null,
     decline_reason: document.getElementById("declineReason").value || null,
     last_action_date: document.getElementById("lastActionDate").value || null,

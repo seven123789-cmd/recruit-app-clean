@@ -53,6 +53,7 @@
 
   const RECRUIT_DEPRECATED_STATUS_NAMES = ["入社","辞退","不採用","不通","保留"];
   const RECRUIT_HIRING_RESULT_DEFAULTS = ["未判定","保留","辞退","不採用","採用","不通"];
+  const RECRUIT_LEGACY_RESULT_MAP = { "合格":"採用", "未設定":"未判定", "":"未判定" };
 
   function recruitStatusDefaultNames(){
     return RECRUIT_STATUS_MASTER_DEFAULTS.map(row => row.name);
@@ -64,6 +65,20 @@
 
   function recruitHiringResultNames(){
     return RECRUIT_HIRING_RESULT_DEFAULTS.slice();
+  }
+
+  function normalizeRecruitHiringResult(value){
+    const raw = String(value ?? "").trim();
+    const mapped = Object.prototype.hasOwnProperty.call(RECRUIT_LEGACY_RESULT_MAP, raw) ? RECRUIT_LEGACY_RESULT_MAP[raw] : raw;
+    return RECRUIT_HIRING_RESULT_DEFAULTS.includes(mapped) ? mapped : "未判定";
+  }
+
+  function normalizeRecruitStageStatus(value){
+    const raw = String(value ?? "").trim();
+    if(recruitStatusDefaultNames().includes(raw)) return raw;
+    if(raw === "入社") return "採用";
+    if(["辞退","不採用","不通","保留"].includes(raw)) return "";
+    return raw;
   }
 
   function mergeRecruitStatusNames(values){
@@ -163,6 +178,8 @@
   window.RECRUIT_DEPRECATED_STATUS_NAMES = window.RECRUIT_DEPRECATED_STATUS_NAMES || RECRUIT_DEPRECATED_STATUS_NAMES;
   window.isDeprecatedRecruitStatus = window.isDeprecatedRecruitStatus || isDeprecatedRecruitStatus;
   window.recruitHiringResultNames = window.recruitHiringResultNames || recruitHiringResultNames;
+  window.normalizeRecruitHiringResult = window.normalizeRecruitHiringResult || normalizeRecruitHiringResult;
+  window.normalizeRecruitStageStatus = window.normalizeRecruitStageStatus || normalizeRecruitStageStatus;
   window.isValidRecruitDate = window.isValidRecruitDate || isValidRecruitDate;
   window.isRecruitHired = window.isRecruitHired || isRecruitHired;
   window.isRecruitRejected = window.isRecruitRejected || isRecruitRejected;
@@ -501,7 +518,7 @@
         }else if(MASTER_SELECT_IDS.owner.includes(select.id)){
           setMasterSelectOptions(select, orderedOwnerNames(masters.owners), masterBlankLabel(select, "すべて"));
         }else if(MASTER_SELECT_IDS.status.includes(select.id)){
-          setMasterSelectOptions(select, masters.statuses, masterBlankLabel(select, "未設定"));
+          setMasterSelectOptions(select, window.mergeRecruitStatusNames ? window.mergeRecruitStatusNames(masters.statuses) : masters.statuses, masterBlankLabel(select, "選択"));
         }else if(MASTER_SELECT_IDS.declineReason.includes(select.id)){
           setMasterSelectOptions(select, masters.declineReasons, masterBlankLabel(select, "未選択"));
         }else if(MASTER_SELECT_IDS.rejectReason.includes(select.id)){
