@@ -98,6 +98,10 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const sb = window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : null;
+if(!sb){
+  console.error("Supabase client is not initialized.");
+}
 let currentUser=null;
 let currentRole="viewer";
 let CENTER_MASTER={};
