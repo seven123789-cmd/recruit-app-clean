@@ -42,8 +42,8 @@
           <div aria-label="集計状態" class="dashboard-header-meta">
             <span class="dashboard-header-chip">対象年度：<span id="headFy">-</span></span>
             <span class="dashboard-header-chip">採用目標：<span id="headTarget">0</span></span>
-            <span class="dashboard-header-chip">採用決定：<span id="headHired">0</span></span>
-            <span class="dashboard-header-chip">実入社：<span id="headJoined">0</span></span>
+            <span class="dashboard-header-chip">実入社：<span id="headHired">0</span></span>
+            <span class="dashboard-header-chip">入社待ち：<span id="headPendingJoin">0</span></span>
             <span class="dashboard-header-chip">達成率：<span id="headRate">0.0%</span></span>
           </div>
         </div>
@@ -52,7 +52,7 @@
       <section class="year-control-card analysis-control-card">
         <div class="year-control-copy analysis-control-copy">
           <p class="eyebrow">分析条件</p>
-          <h2>年度目標に対する採用進捗を確認</h2>
+          <h2>年度目標に対する実入社進捗を確認</h2>
         </div>
         <div class="year-control-actions analysis-control-form analysis-control-form--4">
           <div class="analysis-field"><label for="fy">対象年度</label><select id="fy" onchange="applyFiscalYear();loadProgress();"><option value="current"></option><option value="previous"></option></select></div>
@@ -67,9 +67,9 @@
 
       <section class="progress-grid">
         <div class="progress-card"><div class="label">年間採用目標</div><div class="value" id="sumTarget">0</div><div class="sub">採用目標マスタ合計</div></div>
-        <div class="progress-card"><div class="label">採用決定</div><div class="value" id="sumHired">0</div><div class="sub">採用・入社済を含む</div></div>
-        <div class="progress-card"><div class="label">実入社</div><div class="value" id="sumJoined">0</div><div class="sub">入社日あり／入社済</div></div>
-        <div class="progress-card"><div class="label">不足人数</div><div class="value" id="sumShortage">0</div><div class="sub">目標 - 採用決定</div></div>
+        <div class="progress-card"><div class="label">実入社</div><div class="value" id="sumHired">0</div><div class="sub">入社日あり／入社済</div></div>
+        <div class="progress-card"><div class="label">不足人数</div><div class="value" id="sumShortage">0</div><div class="sub">目標 - 実入社</div></div>
+        <div class="progress-card"><div class="label">入社待ち</div><div class="value" id="sumPendingJoin">0</div><div class="sub">採用決定済・入社日前</div></div>
       </section>
 
       <section class="card">
@@ -78,18 +78,18 @@
       </section>
 
       <section class="card">
-        <div class="section-head"><div><h2>職種別 年間目標進捗</h2><p class="progress-muted">例：外商員 10 / 60 のように、採用決定数と年間目標を比較します。</p></div></div>
+        <div class="section-head"><div><h2>職種別 年間目標進捗</h2><p class="section-note">大きな数字は「入社日あり」の人数です。応募・内定・入社待ちは参考指標として表示します。</p></div></div>
         <div class="progress-board" id="jobBoard"><div class="progress-empty">読込中です</div></div>
       </section>
 
       <section class="progress-section-grid">
         <section class="card table-card">
-          <div class="table-head"><h2>月別 採用決定数</h2></div>
+          <div class="table-head"><h2>月別 実入社数</h2></div>
           <div class="table-wrap"><table class="progress-table"><thead id="monthHead"></thead><tbody id="monthBody"><tr><td class="progress-empty">読込中です</td></tr></tbody></table></div>
         </section>
         <section class="card table-card">
-          <div class="table-head"><h2>媒体別 採用・入社</h2></div>
-          <div class="table-wrap"><table class="progress-table"><thead><tr><th>媒体</th><th class="num">採用決定</th><th class="num">実入社</th><th class="num">入社率</th></tr></thead><tbody id="channelBody"><tr><td class="progress-empty" colspan="4">読込中です</td></tr></tbody></table></div>
+          <div class="table-head"><h2>媒体別 実入社数</h2></div>
+          <div class="table-wrap"><table class="progress-table"><thead><tr><th>媒体</th><th class="num">実入社</th><th class="num">入社待ち</th><th class="num">応募</th></tr></thead><tbody id="channelBody"><tr><td class="progress-empty" colspan="4">読込中です</td></tr></tbody></table></div>
         </section>
       </section>
       <div class="log-box" id="logBox">待機中</div>
@@ -108,7 +108,7 @@ let CENTER_MASTER={};
 let ALL_CANDIDATES=[];
 let ALL_TARGETS=[];
 const STAGE_STATUSES=["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
-const RESULT_DONE=["採用","入社済"];
+const RESULT_DONE=["入社済"];
 function $(id){return document.getElementById(id)}
 function escLocal(v){return window.escapeHtml?window.escapeHtml(v):String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}
 function setText(id,v){const el=$(id);if(el)el.textContent=String(v)}
@@ -124,22 +124,110 @@ async function refreshAuth(){const {data:{session}={}}=await sb.auth.getSession(
 async function login(){const email=$("loginEmail").value.trim();const password=$("loginPassword").value;if(!email||!password){showAuth("メールアドレスとパスワードを入力してください","error");return}const {error}=await sb.auth.signInWithPassword({email,password});if(error){showAuth("ログイン失敗: "+error.message,"error");return}if(await refreshAuth())await initData()}
 function fiscalRange(){const current=window.getRecruitCurrentFiscalYear?window.getRecruitCurrentFiscalYear():fiscalYearOf(new Date());const raw=String($("fy").value||"current");const fy=raw==="previous"?current-1:(raw.match(/\d{4}/)?Number(raw.match(/\d{4}/)[0]):current);return {fy,from:fy+"-04-01",to:(fy+1)+"-03-31"}}
 function applyFiscalYear(){const r=fiscalRange();$("from").value=r.from;$("to").value=r.to;setText("periodText","対象期間："+r.from+" ～ "+r.to);setText("headFy",r.fy+"年度")}
-function candidateBaseDate(r){return r.join_date||r.offer_date||r.interview_done_date||r.applied_date||""}
-function inRange(row,range){const d=candidateBaseDate(row);return validDate(d)&&d>=range.from&&d<=range.to}
-function isHired(row){return String(row.status||"")==="採用"||RESULT_DONE.includes(String(row.hiring_result||""))||validDate(row.join_date)}
-function isJoined(row){return String(row.hiring_result||"")==="入社済"||validDate(row.join_date)}
-function monthKey(row){const d=row.join_date||row.offer_date||row.interview_done_date||row.applied_date||"";return validDate(d)?d.slice(0,7):"未設定"}
+function dateInRange(v,range){return validDate(v)&&v>=range.from&&v<=range.to}
+function appliedInRange(row,range){return dateInRange(row.applied_date,range)}
+function joinedInRange(row,range){
+  // 採用進捗の実績は「入社日あり」を正とする。
+  // hiring_result=入社済だけでは、旧データ・手入力ミスで人数が膨らむため進捗人数には混ぜない。
+  return dateInRange(row.join_date,range);
+}
+function isHired(row){return validDate(row.join_date)}
+function isJoined(row){return isHired(row)}
+function isPendingJoin(row){return (String(row.status||"")==="採用"||String(row.hiring_result||"")==="採用")&&!isHired(row)}
+function pendingJoinInRange(row,range){
+  if (!isPendingJoin(row)) return false;
+  const d=row.offer_date||row.interview_done_date||row.applied_date||"";
+  return dateInRange(d,range);
+}
+function offerInRange(row,range){
+  if (String(row.status||"")!=="内定") return false;
+  const d=row.offer_date||row.interview_done_date||row.applied_date||"";
+  return dateInRange(d,range);
+}
+function monthKey(row){const d=row.join_date||"";return validDate(d)?d.slice(0,7):"未設定"}
 function keyOf(v){return String(v||"未設定").trim()||"未設定"}
 function monthLabels(fy){const a=[];for(let i=0;i<12;i++){const m=((i+3)%12)+1;const y=m>=4?fy:fy+1;a.push(y+"-"+String(m).padStart(2,"0"))}return a}
 function matchesFilters(row){const div=$("divisionFilter").value;const cen=$("centerFilter").value;const job=$("jobFilter").value;if(div&&String(row.division||"")!==div)return false;if(cen&&String(row.center_name||"")!==cen)return false;if(job&&String(row.job_type||"")!==job)return false;return true}
 function targetMatches(t){const div=$("divisionFilter").value;const cen=$("centerFilter").value;const job=$("jobFilter").value;if(div&&String(t.division||"")!==div)return false;if(cen&&String(t.center_name||"")!==cen)return false;if(job&&String(t.job_type||"")!==job)return false;return true}
 function updateCenterOptions(){const div=$("divisionFilter").value;const current=$("centerFilter").value;let centers=[];if(div)centers=CENTER_MASTER[div]||[];else Object.values(CENTER_MASTER).forEach(list=>centers.push(...list));centers=[...new Set(centers.filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ja"));$("centerFilter").innerHTML='<option value="">すべて</option>'+centers.map(v=>`<option value="${escLocal(v)}">${escLocal(v)}</option>`).join("");if(centers.includes(current))$("centerFilter").value=current}
 function populateFilters(){const divisions=[...new Set([...ALL_CANDIDATES.map(r=>r.division),...ALL_TARGETS.map(r=>r.division)].filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));$("divisionFilter").innerHTML='<option value="">すべて</option>'+divisions.map(v=>`<option value="${escLocal(v)}">${escLocal(v)}</option>`).join("");CENTER_MASTER={};[...ALL_CANDIDATES,...ALL_TARGETS].forEach(r=>{const d=r.division||"";const c=r.center_name||"";if(!d||!c)return;if(!CENTER_MASTER[d])CENTER_MASTER[d]=[];CENTER_MASTER[d].push(c)});Object.keys(CENTER_MASTER).forEach(k=>CENTER_MASTER[k]=[...new Set(CENTER_MASTER[k])].sort((a,b)=>a.localeCompare(b,"ja")));updateCenterOptions();const jobs=[...new Set([...ALL_CANDIDATES.map(r=>r.job_type),...ALL_TARGETS.map(r=>r.job_type)].filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));$("jobFilter").innerHTML='<option value="">すべて</option>'+jobs.map(v=>`<option value="${escLocal(v)}">${escLocal(v)}</option>`).join("")}
-function renderJobBoard(items,totalTarget,totalHired){const box=$("jobBoard");if(!items.length){box.innerHTML='<div class="progress-empty">採用目標または採用実績がありません。</div>';return}box.innerHTML=items.map(x=>{const pct=rateNum(x.hired,x.target);const width=Math.max(0,Math.min(100,pct));const shortage=Math.max(x.target-x.hired,0);return `<article class="progress-job-card"><div class="progress-job-head"><div><div class="progress-job-title">${escLocal(x.job)}</div><div class="progress-job-meta">年度目標に対する採用決定進捗</div></div><div><div class="progress-main-number">${x.hired} / ${x.target}</div><div class="progress-rate">${x.target?rate(x.hired,x.target):"目標未設定"}</div></div></div><div class="progress-bar-track"><div class="progress-bar-fill" style="width:${width}%"></div></div><div class="progress-job-stats"><div class="progress-mini"><span>不足</span><strong>${shortage}</strong></div><div class="progress-mini"><span>実入社</span><strong>${x.joined}</strong></div><div class="progress-mini"><span>入社率</span><strong>${rate(x.joined,x.hired)}</strong></div><div class="progress-mini"><span>内定</span><strong>${x.offer}</strong></div><div class="progress-mini"><span>応募</span><strong>${x.applied}</strong></div></div></article>`}).join("")}
-function renderMonthTable(months,jobs,rows){$("monthHead").innerHTML='<tr><th>月</th>'+jobs.map(j=>`<th class="num">${escLocal(j)}</th>`).join("")+'<th class="num">合計</th></tr>';const map=new Map();rows.filter(isHired).forEach(r=>{const m=monthKey(r);const j=keyOf(r.job_type);const k=m+'|'+j;map.set(k,(map.get(k)||0)+1)});$("monthBody").innerHTML=months.map(m=>{let total=0;const cells=jobs.map(j=>{const n=map.get(m+'|'+j)||0;total+=n;return `<td class="num">${n}</td>`}).join("");return `<tr><td>${m}</td>${cells}<td class="num"><strong>${total}</strong></td></tr>`}).join("")}
-function renderChannels(rows){const m=new Map();rows.forEach(r=>{const ch=keyOf(r.channel);if(!m.has(ch))m.set(ch,{channel:ch,hired:0,joined:0});const x=m.get(ch);if(isHired(r))x.hired++;if(isJoined(r))x.joined++});const items=[...m.values()].filter(x=>x.hired||x.joined).sort((a,b)=>b.hired-a.hired||b.joined-a.joined||a.channel.localeCompare(b.channel,"ja"));$("channelBody").innerHTML=items.length?items.map(x=>`<tr><td>${escLocal(x.channel)}</td><td class="num">${x.hired}</td><td class="num">${x.joined}</td><td class="num">${rate(x.joined,x.hired)}</td></tr>`).join(""):'<tr><td colspan="4" class="progress-empty">媒体別の採用実績がありません。</td></tr>'}
-function loadProgress(){applyFiscalYear();const range=fiscalRange();const rows=ALL_CANDIDATES.filter(r=>inRange(r,range)).filter(matchesFilters);const targets=ALL_TARGETS.filter(t=>Number(t.fiscal_year)===range.fy).filter(targetMatches);const targetByJob=new Map();targets.forEach(t=>{const j=keyOf(t.job_type);targetByJob.set(j,(targetByJob.get(j)||0)+Number(t.target_count||0))});const jobs=[...new Set([...targetByJob.keys(),...rows.map(r=>keyOf(r.job_type))])].filter(Boolean).sort((a,b)=>a.localeCompare(b,"ja"));const items=jobs.map(job=>{const jobRows=rows.filter(r=>keyOf(r.job_type)===job);return {job,target:targetByJob.get(job)||0,hired:jobRows.filter(isHired).length,joined:jobRows.filter(isJoined).length,offer:jobRows.filter(r=>String(r.status||"")==="内定").length,applied:jobRows.filter(r=>validDate(r.applied_date)).length}}).sort((a,b)=>(b.target-a.target)||(b.hired-a.hired)||a.job.localeCompare(b.job,"ja"));const totalTarget=items.reduce((s,x)=>s+x.target,0);const totalHired=items.reduce((s,x)=>s+x.hired,0);const totalJoined=items.reduce((s,x)=>s+x.joined,0);const shortage=Math.max(totalTarget-totalHired,0);["sumTarget","headTarget"].forEach(id=>setText(id,totalTarget));["sumHired","headHired"].forEach(id=>setText(id,totalHired));["sumJoined","headJoined"].forEach(id=>setText(id,totalJoined));setText("sumShortage",shortage);setText("headRate",rate(totalHired,totalTarget));const top=items.slice().sort((a,b)=>b.hired-a.hired)[0];const monthIndex=new Date(range.to+"T00:00:00").getMonth()+1;$("progressComment").textContent=top?`${range.fy}年度の採用決定は目標${totalTarget}名に対して${totalHired}名、達成率は${rate(totalHired,totalTarget)}です。実入社は${totalJoined}名で、入社率は${rate(totalJoined,totalHired)}です。職種別では${top.job}が${top.hired}名で最多です。`:`${range.fy}年度の採用進捗データがありません。`;renderJobBoard(items,totalTarget,totalHired);renderMonthTable(monthLabels(range.fy),jobs,rows);renderChannels(rows);log(`採用進捗を更新しました（${rows.length}件）`,"success")}
-async function initData(){applyFiscalYear();if(window.refreshRecruitFiscalYearSelectLabels)window.refreshRecruitFiscalYearSelectLabels(document);log("データ読込中です","info");let c=sb.from("candidates").select("id,name,division,center_name,job_type,channel,status,hiring_result,applied_date,offer_date,join_date,interview_done_date,is_deleted");if(currentRole!=="admin")c=c.or("is_deleted.is.null,is_deleted.eq.false");const [candidateRes,targetRes]=await Promise.all([c, sb.from("recruitment_targets").select("*")]);if(candidateRes.error)throw candidateRes.error;if(targetRes.error)throw targetRes.error;ALL_CANDIDATES=candidateRes.data||[];ALL_TARGETS=(targetRes.data||[]).filter(r=>r.is_active!==false);populateFilters();loadProgress()}
+function renderJobBoard(items,totalTarget,totalHired){
+  const box=$("jobBoard");
+  if(!items.length){box.innerHTML='<div class="progress-empty">採用目標または採用実績がありません。</div>';return}
+  box.innerHTML=items.map(x=>{
+    const pct=rateNum(x.hired,x.target);
+    const width=Math.max(0,Math.min(100,pct));
+    const shortage=Math.max(x.target-x.hired,0);
+    return `<article class="progress-job-card"><div class="progress-job-head"><div><div class="progress-job-title">${escLocal(x.job)}</div><div class="progress-job-meta">年間目標に対する実入社進捗</div></div><div><div class="progress-main-number">${x.hired} / ${x.target}</div><div class="progress-rate">${x.target?rate(x.hired,x.target):"目標未設定"}</div></div></div><div class="progress-bar-track"><div class="progress-bar-fill" style="width:${width}%"></div></div><div class="progress-job-stats"><div class="progress-mini"><span>不足</span><strong>${shortage}</strong></div><div class="progress-mini"><span>入社待ち</span><strong>${x.pendingJoin}</strong></div><div class="progress-mini"><span>内定</span><strong>${x.offer}</strong></div><div class="progress-mini"><span>応募</span><strong>${x.applied}</strong></div></div></article>`
+  }).join("")
+}
+function renderMonthTable(months,jobs,joinedRows){
+  $("monthHead").innerHTML='<tr><th>月</th>'+jobs.map(j=>`<th class="num">${escLocal(j)}</th>`).join("")+'<th class="num">合計</th></tr>';
+  const map=new Map();
+  joinedRows.forEach(r=>{const m=monthKey(r);const j=keyOf(r.job_type);const k=m+'|'+j;map.set(k,(map.get(k)||0)+1)});
+  $("monthBody").innerHTML=months.map(m=>{let total=0;const cells=jobs.map(j=>{const n=map.get(m+'|'+j)||0;total+=n;return `<td class="num">${n}</td>`}).join("");return `<tr><td>${m}</td>${cells}<td class="num"><strong>${total}</strong></td></tr>`}).join("")
+}
+function renderChannels(appliedRows,joinedRows,pendingRows){
+  const m=new Map();
+  function rowFor(channel){const ch=keyOf(channel);if(!m.has(ch))m.set(ch,{channel:ch,hired:0,pendingJoin:0,applied:0});return m.get(ch)}
+  appliedRows.forEach(r=>rowFor(r.channel).applied++);
+  joinedRows.forEach(r=>rowFor(r.channel).hired++);
+  pendingRows.forEach(r=>rowFor(r.channel).pendingJoin++);
+  const items=[...m.values()].filter(x=>x.hired||x.pendingJoin||x.applied).sort((a,b)=>b.hired-a.hired||b.pendingJoin-a.pendingJoin||b.applied-a.applied||a.channel.localeCompare(b.channel,"ja"));
+  $("channelBody").innerHTML=items.length?items.map(x=>`<tr><td>${escLocal(x.channel)}</td><td class="num">${x.hired}</td><td class="num">${x.pendingJoin}</td><td class="num">${x.applied}</td></tr>`).join(""):'<tr><td colspan="4" class="progress-empty">媒体別の実入社・応募実績がありません。</td></tr>'
+}
+function loadProgress(){
+  applyFiscalYear();
+  const range=fiscalRange();
+  const filteredAll=ALL_CANDIDATES.filter(matchesFilters);
+  const appliedRows=filteredAll.filter(r=>appliedInRange(r,range));
+  const joinedRows=filteredAll.filter(r=>joinedInRange(r,range));
+  const pendingRows=filteredAll.filter(r=>pendingJoinInRange(r,range));
+  const offerRows=filteredAll.filter(r=>offerInRange(r,range));
+  const targets=ALL_TARGETS.filter(t=>Number(t.fiscal_year)===range.fy).filter(targetMatches);
+  const targetByJob=new Map();
+  targets.forEach(t=>{const j=keyOf(t.job_type);targetByJob.set(j,(targetByJob.get(j)||0)+Number(t.target_count||0))});
+  const jobs=[...new Set([...targetByJob.keys(),...appliedRows.map(r=>keyOf(r.job_type)),...joinedRows.map(r=>keyOf(r.job_type)),...pendingRows.map(r=>keyOf(r.job_type)),...offerRows.map(r=>keyOf(r.job_type))])].filter(Boolean).sort((a,b)=>a.localeCompare(b,"ja"));
+  const items=jobs.map(job=>{
+    return {
+      job,
+      target:targetByJob.get(job)||0,
+      hired:joinedRows.filter(r=>keyOf(r.job_type)===job).length,
+      pendingJoin:pendingRows.filter(r=>keyOf(r.job_type)===job).length,
+      offer:offerRows.filter(r=>keyOf(r.job_type)===job).length,
+      applied:appliedRows.filter(r=>keyOf(r.job_type)===job).length
+    }
+  }).sort((a,b)=>(b.target-a.target)||(b.hired-a.hired)||a.job.localeCompare(b.job,"ja"));
+  const totalTarget=items.reduce((s,x)=>s+x.target,0);
+  const totalHired=items.reduce((s,x)=>s+x.hired,0);
+  const totalPendingJoin=items.reduce((s,x)=>s+x.pendingJoin,0);
+  const totalApplied=items.reduce((s,x)=>s+x.applied,0);
+  const shortage=Math.max(totalTarget-totalHired,0);
+  ["sumTarget","headTarget"].forEach(id=>setText(id,totalTarget));
+  ["sumHired","headHired"].forEach(id=>setText(id,totalHired));
+  ["sumPendingJoin","headPendingJoin"].forEach(id=>setText(id,totalPendingJoin));
+  setText("sumShortage",shortage);
+  setText("headRate",rate(totalHired,totalTarget));
+  const top=items.slice().sort((a,b)=>b.hired-a.hired)[0];
+  $("progressComment").textContent=top?`${range.fy}年度の実入社は目標${totalTarget}名に対して${totalHired}名、達成率は${rate(totalHired,totalTarget)}です。入社待ちは${totalPendingJoin}名、応募は${totalApplied}名です。職種別では${top.job}が${top.hired}名で最多です。`:`${range.fy}年度の採用進捗データがありません。`;
+  renderJobBoard(items,totalTarget,totalHired);
+  renderMonthTable(monthLabels(range.fy),jobs,joinedRows);
+  renderChannels(appliedRows,joinedRows,pendingRows);
+  log(`採用進捗を更新しました（応募${totalApplied}件 / 実入社${totalHired}件）`,"success")
+}
+async function initData(){
+  applyFiscalYear();
+  if(window.refreshRecruitFiscalYearSelectLabels)window.refreshRecruitFiscalYearSelectLabels(document);
+  log("データ読込中です","info");
+  const candidateQuery=sb.from("candidates").select("id,name,division,center_name,job_type,channel,status,hiring_result,applied_date,offer_date,join_date,interview_done_date,is_deleted").or("is_deleted.is.null,is_deleted.eq.false");
+  const [candidateRes,targetRes]=await Promise.all([candidateQuery, sb.from("recruitment_targets").select("*")]);
+  if(candidateRes.error)throw candidateRes.error;
+  if(targetRes.error)throw targetRes.error;
+  ALL_CANDIDATES=(candidateRes.data||[]).filter(r=>r.is_deleted!==true);
+  ALL_TARGETS=(targetRes.data||[]).filter(r=>r.is_active!==false);
+  populateFilters();
+  loadProgress();
+}
 (async function init(){try{const ok=await refreshAuth();if(ok)await initData()}catch(e){console.error(e);showAuth("初期化に失敗しました: "+(e.message||e),"error");log("初期化に失敗しました","error")}finally{document.body.classList.remove("auth-checking")}})();
 </script>
 <script src="./sidebar.js?v=20260522_progress"></script>
