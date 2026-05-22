@@ -57,11 +57,14 @@
       </nav>
 
       <section id="importPanel" class="card io-panel active">
-        <div class="io-panel-head">
+        <div class="io-panel-head io-panel-head-with-actions">
           <div>
             <span class="io-kicker">Import</span>
             <h2>CSV取り込み</h2>
             <p>ファイルを確認して登録します。</p>
+          </div>
+          <div class="io-panel-actions">
+            <button class="btn-secondary" type="button" onclick="downloadTemplateCsv()">取り込みテンプレート</button>
           </div>
         </div>
 
@@ -111,6 +114,33 @@
 
         <div class="io-safety-note">
           取込前に自動バックアップします。エラー時はCSVを出力し、実行後は直前取込を取消できます。
+        </div>
+
+        <div class="io-guide-card" aria-label="CSV取り込みの使い方と注意">
+          <div class="io-guide-head">
+            <span>GUIDE</span>
+            <strong>CSV取り込みの使い方・注意</strong>
+          </div>
+          <div class="io-guide-grid">
+            <div>
+              <h3>基本手順</h3>
+              <ol>
+                <li>右上の「取り込みテンプレート」を出力します。</li>
+                <li>テンプレートの見出し行は変更せず、必要項目を入力します。</li>
+                <li>先に「プレビュー」でエラー・新規・更新件数を確認します。</li>
+                <li>問題がなければ「取込実行」を押します。</li>
+              </ol>
+            </div>
+            <div>
+              <h3>既存データを壊さないために</h3>
+              <ul>
+                <li>新しい応募者を追加するだけなら「新規追加」を使います。</li>
+                <li>既存応募者を直す場合だけ「ID一致で更新」を使います。</li>
+                <li>ID一致更新では、候補者IDが一致した行だけ既存データを更新します。</li>
+                <li>不安な場合は取込前にCSV出力で現状データを保存してください。</li>
+              </ul>
+            </div>
+          </div>
         </div>
         <div class="io-undo-status is-hidden" id="lastImportUndoStatus">直前取り込みの取消対象はありません。</div>
 
