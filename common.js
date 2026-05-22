@@ -81,6 +81,46 @@
     return raw;
   }
 
+  function inferRecruitStageFromDates(row){
+    const r = row || {};
+    if(isValidRecruitDate(r.join_date)) return "採用";
+    if(isValidRecruitDate(r.offer_date)) return "内定";
+    if(isValidRecruitDate(r.interview_done_date)) return "面接実施";
+    if(isValidRecruitDate(r.interview1_date) || isValidRecruitDate(r.interview_date)) return "面接設定";
+    if(isValidRecruitDate(r.appointment_date)) return "アポ取得";
+    if(isValidRecruitDate(r.applied_date)) return "応募";
+    return "";
+  }
+
+  function normalizeRecruitCandidateState(row){
+    const out = { ...(row || {}) };
+    const rawStatus = String(out.status || "").trim();
+    const rawResult = String(out.hiring_result || "").trim();
+    let status = normalizeRecruitStageStatus(rawStatus);
+    let result = normalizeRecruitHiringResult(rawResult);
+
+    if(isValidRecruitDate(out.join_date)){
+      status = "採用";
+      result = "入社済";
+    }else if(rawStatus === "入社"){
+      status = "採用";
+      result = "入社済";
+    }else if(["保留","辞退","不採用","不通"].includes(rawStatus)){
+      if(!rawResult || result === "進行中") result = rawStatus;
+      status = inferRecruitStageFromDates(out) || status || "応募";
+    }else if(result === "入社済"){
+      status = "採用";
+    }else if(result === "採用"){
+      status = "採用";
+    }else if(rawStatus === "採用" && (!rawResult || result === "進行中")){
+      result = "採用";
+    }
+
+    out.status = status || rawStatus || null;
+    out.hiring_result = result || "進行中";
+    return out;
+  }
+
   function mergeRecruitStatusNames(values){
     const current = [...new Set((values || []).map(v => String(v || "").trim()).filter(Boolean))].filter(name => !isDeprecatedRecruitStatus(name));
     const extras = recruitStatusDefaultNames().filter(name => !current.includes(name));
@@ -101,31 +141,31 @@
   }
 
   function isRecruitHired(row){
-    const r = row || {};
-    return String(r.status || "").trim() === "採用" || String(r.hiring_result || "").trim() === "採用" || isValidRecruitDate(r.join_date);
+    const r = normalizeRecruitCandidateState(row || {});
+    return String(r.status || "").trim() === "採用" || ["採用","入社済"].includes(String(r.hiring_result || "").trim()) || isValidRecruitDate(r.join_date);
   }
 
   function isRecruitRejected(row){
-    const r = row || {};
+    const r = normalizeRecruitCandidateState(row || {});
     const status = String(r.status || "").trim();
     return String(r.hiring_result || "").trim() === "不採用" || status === "不採用";
   }
 
   function isRecruitDeclined(row){
-    const r = row || {};
+    const r = normalizeRecruitCandidateState(row || {});
     const status = String(r.status || "").trim();
     return String(r.hiring_result || "").trim() === "辞退" || status === "辞退" || !!String(r.decline_reason || "").trim();
   }
 
   function isRecruitNoContact(row){
-    const r = row || {};
+    const r = normalizeRecruitCandidateState(row || {});
     const memo = String(r.action_memo || "");
     const status = String(r.status || "").trim();
     return String(r.hiring_result || "").trim() === "不通" || status === "不通" || String(r.reject_reason || "") === "連絡取れず" || String(r.decline_reason || "") === "連絡取れず" || memo.includes("不通") || memo.includes("連絡取れず");
   }
 
   function isFinal(row){
-    const r = row || {};
+    const r = normalizeRecruitCandidateState(row || {});
     const status = String(r.status || "").trim();
     return isRecruitHired(r) || ["不採用","辞退","不通","保留","採用","入社済"].includes(String(r.hiring_result || "").trim()) || ["不採用","辞退","不通","保留","入社"].includes(status);
   }
@@ -180,6 +220,8 @@
   window.recruitHiringResultNames = window.recruitHiringResultNames || recruitHiringResultNames;
   window.normalizeRecruitHiringResult = window.normalizeRecruitHiringResult || normalizeRecruitHiringResult;
   window.normalizeRecruitStageStatus = window.normalizeRecruitStageStatus || normalizeRecruitStageStatus;
+  window.inferRecruitStageFromDates = window.inferRecruitStageFromDates || inferRecruitStageFromDates;
+  window.normalizeRecruitCandidateState = window.normalizeRecruitCandidateState || normalizeRecruitCandidateState;
   window.isValidRecruitDate = window.isValidRecruitDate || isValidRecruitDate;
   window.isRecruitHired = window.isRecruitHired || isRecruitHired;
   window.isRecruitRejected = window.isRecruitRejected || isRecruitRejected;

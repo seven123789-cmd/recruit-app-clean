@@ -2195,6 +2195,33 @@ function normalizeDetailHiringResult(value){
   return HIRING_RESULT_OPTIONS.includes(raw) ? raw : "進行中";
 }
 
+function normalizeDetailCandidateRow(row){
+  const source = row || {};
+  if (window.normalizeRecruitCandidateState) return window.normalizeRecruitCandidateState(source);
+
+  const out = { ...source };
+  const status = String(out.status || "").trim();
+  const result = normalizeDetailHiringResult(out.hiring_result);
+
+  if (out.join_date) {
+    out.status = "採用";
+    out.hiring_result = "入社済";
+  } else if (status === "入社") {
+    out.status = "採用";
+    out.hiring_result = "入社済";
+  } else if (["保留","辞退","不採用","不通"].includes(status)) {
+    out.hiring_result = result === "進行中" ? status : result;
+    if (out.interview_done_date) out.status = "面接実施";
+    else if (out.interview1_date) out.status = "面接設定";
+    else if (out.appointment_date) out.status = "アポ取得";
+    else out.status = "応募";
+  } else {
+    out.status = normalizeDetailStageStatus(status);
+    out.hiring_result = result;
+  }
+  return out;
+}
+
 function renderHiringResultOptions(){
   const select = document.getElementById("hiringResult");
   if (!select) return;
@@ -2502,6 +2529,7 @@ function renderActionAdvice(row) {
 }
 
 function fillCandidate(row) {
+  row = normalizeDetailCandidateRow(row);
   currentCandidate = row;
 
   document.getElementById("pageTitle").textContent = row.name ? row.name + " さんの詳細" : "応募者詳細";
@@ -2541,6 +2569,7 @@ function fillCandidate(row) {
   setFieldValue("evaluationComment", row.evaluation_comment);
   setFieldValue("actionMemo", row.action_memo);
 
+syncJoinDateAndHiringResult({ showMessage:false });
 renderActionAdvice(row);
 }
 
@@ -2899,6 +2928,47 @@ function quickSetResult(result) {
   setPageMessage("選考結果を「" + result + "」に変更しました。保存ボタンで確定してください。", "info");
 }
 
+function syncJoinDateAndHiringResult(options = {}) {
+  const joinDate = document.getElementById("joinDate");
+  const statusEl = document.getElementById("status");
+  const hiringResult = document.getElementById("hiringResult");
+  const nextActionDate = document.getElementById("nextActionDate");
+  const summaryStatus = document.getElementById("summaryStatus");
+  const summaryNextActionDate = document.getElementById("summaryNextActionDate");
+
+  if (!hiringResult) return false;
+
+  const hasJoinDate = !!(joinDate && joinDate.value);
+  let changed = false;
+
+  if (hasJoinDate) {
+    if (statusEl && statusEl.value !== "採用") {
+      statusEl.value = "採用";
+      changed = true;
+    }
+    if (hiringResult.value !== "入社済") {
+      hiringResult.value = "入社済";
+      changed = true;
+    }
+  } else if (hiringResult.value === "入社済") {
+    hiringResult.value = statusEl && statusEl.value === "採用" ? "採用" : "進行中";
+    changed = true;
+  }
+
+  if (["保留","辞退","不採用","不通","採用","入社済"].includes(hiringResult.value) && nextActionDate && nextActionDate.value) {
+    nextActionDate.value = "";
+    changed = true;
+  }
+
+  if (summaryStatus && statusEl) summaryStatus.innerHTML = getStatusBadge(statusEl.value);
+  if (summaryNextActionDate) summaryNextActionDate.textContent = formatDate(nextActionDate?.value || "");
+
+  if (changed && options.showMessage) {
+    setPageMessage(hasJoinDate ? "入社日があるため、選考結果を入社済に同期しました。" : "入社日が空のため、選考結果を再調整しました。", "info");
+  }
+  return changed;
+}
+
 function handleStatusChange() {
   const status = document.getElementById("status").value;
   const today = new Date().toISOString().slice(0, 10);
@@ -2925,19 +2995,18 @@ function handleStatusChange() {
 
   if (status === "内定") {
     if (offerDate && !offerDate.value) offerDate.value = today;
-    if (hiringResult && !hiringResult.value) hiringResult.value = "採用";
   }
 
   if (status === "採用") {
     if (offerDate && !offerDate.value) offerDate.value = today;
-    if (hiringResult) hiringResult.value = "採用";
+    if (hiringResult && hiringResult.value === "進行中") hiringResult.value = "採用";
   }
 
-  const closedStatuses = ["採用"];
+  syncJoinDateAndHiringResult({ showMessage:false });
 
-  if (closedStatuses.includes(status) && nextActionDate) {
+  const fixedResult = hiringResult ? String(hiringResult.value || "").trim() : "";
+  if (nextActionDate && ["保留","辞退","不採用","不通","採用","入社済"].includes(fixedResult)) {
     nextActionDate.value = "";
-    setPageMessage("終了ステータスのため、次回対応日をクリアしました。", "info");
   }
 
   const summaryStatus = document.getElementById("summaryStatus");
@@ -3244,6 +3313,24 @@ function initDirtyTracking() {
     el.addEventListener("input", markDirty);
     el.addEventListener("change", markDirty);
   });
+
+  const joinDate = document.getElementById("joinDate");
+  if (joinDate && joinDate.dataset.joinSyncWatch !== "1") {
+    joinDate.dataset.joinSyncWatch = "1";
+    joinDate.addEventListener("change", () => {
+      syncJoinDateAndHiringResult({ showMessage:true });
+      markDirty();
+    });
+  }
+
+  const hiringResult = document.getElementById("hiringResult");
+  if (hiringResult && hiringResult.dataset.resultSyncWatch !== "1") {
+    hiringResult.dataset.resultSyncWatch = "1";
+    hiringResult.addEventListener("change", () => {
+      syncJoinDateAndHiringResult({ showMessage:false });
+      markDirty();
+    });
+  }
 }
 
 window.addEventListener("beforeunload", function(e) {

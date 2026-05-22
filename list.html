@@ -266,7 +266,26 @@ function validDate(s){
   return y>=2000;
 }
 
+function normalizeListCandidate(row){
+  const source = row || {};
+  if(window.normalizeRecruitCandidateState) return window.normalizeRecruitCandidateState(source);
+  const out = { ...source };
+  const status = String(out.status || "").trim();
+  if(validDate(out.join_date) || status === "入社"){
+    out.status = "採用";
+    out.hiring_result = "入社済";
+  }else if(["保留","辞退","不採用","不通"].includes(status)){
+    if(!out.hiring_result || out.hiring_result === "進行中") out.hiring_result = status;
+    if(out.interview_done_date) out.status = "面接実施";
+    else if(out.interview1_date) out.status = "面接設定";
+    else if(out.appointment_date) out.status = "アポ取得";
+    else out.status = "応募";
+  }
+  return out;
+}
+
 function isActionRequired(r){
+  r = normalizeListCandidate(r);
   const st=String(r.status||"").trim();
   const result=normalizeHiringResult(r);
   if(st === "採用")return false;
@@ -297,10 +316,12 @@ function badge(v){
   return `<span class="${cls}"${style}>${esc(t)}</span>`;
 }
 function normalizeHiringResult(row){
-  const result=String(row?.hiring_result||"").trim();
+  const normalized = normalizeListCandidate(row);
+  const result=String(normalized?.hiring_result||"").trim();
+  if(result === "合格") return "採用";
   if(result) return result;
   const legacyStatus=String(row?.status||"").trim();
-  return ["保留","辞退","不採用","不通","採用","入社済"].includes(legacyStatus) ? legacyStatus : "進行中";
+  return ["保留","辞退","不採用","不通","採用","入社済","入社"].includes(legacyStatus) ? (legacyStatus === "入社" ? "入社済" : legacyStatus) : "進行中";
 }
 function resultBadge(row){
   const result=normalizeHiringResult(row);
@@ -308,7 +329,8 @@ function resultBadge(row){
   return `<span class="result-badge ${cls}">${esc(result)}</span>`;
 }
 function statusResultCell(row){
-  return `<div class="status-result-cell"><div class="status-line">${badge(row.status)}</div><div class="result-line"><span>選考結果</span>${resultBadge(row)}</div></div>`;
+  const normalized = normalizeListCandidate(row);
+  return `<div class="status-result-cell"><div class="status-line">${badge(normalized.status)}</div><div class="result-line"><span>選考結果</span>${resultBadge(normalized)}</div></div>`;
 }
 
 function getFiscalYearFromAppliedDate(dateStr){
@@ -868,7 +890,7 @@ function filteredRows(){
       if(dateFrom&&targetDate<dateFrom)return false;
       if(dateTo&&targetDate>dateTo)return false;
     }
-    if(selectedStatusFilters.size && !selectedStatusFilters.has(String(r.status||"").trim()))return false;
+    if(selectedStatusFilters.size && !selectedStatusFilters.has(String(normalizeListCandidate(r).status||"").trim()))return false;
     if(selectedResultFilters.size && !selectedResultFilters.has(normalizeHiringResult(r)))return false;
     return (!d||r.division===d)&&(!c||r.center_name===c)&&(!o||r.owner_name===o)&&(!ch||r.channel===ch)&&(!job||r.job_type===job);
   });

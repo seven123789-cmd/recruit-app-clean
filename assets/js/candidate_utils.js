@@ -39,7 +39,7 @@ function isFinal(row){
   if(window.isFinal) return window.isFinal(row);
   const status=String(row?.status||"");
   const result=String(row?.hiring_result||"");
-  return status === "採用" || ["採用","入社済","不採用","辞退","不通","保留"].includes(result) || ["辞退","不採用","不通","保留"].includes(status) || !!row?.join_date;
+  return status === "採用" || ["採用","入社済","不採用","辞退","不通","保留"].includes(result) || ["入社","辞退","不採用","不通","保留"].includes(status) || !!row?.join_date;
 }
 
 function setChoiceActive(selector, value, attrName){
@@ -152,6 +152,16 @@ function normalizeCandidatePayload(payload){
   ].forEach(key => {
     if(key in out) out[key] = normalizeDate(out[key]);
   });
+
+  if(out.join_date){
+    out.status = "採用";
+    out.hiring_result = "入社済";
+    out.next_action_date = "";
+  }else if(out.status === "入社"){
+    out.status = "採用";
+    out.hiring_result = "入社済";
+  }
+
   return out;
 }
 
