@@ -23,9 +23,9 @@ function rate(n,d){return !d ? "0.0%" : ((n/d)*100).toFixed(1)+"%"}
 function rateNum(n,d){return !d ? 0 : Number(((n/d)*100).toFixed(1))}
 function validDate(s){if(!s)return false;const t=String(s).slice(0,10);const y=Number(t.slice(0,4));return /^\d{4}-\d{2}-\d{2}$/.test(t)&&y>=2000}
 function normalizeDate(s){return validDate(s)?String(s).slice(0,10):""}
-function todayStr(){const d=new Date();return d.toISOString().slice(0,10)}
-function daysBetween(a,b){if(!validDate(a)||!validDate(b))return null;return Math.floor((new Date(normalizeDate(b)+"T00:00:00")-new Date(normalizeDate(a)+"T00:00:00"))/(86400000))}
-function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="採用"||validDate(r.join_date)||String(r.status||"").trim()==="採用")}
+function todayStr(){return window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date())}
+function daysBetween(a,b){if(!validDate(a)||!validDate(b))return null;return Math.floor((new Date(normalizeDate(b)+"T00:00:00+09:00")-new Date(normalizeDate(a)+"T00:00:00+09:00"))/(86400000))}
+function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="入社")}
 function isFinal(r){return String(r.status||"").trim()==="採用"||["不採用","辞退","不通","保留","採用","入社済"].includes(String(r.hiring_result||"").trim())||isHired(r)}
 function isActionRequired(r){
   const st=String(r.status||"").trim();

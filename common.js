@@ -21,19 +21,92 @@
     return escapeHtml(str);
   }
 
+
+  const RECRUIT_TIME_ZONE = "Asia/Tokyo";
+
+  function pad2(value){
+    return String(value).padStart(2,"0");
+  }
+
+  function getJSTParts(dateValue = new Date()){
+    const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+    if(Number.isNaN(date.getTime())) return null;
+    const parts = new Intl.DateTimeFormat("ja-JP",{
+      timeZone:RECRUIT_TIME_ZONE,
+      year:"numeric",
+      month:"2-digit",
+      day:"2-digit",
+      hour:"2-digit",
+      minute:"2-digit",
+      second:"2-digit",
+      hour12:false
+    }).formatToParts(date).reduce((acc,part)=>{
+      if(part.type !== "literal") acc[part.type] = part.value;
+      return acc;
+    },{});
+    return parts;
+  }
+
+  function todayJST(){
+    const parts = getJSTParts(new Date());
+    if(!parts) return "";
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  }
+
+  function nowIso(){
+    return new Date().toISOString();
+  }
+
+  function formatJSTDate(value){
+    if(!value) return "-";
+    const raw = String(value).trim();
+    if(/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    const parts = getJSTParts(raw);
+    if(!parts) return "-";
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  }
+
+  function formatJSTDateTime(value){
+    if(!value) return "-";
+    const parts = getJSTParts(value);
+    if(!parts) return "-";
+    return `${parts.year}/${parts.month}/${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
+  }
+
+  function formatJSTDateTimeMinute(value){
+    if(!value) return "-";
+    const parts = getJSTParts(value);
+    if(!parts) return "-";
+    return `${parts.year}/${parts.month}/${parts.day} ${parts.hour}:${parts.minute}`;
+  }
+
+  function normalizeDateForCalc(value){
+    const text = normalizeDateText(value);
+    if(!text) return null;
+    const date = new Date(text + "T00:00:00+09:00");
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
   function daysBetween(a,b){
     const fromText = normalizeDateText(a);
     const toText = normalizeDateText(b);
     if(!fromText || !toText) return null;
-    const from = new Date(fromText + "T00:00:00");
-    const to = new Date(toText + "T00:00:00");
+    const from = normalizeDateForCalc(fromText);
+    const to = normalizeDateForCalc(toText);
     const diff = Math.floor((to - from) / 86400000);
     return Number.isNaN(diff) ? null : diff;
   }
 
   function fiscalYear(d = new Date()){
-    const date = d instanceof Date ? d : new Date(String(d) + "T00:00:00");
-    if(Number.isNaN(date.getTime())) return new Date().getFullYear();
+    if(d instanceof Date){
+      const parts = getJSTParts(d);
+      if(!parts) return Number(todayJST().slice(0,4)) || new Date().getFullYear();
+      const year = Number(parts.year);
+      const month = Number(parts.month);
+      return month >= 4 ? year : year - 1;
+    }
+    const date = normalizeDateForCalc(d);
+    if(!date || Number.isNaN(date.getTime())) return Number(todayJST().slice(0,4)) || new Date().getFullYear();
     return date.getMonth() + 1 >= 4 ? date.getFullYear() : date.getFullYear() - 1;
   }
 
@@ -142,7 +215,17 @@
 
   function isRecruitHired(row){
     const r = normalizeRecruitCandidateState(row || {});
+    return String(r.hiring_result || "").trim() === "入社済" || isValidRecruitDate(r.join_date);
+  }
+
+  function isRecruitHiringDecision(row){
+    const r = normalizeRecruitCandidateState(row || {});
     return String(r.status || "").trim() === "採用" || ["採用","入社済"].includes(String(r.hiring_result || "").trim()) || isValidRecruitDate(r.join_date);
+  }
+
+  function isRecruitPendingJoin(row){
+    const r = normalizeRecruitCandidateState(row || {});
+    return isRecruitHiringDecision(r) && !isRecruitHired(r);
   }
 
   function isRecruitRejected(row){
@@ -174,7 +257,7 @@
 
 
   function getRecruitCurrentFiscalYear(){
-    return fiscalYear(new Date());
+    return fiscalYear(todayJST());
   }
 
   function formatRecruitFiscalYearLabel(value){
@@ -224,6 +307,8 @@
   window.normalizeRecruitCandidateState = window.normalizeRecruitCandidateState || normalizeRecruitCandidateState;
   window.isValidRecruitDate = window.isValidRecruitDate || isValidRecruitDate;
   window.isRecruitHired = window.isRecruitHired || isRecruitHired;
+  window.isRecruitHiringDecision = window.isRecruitHiringDecision || isRecruitHiringDecision;
+  window.isRecruitPendingJoin = window.isRecruitPendingJoin || isRecruitPendingJoin;
   window.isRecruitRejected = window.isRecruitRejected || isRecruitRejected;
   window.isRecruitDeclined = window.isRecruitDeclined || isRecruitDeclined;
   window.isRecruitNoContact = window.isRecruitNoContact || isRecruitNoContact;
@@ -467,7 +552,7 @@
         .maybeSingle();
       if(String(profile?.role || "").toLowerCase() !== "admin" || profile?.is_active === false) return;
 
-      const now = new Date().toISOString();
+      const now = nowIso();
       const rows = missing.map(row => ({
         name: row.name,
         display_order: row.display_order,
@@ -503,7 +588,7 @@
     ]);
     await ensureDefaultStatusMasterRows(client, statuses);
     const mergedStatuses = mergeRecruitStatusNames(statuses);
-    recruitMasterCache = { ...divisionCenter, channels, channelDetails, jobTypes, owners, statuses: mergedStatuses, declineReasons, rejectReasons, loadedAt: new Date().toISOString() };
+    recruitMasterCache = { ...divisionCenter, channels, channelDetails, jobTypes, owners, statuses: mergedStatuses, declineReasons, rejectReasons, loadedAt: nowIso() };
     return recruitMasterCache;
   }
 
@@ -1011,6 +1096,21 @@
     });
     return diff;
   }
+
+  window.RecruitDate = window.RecruitDate || {
+    timeZone: RECRUIT_TIME_ZONE,
+    todayJST,
+    nowIso,
+    formatJSTDate,
+    formatJSTDateTime,
+    formatJSTDateTimeMinute,
+    normalizeDateForCalc
+  };
+
+  window.todayJST = window.todayJST || todayJST;
+  window.nowIsoJSTSafe = window.nowIsoJSTSafe || nowIso;
+  window.formatJSTDate = window.formatJSTDate || formatJSTDate;
+  window.formatJSTDateTime = window.formatJSTDateTime || formatJSTDateTime;
 
   window.RecruitRole = window.RecruitOpsGuard || window.RecruitRole || {
     apply: applyRecruitRoleGuard,

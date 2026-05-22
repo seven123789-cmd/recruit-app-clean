@@ -1883,7 +1883,7 @@ function showAuth(message = "未ログインです", type = "info") {
 async function ensureUserProfile(user){
   if(!user?.id) return "editor";
   const email=user.email||"";
-  const now=new Date().toISOString();
+  const now=window.RecruitDate?.nowIso ? window.RecruitDate.nowIso() : new Date().toISOString();
   const {data,error}=await sb.from("profiles").select("role,is_active").eq("user_id",user.id).maybeSingle();
   if(data){
     if(data.is_active===false){
@@ -2401,7 +2401,7 @@ function getActionAdvice(row) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const nextDate = row.next_action_date ? new Date(row.next_action_date + "T00:00:00") : null;
+  const nextDate = row.next_action_date ? new Date(row.next_action_date + "T00:00:00+09:00") : null;
 
   let level = "caution";
   let reason = "";
@@ -2686,7 +2686,7 @@ async function moveActionCandidate(step) {
 
       if (!row.next_action_date) return true;
 
-      const nextDate = new Date(row.next_action_date + "T00:00:00");
+      const nextDate = new Date(row.next_action_date + "T00:00:00+09:00");
       const diff = (nextDate - today) / (1000 * 60 * 60 * 24);
 
       return diff <= 1;
@@ -2877,7 +2877,7 @@ function markReturnToList(){
 }
 
 function quickSetStatus(status) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = (window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date()));
 
   const statusEl = document.getElementById("status");
   if (statusEl) statusEl.value = status;
@@ -2921,7 +2921,7 @@ function quickSetResult(result) {
     const statusEl = document.getElementById("status");
     if (statusEl && statusEl.value !== "採用") statusEl.value = "採用";
     const offerDate = document.getElementById("offerDate");
-    if (offerDate && !offerDate.value) offerDate.value = new Date().toISOString().slice(0, 10);
+    if (offerDate && !offerDate.value) offerDate.value = (window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date()));
   }
   handleStatusChange();
   markDirty();
@@ -2971,7 +2971,7 @@ function syncJoinDateAndHiringResult(options = {}) {
 
 function handleStatusChange() {
   const status = document.getElementById("status").value;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = (window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date()));
 
   const appointmentDate = document.getElementById("appointmentDate");
   const interviewScheduledDate = document.getElementById("interviewScheduledDate");
@@ -3221,7 +3221,7 @@ async function saveCandidate() {
       return;
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = (window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date()));
     document.getElementById("lastActionDate").value = today;
 
     const payload = collectPayload();

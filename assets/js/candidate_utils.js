@@ -15,23 +15,22 @@ function formatDate(value){
 }
 
 function todayStr(){
+  if(window.RecruitDate?.todayJST) return window.RecruitDate.todayJST();
   const d=new Date();
-  const y=d.getFullYear();
-  const m=String(d.getMonth()+1).padStart(2,"0");
-  const day=String(d.getDate()).padStart(2,"0");
-  return y+"-"+m+"-"+day;
+  const parts=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d).reduce((a,p)=>{if(p.type!=="literal")a[p.type]=p.value;return a;},{});
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 function validDate(v){
   if(!v)return false;
-  const d=new Date(String(v)+"T00:00:00");
+  const d=new Date(String(v)+"T00:00:00+09:00");
   return !Number.isNaN(d.getTime());
 }
 
 function daysBetween(from,to){
   if(!validDate(from)||!validDate(to))return null;
-  const a=new Date(String(from)+"T00:00:00");
-  const b=new Date(String(to)+"T00:00:00");
+  const a=new Date(String(from)+"T00:00:00+09:00");
+  const b=new Date(String(to)+"T00:00:00+09:00");
   return Math.floor((b-a)/86400000);
 }
 
@@ -124,7 +123,7 @@ function setOwner(value){
 
 function normalizeDate(value){
   if(!value) return "";
-  const d = new Date(String(value));
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? new Date(String(value)+"T00:00:00+09:00") : new Date(String(value));
   if(Number.isNaN(d.getTime())) return String(value).slice(0,10);
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,"0");

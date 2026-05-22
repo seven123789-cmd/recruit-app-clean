@@ -149,9 +149,11 @@
 
   function formatDateTime(value){
     if(!value) return "-";
+    if(window.RecruitDate?.formatJSTDateTimeMinute) return window.RecruitDate.formatJSTDateTimeMinute(value);
     const d = new Date(value);
     if(Number.isNaN(d.getTime())) return "-";
     return d.toLocaleString("ja-JP", {
+      timeZone:"Asia/Tokyo",
       year:"numeric",
       month:"2-digit",
       day:"2-digit",
@@ -161,7 +163,8 @@
   }
 
   function nowLabel(){
-    return new Date().toLocaleString("ja-JP", {
+    return window.RecruitDate?.formatJSTDateTimeMinute ? window.RecruitDate.formatJSTDateTimeMinute(new Date()) : new Date().toLocaleString("ja-JP", {
+      timeZone:"Asia/Tokyo",
       year:"numeric",
       month:"2-digit",
       day:"2-digit",
@@ -307,7 +310,7 @@
       app:"recruit-app",
       backup_version:1,
       backup_type:type,
-      created_at:new Date().toISOString(),
+      created_at:(window.RecruitDate?.nowIso ? window.RecruitDate.nowIso() : new Date().toISOString()),
       created_label:nowLabel(),
       user_email:currentUser?.email || null,
       user_id:currentUser?.id || null,
@@ -979,7 +982,7 @@
         writeAutoMeta({
           ...meta,
           lastCountSignature:countSignature,
-          lastAutoCheckAt:new Date().toISOString(),
+          lastAutoCheckAt:(window.RecruitDate?.nowIso ? window.RecruitDate.nowIso() : new Date().toISOString()),
           lastAutoCheckLabel:nowLabel(),
           autoStatusLabel:"自動保存確認済"
         });
@@ -1012,7 +1015,7 @@
         newMeta.lastAutoBackupLabel = payload.created_label;
         newMeta.autoStatusLabel = "自動保存完了";
       }
-      newMeta.lastAutoCheckAt = new Date().toISOString();
+      newMeta.lastAutoCheckAt = window.RecruitDate?.nowIso ? window.RecruitDate.nowIso() : new Date().toISOString();
       newMeta.lastAutoCheckLabel = nowLabel();
       writeAutoMeta(newMeta);
 
@@ -1102,7 +1105,7 @@
         ...meta,
         lastDataHash:dataHash,
         lastCountSignature:countSignature,
-        lastAutoCheckAt:new Date().toISOString(),
+        lastAutoCheckAt:(window.RecruitDate?.nowIso ? window.RecruitDate.nowIso() : new Date().toISOString()),
         lastAutoCheckLabel:nowLabel(),
         autoStatusLabel:"自動保存確認済"
       });

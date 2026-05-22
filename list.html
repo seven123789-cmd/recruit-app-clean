@@ -256,8 +256,9 @@ function setMsg(id,msg,type="info"){
   el.className="message-box message-"+type;
 }
 function todayStr(){
-  const d=new Date();
-  return d.toISOString().slice(0,10);
+  if(window.RecruitDate?.todayJST) return window.RecruitDate.todayJST();
+  const parts=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()).reduce((a,p)=>{if(p.type!=="literal")a[p.type]=p.value;return a;},{});
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 function validDate(s){
@@ -335,7 +336,7 @@ function statusResultCell(row){
 
 function getFiscalYearFromAppliedDate(dateStr){
   if(!dateStr)return "";
-  const dt=new Date(dateStr+"T00:00:00");
+  const dt=new Date(dateStr+"T00:00:00+09:00");
   if(Number.isNaN(dt.getTime()))return "";
   return dt.getMonth()+1>=4 ? String(dt.getFullYear()) : String(dt.getFullYear()-1);
 }
@@ -767,7 +768,7 @@ function sortPriority(row){
 }
 function dateTime(value, emptyValue){
   if(!value)return emptyValue;
-  const t=new Date(value+"T00:00:00").getTime();
+  const t=new Date(value+"T00:00:00+09:00").getTime();
   return Number.isNaN(t) ? emptyValue : t;
 }
 function isInterviewNotDone(r){
@@ -879,7 +880,7 @@ function filteredRows(){
       if(dashboardTo&&r.applied_date>dashboardTo)return false;
     }else if(y||m){
       if(!r.applied_date)return false;
-      const dt=new Date(r.applied_date+"T00:00:00");
+      const dt=new Date(r.applied_date+"T00:00:00+09:00");
       const fy=dt.getMonth()+1>=4?dt.getFullYear():dt.getFullYear()-1;
       if(y&&String(fy)!==y)return false;
       if(m&&String(dt.getMonth()+1).padStart(2,"0")!==m)return false;

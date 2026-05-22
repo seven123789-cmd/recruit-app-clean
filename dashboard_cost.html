@@ -195,9 +195,9 @@ function rate(n,d){return !d ? "0.0%" : ((n/d)*100).toFixed(1)+"%"}
 function rateNum(n,d){return !d ? 0 : Number(((n/d)*100).toFixed(1))}
 function yen(v){const n=Number(v||0);return n ? n.toLocaleString("ja-JP")+"円" : "0円"}
 function yenDash(v){const n=Number(v||0);return n ? n.toLocaleString("ja-JP")+"円" : "-"}
-function todayStr(){const d=new Date();return d.toISOString().slice(0,10)}
+function todayStr(){return window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date())}
 
-function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="採用"||validDate(r.join_date)||String(r.status||"").trim()==="採用")}
+function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="入社")}
 
 function isActionRequired(r){
   const st=String(r.status||"").trim();

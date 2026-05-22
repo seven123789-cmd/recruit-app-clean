@@ -310,7 +310,7 @@
 
   function fiscalYearFromDate(dateText){
     if(!dateText)return "";
-    const d=new Date(String(dateText)+"T00:00:00");
+    const d=new Date(String(dateText)+"T00:00:00+09:00");
     if(Number.isNaN(d.getTime()))return "";
     const y=d.getFullYear();
     return d.getMonth()+1>=4?y:y-1;

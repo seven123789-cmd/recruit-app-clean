@@ -34,7 +34,7 @@ function setValue(id, value, fallback = ""){
 
 function date(value){
   if(!value) return "";
-  const d = new Date(String(value));
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? new Date(String(value)+"T00:00:00+09:00") : new Date(String(value));
   if(Number.isNaN(d.getTime())) return "";
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,"0");

@@ -585,7 +585,7 @@ async function getSessionUser(){
 async function ensureUserProfile(user){
   if (!user?.id) return "editor";
   const email = user.email || "";
-  const now = new Date().toISOString();
+  const now = window.RecruitDate?.nowIso ? window.RecruitDate.nowIso() : new Date().toISOString();
   const { data, error } = await sb.from("profiles").select("role,is_active").eq("user_id", user.id).maybeSingle();
   if (data) return data.role || "editor";
   if (error && error.code !== "PGRST116") throw error;

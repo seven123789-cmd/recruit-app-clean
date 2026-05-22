@@ -100,7 +100,7 @@ function setMsg(id,msg,type="info"){
   el.textContent=msg;
   el.className="message-box message-"+type;
 }
-function nowIso(){return new Date().toISOString()}
+function nowIso(){return window.RecruitDate?.nowIso ? window.RecruitDate.nowIso() : new Date().toISOString()}
 function notifyRecruitMasterChanged(kind){
   if(window.RecruitMaster && typeof window.RecruitMaster.notifyUpdated === "function"){
     window.RecruitMaster.notifyUpdated({ kind, source:"admin_settings", at:nowIso() });
@@ -108,7 +108,7 @@ function notifyRecruitMasterChanged(kind){
     window.clearRecruitMasterCache();
   }
 }
-function fmtDate(value){return value?String(value).slice(0,10):"-"}
+function fmtDate(value){return window.RecruitDate?.formatJSTDate ? window.RecruitDate.formatJSTDate(value) : (value?String(value).slice(0,10):"-")}
 function isAdmin(){
   const role=String(currentRole||"").toLowerCase();
   return role==="admin";
@@ -1213,9 +1213,10 @@ function auditTargetLabel(type){
 }
 function formatDateTime(value){
   if(!value)return "-";
+  if(window.RecruitDate?.formatJSTDateTime) return window.RecruitDate.formatJSTDateTime(value);
   const d=new Date(value);
   if(Number.isNaN(d.getTime()))return String(value);
-  return d.toLocaleString("ja-JP",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});
+  return d.toLocaleString("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});
 }
 function compactValue(value){
   if(value===undefined||value===null||value==="")return "-";
@@ -1435,7 +1436,7 @@ async function loadAuditLogs(){
 }
 
 async function cleanupOldAuditLogs(){
-  const cutoff=new Date(Date.now()-AUDIT_RETENTION_DAYS*24*60*60*1000).toISOString();
+  const cutoff=(window.RecruitDate?.nowIso ? new Date(Date.now()-AUDIT_RETENTION_DAYS*24*60*60*1000).toISOString() : new Date(Date.now()-AUDIT_RETENTION_DAYS*24*60*60*1000).toISOString());
   if(!await adminConfirm(`${AUDIT_RETENTION_DAYS}日を超える監査ログを整理します。よろしいですか？`,{title:"監査ログ整理確認",okText:"整理する"}))return;
   try{
     const {data:oldRows,error:selectError}=await sb.from("audit_logs").select("id").lt("created_at",cutoff).limit(1000);

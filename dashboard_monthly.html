@@ -201,8 +201,8 @@ function monthLabel(key){
 function buildFiscalMonths(from,to){
   const months=[];
   if(!from||!to)return months;
-  let cursor=new Date(from+"T00:00:00");
-  const end=new Date(to+"T00:00:00");
+  let cursor=new Date(from+"T00:00:00+09:00");
+  const end=new Date(to+"T00:00:00+09:00");
   while(cursor<=end){
     const y=cursor.getFullYear();
     const m=String(cursor.getMonth()+1).padStart(2,"0");
@@ -359,7 +359,7 @@ function createMonthMap(data){
     if(validDate(r.interview1_date))x.set++;
     if(validDate(r.interview_done_date))x.interview++;
     if(validDate(r.offer_date))x.offer++;
-    if(window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="採用"||r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="採用"))x.join++;
+    if(window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="入社"))x.join++;
   });
 
   return [...map.values()].sort((a,b)=>String(a.key).localeCompare(String(b.key)));
@@ -367,7 +367,7 @@ function createMonthMap(data){
 function updateSummary(data,monthly){
   const applied=data.filter(r=>validDate(r.applied_date)).length;
   const interview=data.filter(r=>validDate(r.interview_done_date)).length;
-  const join=data.filter(r=>window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="採用"||r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="採用")).length;
+  const join=data.filter(r=>window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="入社")).length;
   const interviewRate=rate(interview,applied);
   const joinRate=rate(join,applied);
 

@@ -357,7 +357,7 @@ function isActionRequired(row){
   if (!row.next_action_date) return true;
   const today = new Date();
   today.setHours(0,0,0,0);
-  const nextDate = new Date(row.next_action_date + "T00:00:00");
+  const nextDate = new Date(row.next_action_date + "T00:00:00+09:00");
   const diff = (nextDate - today) / (1000 * 60 * 60 * 24);
   return diff <= 1;
 }
@@ -490,7 +490,7 @@ function updateDashboardUi(rows){
   const interviewSet = activeRows.filter(r => isValidDate(r.interview1_date)).length;
   const interviewDone = activeRows.filter(r => isValidDate(r.interview_done_date)).length;
   const offer = activeRows.filter(r => isValidDate(r.offer_date)).length;
-  const join = activeRows.filter(r => window.isRecruitHired ? window.isRecruitHired(r) : (isValidDate(r.join_date) || String(r.status||"").trim()==="採用" || String(r.hiring_result||"").trim()==="採用")).length;
+  const join = activeRows.filter(r => window.isRecruitHired ? window.isRecruitHired(r) : (isValidDate(r.join_date) || String(r.status||"").trim()==="入社" || String(r.hiring_result||"").trim()==="入社済")).length;
 
   const priorityToday = activeRows.filter(isActionRequired).length;
   const priorityNotDone = activeRows.filter(r => isValidDate(r.interview1_date) && !isValidDate(r.interview_done_date) && !isFinal(r)).length;
@@ -615,7 +615,7 @@ function goListFilter(filterType){
     center:document.getElementById("filterCenter")?.value || "",
     channel:document.getElementById("filterChannel")?.value || "",
     owner:document.getElementById("filterOwner")?.value || "",
-    savedAt:new Date().toISOString()
+    savedAt:(window.RecruitDate?.nowIso ? window.RecruitDate.nowIso() : new Date().toISOString())
   };
   try {
     // dashboardからLISTへ渡す条件は一時情報なのでsessionStorageだけに保存する。

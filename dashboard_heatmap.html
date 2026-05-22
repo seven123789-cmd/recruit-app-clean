@@ -289,8 +289,8 @@ function $(id){return document.getElementById(id)}
 function setText(id,value){const el=$(id);if(el)el.textContent=value}
 function setMsg(id,msg,type="info"){const el=$(id);if(!el)return;if(!msg){el.textContent="";el.className="message-box message-info hidden";return}el.textContent=msg;el.className="message-box message-"+type}
 function validDate(s){if(!s)return false;const y=Number(String(s).slice(0,4));return y>=2000}
-function todayStr(){return new Date().toISOString().slice(0,10)}
-function daysBetween(a,b){if(!a||!b)return null;return Math.floor((new Date(b+"T00:00:00")-new Date(a+"T00:00:00"))/86400000)}
+function todayStr(){return window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date())}
+function daysBetween(a,b){if(!a||!b)return null;return Math.floor((new Date(b+"T00:00:00+09:00")-new Date(a+"T00:00:00+09:00"))/86400000)}
 
 function rateNum(n,d){return !d?0:Number(((n/d)*100).toFixed(1))}
 function rate(n,d){return !d?"0.0%":rateNum(n,d).toFixed(1)+"%"}
@@ -347,7 +347,7 @@ function keyLink(axis,key){
   const href=buildAnalysisUrl(axis,key);
   return `<a class="heatmap-key-link" href="${esc(href)}">${esc(key)}</a>`;
 }
-function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="採用"||validDate(r.join_date)||String(r.status||"").trim()==="採用")}
+function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="入社")}
 function isDeclined(r){return window.isRecruitDeclined ? window.isRecruitDeclined(r) : (String(r.hiring_result||"").trim()==="辞退"||String(r.decline_reason||"").trim()!=="")}
 function isNoContact(r){return window.isRecruitNoContact ? window.isRecruitNoContact(r) : String(r.hiring_result||"").trim()==="不通"}
 function isFinal(r){return String(r.status||"").trim()==="採用"||["不採用","辞退","不通","保留","採用","入社済"].includes(String(r.hiring_result||"").trim())||isHired(r)}

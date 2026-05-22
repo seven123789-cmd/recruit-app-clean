@@ -387,7 +387,7 @@ async function normalizeExistingCandidateNames(){
 }
 
 function backupNowLabel(){
-  return new Date().toLocaleString("ja-JP", {year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"});
+  return window.RecruitDate?.formatJSTDateTimeMinute ? window.RecruitDate.formatJSTDateTimeMinute(new Date()) : new Date().toLocaleString("ja-JP", {timeZone:"Asia/Tokyo", year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"});
 }
 function backupCountOf(payload, table){
   return payload?.tables?.[table]?.length || 0;
@@ -421,7 +421,7 @@ async function createPreImportBackup(){
     app:'recruit-app',
     backup_version:1,
     backup_type:'auto_before_import',
-    created_at:new Date().toISOString(),
+    created_at:(window.RecruitDate?.nowIso ? window.RecruitDate.nowIso() : new Date().toISOString()),
     created_label:backupNowLabel(),
     user_email:user?.email || null,
     user_id:user?.id || null,
@@ -617,7 +617,7 @@ async function exportCandidatesCsv(){
   const filtered=(data||[]).filter(r=>{ const rowFy=fiscalYearFromDateText(r.applied_date); if(fy && fy.startsWith('fy:')) return Number(rowFy)===Number(fy.replace('fy:','')); return true; });
   const header=CSV_COLUMNS.map(c=>csvEscape(c[1])).join(',');
   const body=filtered.map(r=>CSV_COLUMNS.map(([k])=>{ if(k==='candidate_id') return csvEscape(r.id||''); if(k==='fiscal_year') return csvEscape(fiscalYearFromDateText(r.applied_date)||''); return csvEscape(r[k]??''); }).join(',')).join('\n');
-  downloadText(`recruit_candidates_${new Date().toISOString().slice(0,10)}.csv`, header+'\n'+body+'\n');
+  downloadText(`recruit_candidates_${window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date())}.csv`, header+'\n'+body+'\n');
 }
 </script>
 <script src="./sidebar.js?v=20260513_compare_graph"></script>
