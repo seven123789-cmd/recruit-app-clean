@@ -176,3 +176,10 @@
   .progress-job-head{display:block;}
   .progress-main-number,.progress-rate{text-align:left;margin-top:8px;}
 }
+
+.section-note{
+  margin:4px 0 0;
+  color:#64748b;
+  font-size:12px;
+  line-height:1.6;
+}
