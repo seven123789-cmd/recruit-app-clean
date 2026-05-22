@@ -359,7 +359,7 @@ function createMonthMap(data){
     if(validDate(r.interview1_date))x.set++;
     if(validDate(r.interview_done_date))x.interview++;
     if(validDate(r.offer_date))x.offer++;
-    if(validDate(r.join_date))x.join++;
+    if(window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="採用"||r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="採用"))x.join++;
   });
 
   return [...map.values()].sort((a,b)=>String(a.key).localeCompare(String(b.key)));
@@ -367,7 +367,7 @@ function createMonthMap(data){
 function updateSummary(data,monthly){
   const applied=data.filter(r=>validDate(r.applied_date)).length;
   const interview=data.filter(r=>validDate(r.interview_done_date)).length;
-  const join=data.filter(r=>validDate(r.join_date)).length;
+  const join=data.filter(r=>window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="採用"||r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="採用")).length;
   const interviewRate=rate(interview,applied);
   const joinRate=rate(join,applied);
 

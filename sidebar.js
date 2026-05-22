@@ -16,6 +16,7 @@
       title:"採用推移",
       key:"trend",
       items:[
+        { href:"./dashboard_progress.html", label:"採用進捗" },
         { href:"./dashboard_trend.html", label:"推移分析" }
       ]
     },

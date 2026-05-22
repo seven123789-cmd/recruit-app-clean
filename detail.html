@@ -1766,7 +1766,7 @@ let CHANNEL_OPTIONS = [];
 let CHANNEL_DETAIL_OPTIONS = [];
 let STATUS_OPTIONS = [];
 const STAGE_STATUS_OPTIONS = ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
-const HIRING_RESULT_OPTIONS = ["未判定","保留","辞退","不採用","採用","不通"];
+const HIRING_RESULT_OPTIONS = ["未判定","保留","辞退","不採用","不通","採用","入社済"];
 let DECLINE_REASON_OPTIONS = [];
 let REJECT_REASON_OPTIONS = [];
 
@@ -2811,14 +2811,21 @@ if (legacyResultStatuses.includes(payload.status)) {
 }
 if (payload.status === "入社") {
   payload.status = "採用";
+  payload.hiring_result = "入社済";
+}
+if (payload.join_date) {
+  payload.status = "採用";
+  payload.hiring_result = "入社済";
+}
+if (!payload.join_date && payload.hiring_result === "入社済") {
   payload.hiring_result = "採用";
 }
-if (payload.status === "採用") payload.hiring_result = "採用";
-if (payload.hiring_result === "採用") payload.status = "採用";
+if (payload.status === "採用" && (!payload.hiring_result || payload.hiring_result === "未判定")) payload.hiring_result = "採用";
+if (["採用","入社済"].includes(payload.hiring_result)) payload.status = "採用";
 
 // ===== 終了・結果確定は次回対応日を自動クリア =====
 const closedStatuses = ["採用"];
-const resultFixed = ["採用","不採用","辞退","不通","保留"].includes(payload.hiring_result);
+const resultFixed = ["採用","入社済","不採用","辞退","不通","保留"].includes(payload.hiring_result);
 
 if (closedStatuses.includes(payload.status) || resultFixed) {
   payload.next_action_date = null;
@@ -2880,7 +2887,13 @@ function quickSetResult(result) {
   const resultEl = document.getElementById("hiringResult");
   const nextActionDate = document.getElementById("nextActionDate");
   if (resultEl) resultEl.value = result;
-  if ((["採用","不採用","辞退","不通","保留"].includes(result)) && nextActionDate) nextActionDate.value = "";
+  if ((["採用","入社済","不採用","辞退","不通","保留"].includes(result)) && nextActionDate) nextActionDate.value = "";
+  if (result === "入社済") {
+    const statusEl = document.getElementById("status");
+    if (statusEl && statusEl.value !== "採用") statusEl.value = "採用";
+    const joinDate = document.getElementById("joinDate");
+    if (joinDate && !joinDate.value) joinDate.value = new Date().toISOString().slice(0, 10);
+  }
   if (result === "採用") {
     const statusEl = document.getElementById("status");
     if (statusEl && statusEl.value !== "採用") statusEl.value = "採用";
@@ -2893,7 +2906,8 @@ function quickSetResult(result) {
 }
 
 function handleStatusChange() {
-  const status = document.getElementById("status").value;
+  const statusEl = document.getElementById("status");
+  const status = statusEl ? statusEl.value : "";
   const today = new Date().toISOString().slice(0, 10);
 
   const appointmentDate = document.getElementById("appointmentDate");
@@ -2923,7 +2937,22 @@ function handleStatusChange() {
 
   if (status === "採用") {
     if (offerDate && !offerDate.value) offerDate.value = today;
-    if (hiringResult) hiringResult.value = "採用";
+    if (hiringResult && (!hiringResult.value || hiringResult.value === "未判定")) hiringResult.value = "採用";
+  }
+
+  if (joinDate && joinDate.value && hiringResult) {
+    hiringResult.value = "入社済";
+  }
+
+  if (joinDate && !joinDate.dataset.joinSyncBound) {
+    joinDate.dataset.joinSyncBound = "1";
+    joinDate.addEventListener("change", function(){
+      if (hiringResult) hiringResult.value = this.value ? "入社済" : (status === "採用" ? "採用" : "未判定");
+      if (this.value && statusEl) statusEl.value = "採用";
+      if (nextActionDate && this.value) nextActionDate.value = "";
+      handleStatusChange();
+      markDirty();
+    });
   }
 
   const closedStatuses = ["採用"];
