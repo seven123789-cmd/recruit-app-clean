@@ -107,7 +107,7 @@
 <div class="metric-card kpi-hired">
 <div class="label">採用</div>
 <div class="value" id="sumJoin">0</div>
-<div class="sub">入社日または採用結果</div>
+<div class="sub">採用ステータスまたは選考結果</div>
 </div>
 <div class="metric-card kpi-rate-interview">
 <div class="label">応募単価</div>
@@ -184,7 +184,7 @@ let costRows=[];
 let masterChannels=[];
 let costChart=null;
 
-const ACTIVE_STATUSES=["応募","アポ取得","面接設定","面接実施"];
+const ACTIVE_STATUSES=["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
 
 function $(id){return document.getElementById(id)}
 
@@ -197,11 +197,13 @@ function yen(v){const n=Number(v||0);return n ? n.toLocaleString("ja-JP")+"円" 
 function yenDash(v){const n=Number(v||0);return n ? n.toLocaleString("ja-JP")+"円" : "-"}
 function todayStr(){const d=new Date();return d.toISOString().slice(0,10)}
 
-function isHired(r){return r.hiring_result==="採用"||validDate(r.join_date)}
+function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="採用"||validDate(r.join_date)||String(r.status||"").trim()==="採用")}
 
 function isActionRequired(r){
   const st=String(r.status||"").trim();
-  if(st==="面接実施"&&(r.hiring_result==="採用"||r.hiring_result==="不採用"))return false;
+  const result=String(r.hiring_result||"").trim();
+  if(st === "採用")return false;
+  if(["採用","不採用","辞退","不通","保留"].includes(result))return false;
   if(!ACTIVE_STATUSES.includes(st))return false;
   if(!r.next_action_date)return true;
   return daysBetween(todayStr(),r.next_action_date)<=1;
@@ -478,9 +480,9 @@ function groupByChannel(data,costMap){
     if(validDate(r.interview_done_date))x.interview++;
     if(validDate(r.offer_date))x.offer++;
     if(isHired(r))x.join++;
-    if(r.status==="辞退"||r.decline_reason)x.decline++;
-    if(r.status==="不通")x.lost++;
-    if(r.status==="保留")x.hold++;
+    if(String(r.hiring_result||"").trim()==="辞退"||r.decline_reason)x.decline++;
+    if(String(r.hiring_result||"").trim()==="不通")x.lost++;
+    if(String(r.hiring_result||"").trim()==="保留")x.hold++;
     if(isActionRequired(r))x.todo++;
   });
   (costMap||new Map()).forEach((cost,key)=>{

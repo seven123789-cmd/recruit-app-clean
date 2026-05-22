@@ -86,7 +86,7 @@
 <div class="grid-5 summary-grid">
 <div class="metric-card kpi-applied"><div class="label">応募</div><div class="value" id="sumApplied">0</div><div class="sub">対象期間内の応募数</div></div>
 <div class="metric-card kpi-interview"><div class="label">面接実施</div><div class="value" id="sumInterview">0</div><div class="sub">面接まで進んだ人数</div></div>
-<div class="metric-card kpi-hired"><div class="label">採用</div><div class="value" id="sumJoin">0</div><div class="sub">入社日または採用結果</div></div>
+<div class="metric-card kpi-hired"><div class="label">採用</div><div class="value" id="sumJoin">0</div><div class="sub">採用ステータスまたは選考結果</div></div>
 <div class="metric-card kpi-rate-interview"><div class="label">応募→面接</div><div class="value" id="sumInterviewRate">0.0%</div><div class="sub">応募数に対する面接率</div></div>
 <div class="metric-card kpi-rate-hired"><div class="label">応募→採用</div><div class="value" id="sumJoinRate">0.0%</div><div class="sub">応募数に対する採用率</div></div>
 </div>
@@ -162,7 +162,7 @@ function setMsg(id,msg,type="info"){const el=$(id);if(!el)return;if(!msg){el.tex
 function rate(n,d){return !d ? "0.0%" : ((n/d)*100).toFixed(1)+"%"}
 function rateNum(n,d){return !d ? 0 : Number(((n/d)*100).toFixed(1))}
 function validDate(s){if(!s)return false;const y=Number(String(s).slice(0,4));return y>=2000}
-function isHired(r){return r.hiring_result==="採用"||validDate(r.join_date)}
+function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="採用"||validDate(r.join_date)||String(r.status||"").trim()==="採用")}
 
 function fiscalRange(type){const fy=fiscalYear();if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};if(type==="all")return {fy:null,label:"全期間",from:"",to:""};return {fy,label:fy+"年度",from:fy+"-04-01",to:(fy+1)+"-03-31"}}
 function applyFy(){const range=fiscalRange($("fy").value);$("from").value=range.from;$("to").value=range.to;const period=range.from&&range.to ? `${range.from} ～ ${range.to}` : "全期間";setText("periodText","対象期間："+period);setText("sideFiscalYear",range.label);setText("sidePeriod",period)}
@@ -267,9 +267,9 @@ function groupByChannel(data){
     if(validDate(r.interview_done_date))x.interview++;
     if(validDate(r.offer_date))x.offer++;
     if(isHired(r))x.join++;
-    if(r.status==="辞退"||r.decline_reason)x.decline++;
-    if(r.status==="不通"||String(r.action_memo||"").includes("不通"))x.lost++;
-    if(r.status==="保留")x.hold++;
+    if(String(r.hiring_result||"").trim()==="辞退"||r.decline_reason)x.decline++;
+    if(String(r.hiring_result||"").trim()==="不通"||String(r.action_memo||"").includes("不通"))x.lost++;
+    if(String(r.hiring_result||"").trim()==="保留")x.hold++;
   });
   return [...m.values()].sort((a,b)=>b.join-a.join||b.interview-a.interview||b.applied-a.applied||String(a.key).localeCompare(String(b.key),"ja"));
 }

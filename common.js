@@ -48,20 +48,26 @@
     { name:"面接設定", display_order:40, color:"#f97316" },
     { name:"面接実施", display_order:50, color:"#ca8a04" },
     { name:"内定", display_order:60, color:"#7c3aed" },
-    { name:"採用", display_order:70, color:"#16a34a" },
-    { name:"入社", display_order:80, color:"#15803d" },
-    { name:"辞退", display_order:90, color:"#db2777" },
-    { name:"不採用", display_order:100, color:"#b91c1c" },
-    { name:"不通", display_order:110, color:"#374151" },
-    { name:"保留", display_order:120, color:"#c2410c" }
+    { name:"採用", display_order:70, color:"#16a34a" }
   ];
+
+  const RECRUIT_DEPRECATED_STATUS_NAMES = ["入社","辞退","不採用","不通","保留"];
+  const RECRUIT_HIRING_RESULT_DEFAULTS = ["未判定","保留","辞退","不採用","採用","不通"];
 
   function recruitStatusDefaultNames(){
     return RECRUIT_STATUS_MASTER_DEFAULTS.map(row => row.name);
   }
 
+  function isDeprecatedRecruitStatus(name){
+    return RECRUIT_DEPRECATED_STATUS_NAMES.includes(String(name || "").trim());
+  }
+
+  function recruitHiringResultNames(){
+    return RECRUIT_HIRING_RESULT_DEFAULTS.slice();
+  }
+
   function mergeRecruitStatusNames(values){
-    const current = [...new Set((values || []).map(v => String(v || "").trim()).filter(Boolean))];
+    const current = [...new Set((values || []).map(v => String(v || "").trim()).filter(Boolean))].filter(name => !isDeprecatedRecruitStatus(name));
     const extras = recruitStatusDefaultNames().filter(name => !current.includes(name));
     const merged = current.concat(extras);
     const orderMap = new Map(RECRUIT_STATUS_MASTER_DEFAULTS.map(row => [row.name, Number(row.display_order || 9999)]));
@@ -72,10 +78,41 @@
     return RECRUIT_STATUS_MASTER_DEFAULTS.find(row => row.name === name)?.color || "#64748b";
   }
 
+  function isValidRecruitDate(value){
+    if(!value) return false;
+    const text = String(value).slice(0,10);
+    const y = Number(text.slice(0,4));
+    return y >= 2000;
+  }
+
+  function isRecruitHired(row){
+    const r = row || {};
+    return String(r.status || "").trim() === "採用" || String(r.hiring_result || "").trim() === "採用" || isValidRecruitDate(r.join_date);
+  }
+
+  function isRecruitRejected(row){
+    const r = row || {};
+    const status = String(r.status || "").trim();
+    return String(r.hiring_result || "").trim() === "不採用" || status === "不採用";
+  }
+
+  function isRecruitDeclined(row){
+    const r = row || {};
+    const status = String(r.status || "").trim();
+    return String(r.hiring_result || "").trim() === "辞退" || status === "辞退" || !!String(r.decline_reason || "").trim();
+  }
+
+  function isRecruitNoContact(row){
+    const r = row || {};
+    const memo = String(r.action_memo || "");
+    const status = String(r.status || "").trim();
+    return String(r.hiring_result || "").trim() === "不通" || status === "不通" || String(r.reject_reason || "") === "連絡取れず" || String(r.decline_reason || "") === "連絡取れず" || memo.includes("不通") || memo.includes("連絡取れず");
+  }
+
   function isFinal(row){
     const r = row || {};
-    const status = String(r.status || "");
-    return ["入社","辞退","不通","不採用"].includes(status) || r.hiring_result === "不採用";
+    const status = String(r.status || "").trim();
+    return isRecruitHired(r) || ["不採用","辞退","不通","保留"].includes(String(r.hiring_result || "").trim()) || ["不採用","辞退","不通","保留","入社"].includes(status);
   }
 
 
@@ -123,6 +160,14 @@
   window.recruitStatusDefaultNames = window.recruitStatusDefaultNames || recruitStatusDefaultNames;
   window.mergeRecruitStatusNames = window.mergeRecruitStatusNames || mergeRecruitStatusNames;
   window.recruitStatusDefaultColor = window.recruitStatusDefaultColor || recruitStatusDefaultColor;
+  window.RECRUIT_DEPRECATED_STATUS_NAMES = window.RECRUIT_DEPRECATED_STATUS_NAMES || RECRUIT_DEPRECATED_STATUS_NAMES;
+  window.isDeprecatedRecruitStatus = window.isDeprecatedRecruitStatus || isDeprecatedRecruitStatus;
+  window.recruitHiringResultNames = window.recruitHiringResultNames || recruitHiringResultNames;
+  window.isValidRecruitDate = window.isValidRecruitDate || isValidRecruitDate;
+  window.isRecruitHired = window.isRecruitHired || isRecruitHired;
+  window.isRecruitRejected = window.isRecruitRejected || isRecruitRejected;
+  window.isRecruitDeclined = window.isRecruitDeclined || isRecruitDeclined;
+  window.isRecruitNoContact = window.isRecruitNoContact || isRecruitNoContact;
   window.isFinal = window.isFinal || isFinal;
   window.getRecruitCurrentFiscalYear = window.getRecruitCurrentFiscalYear || getRecruitCurrentFiscalYear;
   window.formatRecruitFiscalYearLabel = window.formatRecruitFiscalYearLabel || formatRecruitFiscalYearLabel;

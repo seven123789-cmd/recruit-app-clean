@@ -13,7 +13,7 @@ let currentRole=null;
 let rows=[];
 let ownerFunnelChart=null;
 
-const ACTIVE_STATUSES=["応募","アポ取得","面接設定","面接実施","保留"];
+const ACTIVE_STATUSES=["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
 
 function $(id){return document.getElementById(id)}
 
@@ -25,11 +25,13 @@ function validDate(s){if(!s)return false;const t=String(s).slice(0,10);const y=N
 function normalizeDate(s){return validDate(s)?String(s).slice(0,10):""}
 function todayStr(){const d=new Date();return d.toISOString().slice(0,10)}
 function daysBetween(a,b){if(!validDate(a)||!validDate(b))return null;return Math.floor((new Date(normalizeDate(b)+"T00:00:00")-new Date(normalizeDate(a)+"T00:00:00"))/(86400000))}
-function isHired(r){return r.hiring_result==="採用"||validDate(r.join_date)}
-function isFinal(r){return ["入社","辞退","不通"].includes(String(r.status||""))||r.hiring_result==="不採用"||isHired(r)}
+function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="採用"||validDate(r.join_date)||String(r.status||"").trim()==="採用")}
+function isFinal(r){return String(r.status||"").trim()==="採用"||["不採用","辞退","不通","保留"].includes(String(r.hiring_result||"").trim())||isHired(r)}
 function isActionRequired(r){
   const st=String(r.status||"").trim();
-  if(st==="面接実施"&&(r.hiring_result==="採用"||r.hiring_result==="不採用"))return false;
+  const result=String(r.hiring_result||"").trim();
+  if(st === "採用")return false;
+  if(["採用","不採用","辞退","不通","保留"].includes(result))return false;
   if(!ACTIVE_STATUSES.includes(st))return false;
   if(!r.next_action_date)return true;
   return daysBetween(todayStr(),r.next_action_date)<=1;

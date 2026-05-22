@@ -36,9 +36,10 @@ function daysBetween(from,to){
 }
 
 function isFinal(row){
+  if(window.isFinal) return window.isFinal(row);
   const status=String(row?.status||"");
   const result=String(row?.hiring_result||"");
-  return ["入社","辞退","不通"].includes(status) || ["採用","不採用"].includes(result) || !!row?.join_date;
+  return status === "採用" || ["採用","不採用","辞退","不通","保留"].includes(result) || ["辞退","不採用","不通","保留"].includes(status) || !!row?.join_date;
 }
 
 function setChoiceActive(selector, value, attrName){
@@ -162,24 +163,20 @@ function validateCandidatePayload(payload, options = {}){
     errors.push({field:"name", message:"氏名を入力してください。"});
   }
 
-  if(p.status === "入社" && !p.join_date){
-    errors.push({field:"join_date", message:"入社の場合は入社日を入力してください。"});
-  }
-
   if(p.status === "内定" && !p.offer_date){
     errors.push({field:"offer_date", message:"内定の場合は内定日を入力してください。"});
   }
 
-  if(p.status === "辞退" && !p.decline_reason){
+  if((p.hiring_result === "辞退" || p.status === "辞退") && !p.decline_reason){
     errors.push({field:"decline_reason", message:"辞退の場合は辞退理由を入力してください。"});
   }
 
-  if(p.hiring_result === "不採用" && !p.rejection_reason){
+  if(p.hiring_result === "不採用" && !p.reject_reason){
     errors.push({field:"rejection_reason", message:"不採用の場合は不採用理由を入力してください。"});
   }
 
-  if((p.hiring_result === "採用" || p.status === "内定" || p.status === "入社") && !p.interview_done_date){
-    errors.push({field:"interview_done_date", message:"採用・内定・入社の場合は面接実施日を入力してください。"});
+  if((p.hiring_result === "採用" || p.status === "内定" || p.status === "採用") && !p.interview_done_date){
+    errors.push({field:"interview_done_date", message:"採用・内定・採用ステータスの場合は面接実施日を入力してください。"});
   }
 
   return {

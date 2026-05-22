@@ -130,6 +130,16 @@
             </div>
             <div id="statusFilterChips" class="status-filter-chips" aria-label="ステータス絞り込み"></div>
           </div>
+          <div class="col-12 list-status-filter-panel result-filter-panel">
+            <div class="list-status-filter-head">
+              <div>
+                <span class="list-filter-label">選考結果</span>
+                <span class="list-filter-note">未判定・保留・辞退・不採用・採用・不通を複数選択可</span>
+              </div>
+              <button class="btn-secondary list-status-clear" type="button" onclick="clearResultFilters()">選考結果解除</button>
+            </div>
+            <div id="resultFilterChips" class="status-filter-chips result-filter-chips" aria-label="選考結果絞り込み"></div>
+          </div>
           <div class="col-12 actions">
             <button id="filterAllBtn" class="btn-primary" type="button" onclick="setListFilter('all')">全件</button>
             <button id="filterActionBtn" class="btn-warning" type="button" onclick="setListFilter('action')">要対応のみ</button>
@@ -190,7 +200,7 @@
                 <th class="list-check-col"><input type="checkbox" id="bulkSelectAll" aria-label="全選択"></th>
                 <th>氏名</th>
                 <th>応募日</th>
-                <th>ステータス</th>
+                <th>ステータス<br><span class="th-sub">選考結果</span></th>
                 <th>本部</th>
                 <th>センター</th>
                 <th>媒体</th>
@@ -228,10 +238,12 @@ let listMasterChannels=[];
 let listMasterStatuses=[];
 let statusColorMap={};
 let selectedStatusFilters=new Set();
+let selectedResultFilters=new Set();
 let dashboardJob="";
 const selectedIds = new Set();
 
 const ACTIVE_STATUSES=["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
+const HIRING_RESULT_OPTIONS=["未判定","保留","辞退","不採用","採用","不通"];
 const STATE="recruit_list_filter_state";
 const NAV="recruit_list_navigation_state";
 
@@ -255,17 +267,16 @@ function validDate(s){
 }
 
 function isActionRequired(r){
-  const st=String(r.status||"");
-  if(["入社","辞退","不採用","不通","保留"].includes(st))return false;
-  if(st==="面接実施"&&(r.hiring_result==="採用"||r.hiring_result==="不採用"))return false;
+  const st=String(r.status||"").trim();
+  const result=String(r.hiring_result||"").trim();
+  if(st === "採用")return false;
+  if(["採用","不採用","辞退","不通","保留"].includes(result))return false;
   if(!ACTIVE_STATUSES.includes(st))return false;
   if(!r.next_action_date)return true;
   return daysBetween(todayStr(),r.next_action_date)<=1;
 }
 function isHired(r){
-  // ダッシュボードの「採用」は join_date（採用日）で集計しているため、
-  // 応募者一覧への遷移後も同じ条件に統一する。
-  return !!r && validDate(r.join_date);
+  return window.isRecruitHired ? window.isRecruitHired(r) : (!!r && (String(r.status||"").trim()==="採用" || String(r.hiring_result||"").trim()==="採用" || validDate(r.join_date)));
 }
 function normalizeStatusColor(value){
   const v=String(value||"").trim();
@@ -284,6 +295,20 @@ function badge(v){
   const cls=v?"badge":"badge badge-empty";
   const style=v?` style="color:${esc(color)};border-color:${esc(hexToRgba(color,.34))};background:${esc(hexToRgba(color,.10))}"`:"";
   return `<span class="${cls}"${style}>${esc(t)}</span>`;
+}
+function normalizeHiringResult(row){
+  const result=String(row?.hiring_result||"").trim();
+  if(result) return result;
+  const legacyStatus=String(row?.status||"").trim();
+  return ["保留","辞退","不採用","不通"].includes(legacyStatus) ? legacyStatus : "未判定";
+}
+function resultBadge(row){
+  const result=normalizeHiringResult(row);
+  const cls=result==="採用"?"result-hired":result==="不採用"?"result-rejected":result==="辞退"?"result-declined":result==="不通"?"result-no-contact":result==="保留"?"result-hold":"result-pending";
+  return `<span class="result-badge ${cls}">${esc(result)}</span>`;
+}
+function statusResultCell(row){
+  return `<div class="status-result-cell"><div class="status-line">${badge(row.status)}</div><div class="result-line"><span>選考結果</span>${resultBadge(row)}</div></div>`;
 }
 
 function getFiscalYearFromAppliedDate(dateStr){
@@ -472,7 +497,8 @@ function saveState(){
     dateType:$("filterDateType")?.value||"applied_date",
     dateFrom:$("filterDateFrom")?.value||"",
     dateTo:$("filterDateTo")?.value||"",
-    statuses:[...selectedStatusFilters]
+    statuses:[...selectedStatusFilters],
+    results:[...selectedResultFilters]
   }));
 }
 function restoreState(){
@@ -557,7 +583,8 @@ async function loadListMasterStatuses(rows=[]){
         color:normalizeStatusColor(row.color||""),
         display_order:Number(row.display_order||0)
       }))
-      .filter(row=>row.name);
+      .filter(row=>row.name)
+      .filter(row=>!(window.isDeprecatedRecruitStatus && window.isDeprecatedRecruitStatus(row.name)));
   }catch(e){
     console.warn("ステータスマスタ読込失敗", e);
     const names=window.RecruitMaster ? await window.RecruitMaster.list("statuses").catch(()=>[]) : [];
@@ -619,6 +646,27 @@ function clearStatusFilters(){
   saveState();
   renderCandidates();
 }
+function renderResultFilterChips(){
+  const wrap=$("resultFilterChips");
+  if(!wrap)return;
+  wrap.innerHTML=HIRING_RESULT_OPTIONS.map(result=>{
+    const active=selectedResultFilters.has(result);
+    return `<button class="status-filter-chip result-chip ${active?'active':''}" type="button" data-result="${esc(result)}" onclick="toggleResultFilter(this.dataset.result)">${esc(result)}</button>`;
+  }).join("");
+}
+function toggleResultFilter(result){
+  const value=String(result||"").trim();
+  if(!value)return;
+  if(selectedResultFilters.has(value))selectedResultFilters.delete(value);
+  else selectedResultFilters.add(value);
+  saveState();
+  renderCandidates();
+}
+function clearResultFilters(){
+  selectedResultFilters.clear();
+  saveState();
+  renderCandidates();
+}
 function setupBulkStatusOptions(){
   const select=$("bulkStatus");
   if(!select)return;
@@ -640,6 +688,7 @@ async function setupFilters(rows){
   setSelectOptions("filterChannel", getListChannelOptions(rows), "全媒体");
   await loadListMasterStatuses(rows);
   renderStatusFilterChips();
+  renderResultFilterChips();
   setupBulkStatusOptions();
 }
 function clearFilters(){
@@ -650,6 +699,7 @@ function clearFilters(){
   const dateType=$("filterDateType");
   if(dateType)dateType.value="applied_date";
   selectedStatusFilters.clear();
+  selectedResultFilters.clear();
   clearDashboardRangeFilter();
   dashboardContextActive=false;
   dashboardJob="";
@@ -708,11 +758,10 @@ function isDormant3Days(r){
   return days!==null && days>=3;
 }
 function isNoContact(r){
-  const memo=String(r.action_memo||"");
-  return r.status==="不通" || r.reject_reason==="連絡取れず" || r.decline_reason==="連絡取れず" || memo.includes("不通") || memo.includes("連絡取れず");
+  return window.isRecruitNoContact ? window.isRecruitNoContact(r) : (String(r.hiring_result||"").trim()==="不通");
 }
 function isDecline(r){
-  return r.status==="辞退" || !!r.decline_reason;
+  return window.isRecruitDeclined ? window.isRecruitDeclined(r) : (String(r.hiring_result||"").trim()==="辞退" || String(r.status||"").trim()==="辞退" || !!r.decline_reason);
 }
 function isInterviewNotSet(r){
   return validDate(r.appointment_date) && !validDate(r.interview1_date) && !isFinal(r);
@@ -820,6 +869,7 @@ function filteredRows(){
       if(dateTo&&targetDate>dateTo)return false;
     }
     if(selectedStatusFilters.size && !selectedStatusFilters.has(String(r.status||"").trim()))return false;
+    if(selectedResultFilters.size && !selectedResultFilters.has(normalizeHiringResult(r)))return false;
     return (!d||r.division===d)&&(!c||r.center_name===c)&&(!o||r.owner_name===o)&&(!ch||r.channel===ch)&&(!job||r.job_type===job);
   });
 
@@ -1073,6 +1123,7 @@ function renderCandidates(){
   $("filterActionBtn").className=currentListFilter!=="all"?"btn-warning":"btn-secondary";
   updateSortButtons();
   renderStatusFilterChips();
+  renderResultFilterChips();
 
   const rows=filteredRows();
   setupBulkOptions();
@@ -1120,7 +1171,7 @@ function renderCandidates(){
       '<td class="list-check-cell"><input type="checkbox" class="bulk-row-check" data-id="'+esc(r.id)+'" aria-label="選択"'+checked+'></td>'+
       "<td><strong>"+esc(r.name||"")+"</strong></td>"+
       "<td>"+formatDate(r.applied_date)+"</td>"+
-      "<td>"+badge(r.status)+"</td>"+
+      "<td>"+statusResultCell(r)+"</td>"+
       "<td>"+esc(r.division||"")+"</td>"+
       "<td>"+esc(r.center_name||"")+"</td>"+
       "<td>"+esc(r.channel||"")+"</td>"+
@@ -1279,6 +1330,7 @@ async function loadCandidates(){
       const latestDateType=$("filterDateType");
       if(latestDateType)latestDateType.value="applied_date";
       selectedStatusFilters.clear();
+      selectedResultFilters.clear();
       localStorage.removeItem(STATE);
     }
 
@@ -1307,6 +1359,7 @@ async function loadCandidates(){
         if(dateFromEl)dateFromEl.value=state.dateFrom||"";
         if(dateToEl)dateToEl.value=state.dateTo||"";
         selectedStatusFilters=new Set(Array.isArray(state.statuses)?state.statuses.map(v=>String(v||"").trim()).filter(Boolean):[]);
+        selectedResultFilters=new Set(Array.isArray(state.results)?state.results.map(v=>String(v||"").trim()).filter(Boolean):[]);
       }
     }
 

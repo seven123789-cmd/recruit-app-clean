@@ -89,7 +89,7 @@
 <div class="grid-5 summary-grid">
 <div aria-label="応募者一覧で応募者を確認" class="metric-card kpi-applied heatmap-summary-link" data-heat-summary-filter="applied" role="button" tabindex="0"><div class="label">応募</div><div class="value" id="sumApplied">0</div><div class="sub">対象期間内の応募数</div></div>
 <div aria-label="応募者一覧で面接実施者を確認" class="metric-card kpi-interview heatmap-summary-link" data-heat-summary-filter="interview_done" role="button" tabindex="0"><div class="label">面接実施</div><div class="value" id="sumInterview">0</div><div class="sub">面接まで進んだ人数</div></div>
-<div aria-label="応募者一覧で採用者を確認" class="metric-card kpi-hired heatmap-summary-link" data-heat-summary-filter="hired" role="button" tabindex="0"><div class="label">採用</div><div class="value" id="sumJoin">0</div><div class="sub">入社日または採用結果</div></div>
+<div aria-label="応募者一覧で採用者を確認" class="metric-card kpi-hired heatmap-summary-link" data-heat-summary-filter="hired" role="button" tabindex="0"><div class="label">採用</div><div class="value" id="sumJoin">0</div><div class="sub">採用ステータスまたは選考結果</div></div>
 <div aria-label="応募者一覧で面接未到達者を確認" class="metric-card kpi-rate-interview heatmap-summary-link" data-heat-summary-filter="heat_interview_gap" role="button" tabindex="0"><div class="label">危険セル</div><div class="value" id="sumDanger">0</div><div class="sub">赤判定の項目数</div></div>
 <div aria-label="応募者一覧で対象者を確認" class="metric-card kpi-rate-hired heatmap-summary-link" data-heat-summary-filter="all" role="button" tabindex="0"><div class="label">参考値</div><div class="value" id="sumReference">0</div><div class="sub">応募5件未満の行数</div></div>
 </div>
@@ -282,7 +282,7 @@ let rows=[];
 let lastSummary={danger:0,warning:0,reference:0};
 document.body.dataset.ownerExpanded="false";
 
-const ACTIVE_STATUSES=["応募","アポ取得","面接設定","面接実施"];
+const ACTIVE_STATUSES=["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
 
 function $(id){return document.getElementById(id)}
 
@@ -347,13 +347,15 @@ function keyLink(axis,key){
   const href=buildAnalysisUrl(axis,key);
   return `<a class="heatmap-key-link" href="${esc(href)}">${esc(key)}</a>`;
 }
-function isHired(r){return r.hiring_result==="採用"||validDate(r.join_date)}
-function isDeclined(r){return r.status==="辞退"||String(r.decline_reason||"").trim()!==""}
-function isNoContact(r){return r.status==="不通"}
-function isFinal(r){return ["入社","辞退","不通"].includes(r.status)||r.hiring_result==="不採用"||isHired(r)}
+function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="採用"||validDate(r.join_date)||String(r.status||"").trim()==="採用")}
+function isDeclined(r){return window.isRecruitDeclined ? window.isRecruitDeclined(r) : (String(r.hiring_result||"").trim()==="辞退"||String(r.decline_reason||"").trim()!=="")}
+function isNoContact(r){return window.isRecruitNoContact ? window.isRecruitNoContact(r) : String(r.hiring_result||"").trim()==="不通"}
+function isFinal(r){return String(r.status||"").trim()==="採用"||["不採用","辞退","不通","保留"].includes(String(r.hiring_result||"").trim())||isHired(r)}
 function isActionRequired(r){
   const st=String(r.status||"").trim();
-  if(st==="面接実施"&&(r.hiring_result==="採用"||r.hiring_result==="不採用"))return false;
+  const result=String(r.hiring_result||"").trim();
+  if(st === "採用")return false;
+  if(["採用","不採用","辞退","不通","保留"].includes(result))return false;
   if(!ACTIVE_STATUSES.includes(st))return false;
   if(!r.next_action_date)return true;
   return daysBetween(todayStr(),r.next_action_date)<=1;
