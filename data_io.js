@@ -158,7 +158,11 @@
     return rows.filter(r=>r.some(v=>String(v||"").trim()!==""));
   }
 
-  function normalizePersonName(v){return (window.normalizePersonName || window.CandidateUtils?.normalizePersonName || function(x){return String(x??"").replace(/[\u3000\s]+/g," ").trim();})(v);}
+  function normalizePersonName(v){
+    const fn = window.CandidateUtils && window.CandidateUtils.normalizePersonName;
+    if(typeof fn === "function") return fn(v);
+    return String(v??"").replace(/[\u3000\s]+/g," ").trim();
+  }
   function normalizeHeader(h){return String(h||"").trim();}
   function validDate(v){return !v||/^\d{4}-\d{2}-\d{2}$/.test(String(v));}
   function parseBoolean(v){
@@ -217,7 +221,15 @@
     renderPreview();
   }
 
-  function escapeHtml(v){return String(v??"").replace(/[&<>"]/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[s]));}
+  function escapeHtml(v){
+    if(typeof window.escapeHtml === "function") return window.escapeHtml(v);
+    return String(v??"")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
 
   function renderPreview(){
     const tbody=$("previewBody");
