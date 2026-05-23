@@ -217,13 +217,6 @@
   }
 }
 </style>
-<script src="./common.js"></script>
-<script src="assets/js/supabase.js"></script>
-<script src="assets/js/candidate_utils.js"></script>
-<script src="assets/js/ui_utils.js"></script>
-<script src="assets/js/audit_utils.js"></script>
-<script src="assets/js/ops_guard.js"></script>
-<script src="assets/js/safe_utils.js"></script>
 </head>
 <body class="auth-checking">
 
@@ -433,6 +426,13 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="./common.js"></script>
+<script src="assets/js/candidate_utils.js"></script>
+<script src="assets/js/ops_guard.js"></script>
+<script src="assets/js/ui_utils.js"></script>
+<script src="assets/js/audit_utils.js"></script>
+<script src="assets/js/safe_utils.js"></script>
 <script>
 const sb = window.getRecruitSupabaseClient();
 
@@ -864,11 +864,22 @@ function setDefaultAppliedDate(){
 }
 
 
+function getOwnerMasterOptions(){
+  return Array.from(document.querySelectorAll("#ownerChoiceWrap .choice-pill"))
+    .map(btn => String(btn.dataset.ownerName || "").trim())
+    .filter(Boolean);
+}
+
+function isOwnerInMasterOptions(ownerName){
+  const value = String(ownerName || "").trim();
+  return !!value && getOwnerMasterOptions().includes(value);
+}
+
 function loadEntryMemory(){
   const owner = localStorage.getItem("recruit_entry_owner_name") || "";
   if (!owner) return;
 
-  if (["三浦","楠本","伊藤"].includes(owner)) {
+  if (isOwnerInMasterOptions(owner)) {
     setOwner(owner);
   } else {
     setOwner("その他");
@@ -901,7 +912,7 @@ function clearEntryFields(){
   document.getElementById("entryStatus").value = "応募";
   setJobType("");
 
-  if (["三浦","楠本","伊藤"].includes(keepOwner)) {
+  if (isOwnerInMasterOptions(keepOwner)) {
     setOwner(keepOwner);
   } else if (keepOwner) {
     setOwner("その他");

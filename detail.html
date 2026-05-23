@@ -2348,9 +2348,20 @@ function setChannelForDetail(channel){
   toggleChannelFreeInput();
 }
 
+function getOwnerMasterOptions(){
+  return Array.from(document.querySelectorAll("#ownerChoiceWrap .choice-pill"))
+    .map(btn => String(btn.dataset.ownerName || "").trim())
+    .filter(Boolean);
+}
+
+function isOwnerInMasterOptions(ownerName){
+  const value = String(ownerName || "").trim();
+  return !!value && getOwnerMasterOptions().includes(value);
+}
+
 function setOwnerForDetail(ownerName){
   const value = ownerName || "";
-  if (["三浦","楠本","伊藤"].includes(value)) {
+  if (isOwnerInMasterOptions(value)) {
     setOwner(value);
   } else if (value) {
     setOwner("その他");

@@ -1,178 +1,239 @@
-/* dashboard_progress.css : 採用進捗 page specific styles */
+// assets/js/candidate_utils.js
+(function(){
 
-/* 既存dashboard共通UIに乗せるため、この画面固有の不足分だけ定義 */
-.main-content .analysis-control-form.analysis-control-form--4{
-  grid-template-columns:repeat(4,minmax(142px,var(--ui-control-w))) minmax(72px,var(--ui-button-w));
-}
-
-.progress-grid{
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:14px;
-  margin:0 0 22px;
-}
-.progress-card{
-  border:1px solid var(--ui-line,#dbeafe);
-  border-radius:18px;
-  background:#fff;
-  padding:18px;
-  box-shadow:0 12px 28px rgba(15,23,42,.06);
-}
-.progress-card .label{
-  font-size:12px;
-  font-weight:900;
-  color:#64748b;
-}
-.progress-card .value{
-  margin-top:8px;
-  font-size:30px;
-  font-weight:950;
-  color:#0f172a;
-  line-height:1;
-}
-.progress-card .sub{
-  margin-top:8px;
-  font-size:12px;
-  font-weight:700;
-  color:#64748b;
+function escapeAttr(str){
+  return String(str ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;");
 }
 
-.progress-board{
-  display:grid;
-  gap:14px;
-}
-.progress-job-card{
-  border:1px solid #e5e7eb;
-  border-radius:18px;
-  background:#fff;
-  padding:16px;
-}
-.progress-job-head{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:14px;
-  margin-bottom:12px;
-}
-.progress-job-title{
-  font-size:18px;
-  font-weight:950;
-  color:#0f172a;
-}
-.progress-job-meta{
-  margin-top:4px;
-  font-size:12px;
-  font-weight:700;
-  color:#64748b;
-}
-.progress-main-number{
-  font-size:22px;
-  font-weight:950;
-  color:#0f172a;
-  text-align:right;
-  white-space:nowrap;
-}
-.progress-rate{
-  margin-top:4px;
-  font-size:12px;
-  font-weight:900;
-  color:#2563eb;
-  text-align:right;
-}
-.progress-bar-track{
-  height:12px;
-  border-radius:999px;
-  background:#e5e7eb;
-  overflow:hidden;
-}
-.progress-bar-fill{
-  height:100%;
-  border-radius:999px;
-  background:linear-gradient(135deg,#3b82f6,#6366f1);
-}
-.progress-job-stats{
-  display:grid;
-  grid-template-columns:repeat(5,minmax(0,1fr));
-  gap:10px;
-  margin-top:14px;
-}
-.progress-mini{
-  border-radius:14px;
-  background:#f8fafc;
-  border:1px solid #edf2f7;
-  padding:10px;
-}
-.progress-mini span{
-  display:block;
-  font-size:11px;
-  font-weight:900;
-  color:#64748b;
-}
-.progress-mini strong{
-  display:block;
-  margin-top:4px;
-  font-size:16px;
-  font-weight:950;
-  color:#0f172a;
-}
-.progress-section-grid{
-  display:grid;
-  grid-template-columns:minmax(0,1.1fr) minmax(360px,.9fr);
-  gap:16px;
-  margin-bottom:22px;
-}
-.progress-table{
-  width:100%;
-  border-collapse:collapse;
-}
-.progress-table th,
-.progress-table td{
-  border-bottom:1px solid #e5e7eb;
-  padding:10px 8px;
-  text-align:left;
-  font-size:13px;
-}
-.progress-table th{
-  font-size:12px;
-  font-weight:900;
-  color:#475569;
-  background:#f8fafc;
-}
-.progress-table td.num,
-.progress-table th.num{
-  text-align:right;
-}
-.progress-muted{
-  margin:0;
-  color:#64748b;
-  font-size:12px;
-  font-weight:700;
-}
-.progress-comment{
-  border-left:4px solid #2563eb;
-  background:#eff6ff;
-  border-radius:14px;
-  padding:14px;
-  color:#1e3a8a;
-  line-height:1.7;
-  font-weight:800;
-}
-.progress-empty{
-  padding:24px;
-  text-align:center;
-  color:#64748b;
-  background:#f8fafc;
-  border:1px dashed #cbd5e1;
-  border-radius:16px;
+function formatDate(value){
+  return value || "-";
 }
 
-@media(max-width:1180px){
-  .progress-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
-  .progress-section-grid{grid-template-columns:1fr;}
-  .progress-job-stats{grid-template-columns:repeat(2,minmax(0,1fr));}
+function todayStr(){
+  if(window.RecruitDate?.todayJST) return window.RecruitDate.todayJST();
+  const d=new Date();
+  const parts=new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d).reduce((a,p)=>{if(p.type!=="literal")a[p.type]=p.value;return a;},{});
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
-@media(max-width:640px){
-  .progress-grid{grid-template-columns:1fr;}
-  .progress-job-head{display:block;}
-  .progress-main-number,.progress-rate{text-align:left;margin-top:8px;}
+
+function validDate(v){
+  if(!v)return false;
+  const d=new Date(String(v)+"T00:00:00+09:00");
+  return !Number.isNaN(d.getTime());
 }
+
+function daysBetween(from,to){
+  if(!validDate(from)||!validDate(to))return null;
+  const a=new Date(String(from)+"T00:00:00+09:00");
+  const b=new Date(String(to)+"T00:00:00+09:00");
+  return Math.floor((b-a)/86400000);
+}
+
+function isFinal(row){
+  if(window.isFinal) return window.isFinal(row);
+  const status=String(row?.status||"");
+  const result=String(row?.hiring_result||"");
+  return status === "採用" || ["採用","入社済","不採用","辞退","不通","保留"].includes(result) || ["入社","辞退","不採用","不通","保留"].includes(status) || !!row?.join_date;
+}
+
+function setChoiceActive(selector, value, attrName){
+  document.querySelectorAll(selector).forEach(btn => {
+    btn.classList.toggle("is-active", btn.getAttribute(attrName) === value);
+  });
+}
+
+function toggleOtherInput(selectId, wrapId, triggerValue, rowId){
+  const select = document.getElementById(selectId);
+  const wrap = document.getElementById(wrapId);
+  if (!select || !wrap) return;
+
+  const shouldShow = select.value === triggerValue;
+  wrap.classList.toggle("hidden-input", !shouldShow);
+
+  if (!shouldShow) {
+    const input = wrap.querySelector("input, textarea, select");
+    if (input) input.value = "";
+  }
+
+  if (rowId && window.syncOtherInputRow) {
+    window.syncOtherInputRow(rowId);
+  }
+}
+
+function getOtherSelectValue(selectId, freeInputId, triggerValue){
+  const selected = document.getElementById(selectId)?.value || "";
+  if (selected === triggerValue) {
+    return document.getElementById(freeInputId)?.value.trim() || "";
+  }
+  return selected;
+}
+
+function getSelectedJobType(){
+  const selected = document.getElementById("jobType")?.value || "";
+  if (selected === "その他") return document.getElementById("jobTypeFree")?.value.trim() || "";
+  return selected;
+}
+
+function getSelectedOwnerName(){
+  const selected = document.getElementById("ownerName")?.value || "";
+  if (selected === "その他") return document.getElementById("ownerNameFree")?.value.trim() || "";
+  return selected;
+}
+
+function getSelectedDivision(){
+  return document.getElementById("division")?.value || "";
+}
+
+function getSelectedCenterName(){
+  return document.getElementById("centerName")?.value || "";
+}
+
+function getSelectedChannel(){
+  return document.getElementById("channel")?.value || "";
+}
+
+function setJobType(value){
+  const hidden = document.getElementById("jobType");
+  const free = document.getElementById("jobTypeFree");
+  if (!hidden || !free) return;
+
+  hidden.value = value || "";
+  free.value = "";
+
+  setChoiceActive("#jobTypeChoiceWrap .choice-pill", hidden.value, "data-job-type");
+  toggleOtherInput("jobType", "jobTypeFree", "その他", "rowJobType");
+}
+
+function setOwner(value){
+  const hidden = document.getElementById("ownerName");
+  const free = document.getElementById("ownerNameFree");
+  if (!hidden || !free) return;
+
+  hidden.value = value || "";
+  free.value = "";
+
+  setChoiceActive("#ownerChoiceWrap .choice-pill", hidden.value, "data-owner-name");
+  toggleOtherInput("ownerName", "ownerNameFree", "その他", "rowOwner");
+}
+
+function normalizeDate(value){
+  if(!value) return "";
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? new Date(String(value)+"T00:00:00+09:00") : new Date(String(value));
+  if(Number.isNaN(d.getTime())) return String(value).slice(0,10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+
+function normalizePersonName(value){
+  return String(value ?? "")
+    .replace(/[\u3000\s]+/g, " ")
+    .trim();
+}
+
+function normalizeCandidatePayload(payload){
+  const out = {...(payload || {})};
+  [
+    "applied_date",
+    "appointment_date",
+    "interview_date",
+    "interview_done_date",
+    "offer_date",
+    "join_date",
+    "next_action_date",
+    "last_contact_date"
+  ].forEach(key => {
+    if(key in out) out[key] = normalizeDate(out[key]);
+  });
+
+  if(out.join_date){
+    out.status = "採用";
+    out.hiring_result = "入社済";
+    out.next_action_date = "";
+  }else if(out.status === "入社"){
+    out.status = "採用";
+    out.hiring_result = "入社済";
+  }
+
+  return out;
+}
+
+function validateCandidatePayload(payload, options = {}){
+  const p = payload || {};
+  const errors = [];
+
+  if(options.requireName !== false && !String(p.name || "").trim()){
+    errors.push({field:"name", message:"氏名を入力してください。"});
+  }
+
+  if(p.status === "内定" && !p.offer_date){
+    errors.push({field:"offer_date", message:"内定の場合は内定日を入力してください。"});
+  }
+
+  if((p.hiring_result === "辞退" || p.status === "辞退") && !p.decline_reason){
+    errors.push({field:"decline_reason", message:"辞退の場合は辞退理由を入力してください。"});
+  }
+
+  if(p.hiring_result === "不採用" && !p.reject_reason){
+    errors.push({field:"rejection_reason", message:"不採用の場合は不採用理由を入力してください。"});
+  }
+
+  if((p.hiring_result === "採用" || p.status === "内定" || p.status === "採用") && !p.interview_done_date){
+    errors.push({field:"interview_done_date", message:"採用・内定・採用ステータスの場合は面接実施日を入力してください。"});
+  }
+
+  return {
+    ok: errors.length === 0,
+    errors
+  };
+}
+
+window.CandidateUtils = {
+  escapeAttr,
+  formatDate,
+  todayStr,
+  validDate,
+  daysBetween,
+  isFinal,
+  setChoiceActive,
+  toggleOtherInput,
+  getOtherSelectValue,
+  getSelectedJobType,
+  getSelectedOwnerName,
+  getSelectedDivision,
+  getSelectedCenterName,
+  getSelectedChannel,
+  setJobType,
+  setOwner,
+  normalizeDate,
+  normalizePersonName,
+  normalizeCandidatePayload,
+  validateCandidatePayload
+};
+
+// Backward compatible globals used by existing pages.
+window.escapeAttr = window.escapeAttr || escapeAttr;
+window.formatDate = window.formatDate || formatDate;
+window.opsTodayStr = window.opsTodayStr || todayStr;
+window.opsValidDate = window.opsValidDate || validDate;
+window.opsDaysBetween = window.opsDaysBetween || daysBetween;
+window.opsIsFinal = window.opsIsFinal || isFinal;
+window.setChoiceActive = window.setChoiceActive || setChoiceActive;
+window.toggleOtherInput = window.toggleOtherInput || toggleOtherInput;
+window.getOtherSelectValue = window.getOtherSelectValue || getOtherSelectValue;
+window.getSelectedJobType = window.getSelectedJobType || getSelectedJobType;
+window.getSelectedOwnerName = window.getSelectedOwnerName || getSelectedOwnerName;
+window.getSelectedDivision = window.getSelectedDivision || getSelectedDivision;
+window.getSelectedCenterName = window.getSelectedCenterName || getSelectedCenterName;
+window.getSelectedChannel = window.getSelectedChannel || getSelectedChannel;
+window.setJobType = window.setJobType || setJobType;
+window.setOwner = window.setOwner || setOwner;
+window.normalizePersonName = window.normalizePersonName || normalizePersonName;
+
+})();

@@ -150,9 +150,7 @@
 <script>
 function safeDisplayValue(v){return (v===undefined||v===null||String(v)==="undefined"||String(v)==="NaN%")?"―":v;}
 
-const SUPABASE_URL="https://shiztjmmaozrsstjotub.supabase.co";
-const SUPABASE_KEY="sb_publishable_1JKLDIZR9SFsi3Y2sMAgwA_Kd_tA4sS";
-const sb=window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : window.getRecruitSupabaseClient();
+const sb = window.getRecruitSupabaseClient();
 
 let currentUser=null;
 let currentRole=null;
