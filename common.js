@@ -268,12 +268,13 @@
   }
 
   function isRecruitNoContact(row){
+    // ステータスは「到達地点」、選考結果は「そこで消えた理由・現在結果」。
+    // 連絡不通の集計・一覧抽出は、選考結果が不通の応募者だけを対象にする。
+    // reject_reason / decline_reason / action_memo の文字列だけでは、不採用・辞退を誤って不通に含めるため使わない。
     const r = normalizeRecruitCandidateState(row || {});
     const status = String(r.status || "").trim();
     const result = String(r.hiring_result || "").trim();
-    const rejectReason = String(r.reject_reason || "").trim();
-    const declineReason = String(r.decline_reason || "").trim();
-    return result === "不通" || status === "不通" || rejectReason === "連絡取れず" || declineReason === "連絡取れず" || rejectReason === "連絡不通" || declineReason === "連絡不通";
+    return result === "不通" || status === "不通";
   }
 
   function isRecruitDropped(row){
