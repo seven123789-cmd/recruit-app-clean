@@ -322,6 +322,52 @@
   }
 
 
+  function isRecruitActionRequired(row){
+    // 要対応は「進行中で、次回対応日が未設定・今日以前」の応募者。
+    // 未来日の予定者は要対応には含めない。
+    const r = normalizeRecruitCandidateState(row || {});
+    if(r.is_deleted === true) return false;
+    const result = String(r.hiring_result || "進行中").trim() || "進行中";
+    if(result !== "進行中") return false;
+    const status = String(r.status || "").trim();
+    if(status === "採用") return false;
+    if(isFinal(r)) return false;
+    if(!RECRUIT_STAGE_ORDER.includes(status)) return false;
+    const next = String(r.next_action_date || "").slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return true;
+    return next <= todayJST();
+  }
+
+  function isRecruitDormant3Days(row){
+    // 放置3日+ は、応募後3日以上、連絡・面接設定に進んでいない進行中応募者。
+    const r = normalizeRecruitCandidateState(row || {});
+    if(r.is_deleted === true) return false;
+    if(isFinal(r)) return false;
+    if(String(r.hiring_result || "進行中").trim() !== "進行中") return false;
+    if(!isValidRecruitDate(r.applied_date)) return false;
+    if(isValidRecruitDate(r.appointment_date) || isValidRecruitDate(r.interview1_date) || isValidRecruitDate(r.interview_date) || isValidRecruitDate(r.interview_done_date)) return false;
+    const diff = daysBetween(String(r.applied_date).slice(0,10), todayJST());
+    return diff !== null && diff >= 3;
+  }
+
+  function recruitMetricCounts(rows){
+    const list = Array.isArray(rows) ? rows : [];
+    return {
+      applied: list.filter(r => isValidRecruitDate((r || {}).applied_date)).length || list.length,
+      appointment: list.filter(r => isRecruitStageReached(r, "アポ取得")).length,
+      interviewSet: list.filter(r => isRecruitStageReached(r, "面接設定")).length,
+      interviewDone: list.filter(r => isRecruitStageReached(r, "面接実施")).length,
+      offer: list.filter(r => isRecruitStageReached(r, "内定")).length,
+      joined: list.filter(isRecruitHired).length,
+      hiringDecision: list.filter(isRecruitHiringDecision).length,
+      decline: list.filter(isRecruitDeclined).length,
+      noContact: list.filter(isRecruitNoContact).length,
+      action: list.filter(isRecruitActionRequired).length,
+      dormant: list.filter(isRecruitDormant3Days).length
+    };
+  }
+
+
   function isRecruitOwnerStagnation(row){
     // 担当停滞は「期限切れ」だけを対象にする。
     // 未設定・今日・未来日は、要対応や予定管理で扱い、停滞には含めない。
@@ -416,6 +462,9 @@
   window.isRecruitNoContact = window.isRecruitNoContact || isRecruitNoContact;
   window.isRecruitDropped = window.isRecruitDropped || isRecruitDropped;
   window.isRecruitOwnerStagnation = window.isRecruitOwnerStagnation || isRecruitOwnerStagnation;
+  window.isRecruitActionRequired = window.isRecruitActionRequired || isRecruitActionRequired;
+  window.isRecruitDormant3Days = window.isRecruitDormant3Days || isRecruitDormant3Days;
+  window.recruitMetricCounts = window.recruitMetricCounts || recruitMetricCounts;
   window.isFinal = window.isFinal || isFinal;
   window.getRecruitCurrentFiscalYear = window.getRecruitCurrentFiscalYear || getRecruitCurrentFiscalYear;
   window.formatRecruitFiscalYearLabel = window.formatRecruitFiscalYearLabel || formatRecruitFiscalYearLabel;

@@ -5,19 +5,19 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>ヒートマップ分析</title>
-<link href="./assets/css/common.css?v=20260523_ops_speed2" rel="stylesheet"/>
-<link href="./assets/css/header.css?v=20260523_ops_speed2" rel="stylesheet"/>
-<link href="./assets/css/sidebar.css?v=20260523_ops_speed2" rel="stylesheet"/>
-<link href="./assets/css/dashboard_heatmap.css?v=20260523_ops_speed2" rel="stylesheet"/>
-<script src="./common.js?v=20260523_ops_speed2"></script>
-<script src="assets/js/supabase.js?v=20260523_ops_speed2"></script>
-<script src="assets/js/auth.js?v=20260523_ops_speed2"></script>
-<script src="assets/js/ui_utils.js?v=20260523_ops_speed2"></script>
-<script src="assets/js/audit_utils.js?v=20260523_ops_speed2"></script>
-<script src="assets/js/ops_guard.js?v=20260523_ops_speed2"></script>
-<script src="assets/js/safe_utils.js?v=20260523_ops_speed2"></script>
-<script src="./sidebar.js?v=20260523_ops_speed2"></script>
-<link href="./assets/css/dashboard_ui.css?v=20260523_ops_speed2" rel="stylesheet"/>
+<link href="./assets/css/common.css?v=20260524_metric_audit" rel="stylesheet"/>
+<link href="./assets/css/header.css?v=20260524_metric_audit" rel="stylesheet"/>
+<link href="./assets/css/sidebar.css?v=20260524_metric_audit" rel="stylesheet"/>
+<link href="./assets/css/dashboard_heatmap.css?v=20260524_metric_audit" rel="stylesheet"/>
+<script src="./common.js?v=20260524_metric_audit"></script>
+<script src="assets/js/supabase.js?v=20260524_metric_audit"></script>
+<script src="assets/js/auth.js?v=20260524_metric_audit"></script>
+<script src="assets/js/ui_utils.js?v=20260524_metric_audit"></script>
+<script src="assets/js/audit_utils.js?v=20260524_metric_audit"></script>
+<script src="assets/js/ops_guard.js?v=20260524_metric_audit"></script>
+<script src="assets/js/safe_utils.js?v=20260524_metric_audit"></script>
+<script src="./sidebar.js?v=20260524_metric_audit"></script>
+<link href="./assets/css/dashboard_ui.css?v=20260524_metric_audit" rel="stylesheet"/>
 </head>
 <body class="auth-checking">
 <div class="container hidden" id="authScreen">
@@ -91,8 +91,8 @@
 <div aria-label="応募者一覧で応募者を確認" class="metric-card kpi-applied heatmap-summary-link" data-heat-summary-filter="applied" role="button" tabindex="0"><div class="label">応募</div><div class="value" id="sumApplied">0</div><div class="sub">対象期間内の応募数</div></div>
 <div aria-label="応募者一覧で面接実施以上の対象者を確認" class="metric-card kpi-interview heatmap-summary-link" data-heat-summary-filter="interview_done" role="button" tabindex="0"><div class="label">面接実施</div><div class="value" id="sumInterview">0</div><div class="sub">面接実施以上の人数</div></div>
 <div aria-label="応募者一覧で実入社者を確認" class="metric-card kpi-hired heatmap-summary-link" data-heat-summary-filter="hired" role="button" tabindex="0"><div class="label">採用</div><div class="value" id="sumJoin">0</div><div class="sub">実入社数</div></div>
-<div aria-label="応募者一覧で面接未到達者を確認" class="metric-card kpi-rate-interview heatmap-summary-link" data-heat-summary-filter="heat_interview_gap" role="button" tabindex="0"><div class="label">危険セル</div><div class="value" id="sumDanger">0</div><div class="sub">赤判定の項目数</div></div>
-<div aria-label="応募者一覧で対象者を確認" class="metric-card kpi-rate-hired heatmap-summary-link" data-heat-summary-filter="all" role="button" tabindex="0"><div class="label">参考値</div><div class="value" id="sumReference">0</div><div class="sub">応募5件未満の行数</div></div>
+<div class="metric-card kpi-rate-interview"><div class="label">危険セル</div><div class="value" id="sumDanger">0</div><div class="sub">赤判定の項目数</div></div>
+<div class="metric-card kpi-rate-hired"><div class="label">参考値</div><div class="value" id="sumReference">0</div><div class="sub">応募5件未満の行数</div></div>
 </div>
 </section>
 <section class="insight-card" id="heatmapInsight">
@@ -351,39 +351,14 @@ function keyLink(axis,key){
 function normalizedCandidate(r){return window.normalizeRecruitCandidateState ? window.normalizeRecruitCandidateState(r || {}) : (r || {})}
 function statusOf(r){return String(normalizedCandidate(r).status || "").trim()}
 function resultOf(r){return String(normalizedCandidate(r).hiring_result || "").trim()}
-function hasInterviewReached(r){
-  const row=normalizedCandidate(r);
-  const st=String(row.status||"").trim();
-  const result=String(row.hiring_result||"").trim();
-  return validDate(row.interview_done_date)
-    || validDate(row.offer_date)
-    || validDate(row.join_date)
-    || ["面接実施","内定","採用"].includes(st)
-    || ["採用","入社済"].includes(result);
-}
-function isHiringDecision(r){
-  if(window.isRecruitHiringDecision) return window.isRecruitHiringDecision(r);
-  const row=normalizedCandidate(r);
-  return String(row.status||"").trim()==="採用" || ["採用","入社済"].includes(String(row.hiring_result||"").trim()) || validDate(row.join_date);
-}
+function hasInterviewReached(r){return window.isRecruitStageReached ? window.isRecruitStageReached(r,"面接実施") : false;}
+function isHiringDecision(r){return window.isRecruitHiringDecision ? window.isRecruitHiringDecision(r) : resultOf(r)==="採用" || resultOf(r)==="入社済";}
 function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : resultOf(r)==="入社済"||validDate((r||{}).join_date)}
 function isDeclined(r){return window.isRecruitDeclined ? window.isRecruitDeclined(r) : (resultOf(r)==="辞退"||String((r||{}).decline_reason||"").trim()!=="")}
 function isNoContact(r){return window.isRecruitNoContact ? window.isRecruitNoContact(r) : resultOf(r)==="不通"}
-function isFinal(r){return window.isRecruitFinal ? window.isRecruitFinal(r) : ["不採用","辞退","不通","保留","採用","入社済"].includes(resultOf(r))||isHired(r)}
-function isActionRequired(r){
-  const st=String(r.status||"").trim();
-  const result=String(r.hiring_result||"").trim();
-  if(st === "採用")return false;
-  if(["採用","入社済","不採用","辞退","不通","保留"].includes(result))return false;
-  if(!ACTIVE_STATUSES.includes(st))return false;
-  if(!r.next_action_date)return true;
-  return daysBetween(todayStr(),r.next_action_date)<=1;
-}
-function isDormant(r){
-  if(!validDate(r.applied_date)||validDate(r.appointment_date)||validDate(r.interview1_date)||isFinal(r))return false;
-  const days=daysBetween(r.applied_date,todayStr());
-  return days!==null&&days>=3;
-}
+function isFinal(r){return window.isFinal ? window.isFinal(r) : ["不採用","辞退","不通","保留","入社済"].includes(resultOf(r))||isHired(r)}
+function isActionRequired(r){return window.isRecruitActionRequired ? window.isRecruitActionRequired(r) : false;}
+function isDormant(r){return window.isRecruitDormant3Days ? window.isRecruitDormant3Days(r) : false;}
 function fiscalRange(type){
   const fy=fiscalYear();
   if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};
@@ -679,7 +654,7 @@ function renderHeatmap(headId,bodyId,items,label,options={}){
 function updateSummary(data,stats){
   const applied=data.length;
   const interview=data.filter(hasInterviewReached).length;
-  const join=data.filter(isHiringDecision).length;
+  const join=data.filter(isHired).length;
   setText("sumApplied",applied);
   setText("sumInterview",interview);
   setText("sumJoin",join);
@@ -753,6 +728,6 @@ async function initPageAfterLogin(){
 }
 authInit();
 </script>
-<script src="dashboard_summary_links.js?v=20260523_ops_speed2"></script>
+<script src="dashboard_summary_links.js?v=20260524_metric_audit"></script>
 </body>
 </html>
