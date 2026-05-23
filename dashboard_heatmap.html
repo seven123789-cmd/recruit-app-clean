@@ -636,8 +636,8 @@ function renderHeatmap(headId,bodyId,items,label,options={}){
     return `<tr class="${isHidden?"is-extra-row hidden":""}">
       <td class="key-cell"><strong>${keyLink(label,x.key)}</strong><span>${x.applied<5?"応募5件未満":"通常判定"}</span></td>
       <td class="count-col is-clickable" ${heatAttrs(label,x.key,"applied","応募者一覧で確認")}>${x.applied}</td>
-      ${statusCell(interview.toFixed(1),jInterview,"%",label,x.key,"heat_interview_gap","面接未到達・未実施の対象者を確認")}
-      ${statusCell(join.toFixed(1),jJoin,"%",label,x.key,"heat_hire_gap","採用未到達の対象者を確認")}
+      ${statusCell(interview.toFixed(1),jInterview,"%",label,x.key,"interview_done","面接実施者を確認")}
+      ${statusCell(join.toFixed(1),jJoin,"%",label,x.key,"hired","採用者を確認")}
       ${statusCell(decline.toFixed(1),jDecline,"%",label,x.key,"decline","辞退対象者を確認")}
       ${statusCell(noContact.toFixed(1),jNoContact,"%",label,x.key,"no_contact","不通対象者を確認")}
       ${countCell(x.todo,jTodo,label,x.key,"action","要対応者を確認")}
