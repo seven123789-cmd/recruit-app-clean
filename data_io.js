@@ -101,33 +101,6 @@
     masterSets={divisions:new Set(),centers:new Set(),channels:new Set(),channelDetails:new Set(),jobTypes:new Set(),owners:new Set(),statuses:new Set(),declineReasons:new Set(),rejectReasons:new Set()};
   }
 
-  function normalizeCandidateImportState(row){
-    const source={...(row||{})};
-    if(window.normalizeRecruitCandidateState){
-      const normalized=window.normalizeRecruitCandidateState(source);
-      source.status=normalized.status||source.status||"応募";
-      source.hiring_result=normalized.hiring_result||source.hiring_result||"進行中";
-      return source;
-    }
-    const rawStatus=String(source.status||"").trim();
-    const rawResult=String(source.hiring_result||"").trim();
-    const finalStatusMap={"入社":"入社済","辞退":"辞退","不採用":"不採用","不通":"不通","保留":"保留","合格":"採用"};
-    if(source.join_date){source.status="採用";source.hiring_result="入社済";return source;}
-    if(finalStatusMap[rawStatus]){
-      source.hiring_result=rawResult||finalStatusMap[rawStatus];
-      if(rawStatus==="入社"||source.hiring_result==="採用") source.status="採用";
-      else if(source.offer_date) source.status="内定";
-      else if(source.interview_done_date) source.status="面接実施";
-      else if(source.interview1_date) source.status="面接設定";
-      else if(source.appointment_date) source.status="アポ取得";
-      else source.status="応募";
-      return source;
-    }
-    source.status=rawStatus||"応募";
-    source.hiring_result=rawResult||"進行中";
-    return source;
-  }
-
   function csvEscape(value){
     const text=value===null||value===undefined?"":String(value);
     if(/[",\n\r]/.test(text))return '"'+text.replace(/"/g,'""')+'"';
@@ -186,10 +159,7 @@
     return rows.filter(r=>r.some(v=>String(v||"").trim()!==""));
   }
 
-  function normalizePersonNameLocal(v){
-    if(window.normalizePersonName && window.normalizePersonName !== normalizePersonNameLocal) return window.normalizePersonName(v);
-    return String(v??"").replace(/[\u3000\s]+/g," " ).trim();
-  }
+  function normalizePersonName(v){return String(v??"").replace(/[\u3000\s]+/g," ").trim();}
   function normalizeHeader(h){return String(h||"").trim();}
   function validDate(v){return !v||/^\d{4}-\d{2}-\d{2}$/.test(String(v));}
   function parseBoolean(v){
@@ -214,7 +184,7 @@
     CSV_COLUMNS.forEach(col=>{
       let value=raw[col.label]??"";
       if(typeof value==="string")value=value.trim();
-      if(col.key==="name")value=normalizePersonNameLocal(value);
+      if(col.key==="name")value=normalizePersonName(value);
       if(col.type==="number")value=value===""?null:Number(value);
       if(col.type==="boolean")value=parseBoolean(value);
       if(value==="")value=null;
@@ -223,7 +193,7 @@
     if(window.RecruitMaster && typeof window.RecruitMaster.normalizeCandidate === "function"){
       return await window.RecruitMaster.normalizeCandidate(row);
     }
-    return row;
+    return normalizeCandidateImportState(row);
   }
 
   async function previewCsv(file){
