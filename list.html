@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>応募者一覧</title>
 
-<link rel="stylesheet" href="./assets/css/common.css?v=20260523_stage_result_fix">
-<link rel="stylesheet" href="./assets/css/header.css?v=20260523_stage_result_fix">
-<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_stage_result_fix">
-<link rel="stylesheet" href="./assets/css/list.css?v=20260523_stage_result_fix">
+<link rel="stylesheet" href="./assets/css/common.css?v=20260523_stage_filter_fix">
+<link rel="stylesheet" href="./assets/css/header.css?v=20260523_stage_filter_fix">
+<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_stage_filter_fix">
+<link rel="stylesheet" href="./assets/css/list.css?v=20260523_stage_filter_fix">
 </head>
 <body class="auth-checking">
 
@@ -214,14 +214,14 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/supabase.js?v=20260523_stage_result_fix"></script>
-<script src="assets/js/auth.js?v=20260523_stage_result_fix"></script>
-<script src="./common.js?v=20260523_reason_strict"></script>
-<script src="assets/js/candidate_utils.js?v=20260523_stage_result_fix"></script>
-<script src="assets/js/ops_guard.js?v=20260523_stage_result_fix"></script>
-<script src="assets/js/ui_utils.js?v=20260523_stage_result_fix"></script>
-<script src="assets/js/audit_utils.js?v=20260523_stage_result_fix"></script>
-<script src="assets/js/safe_utils.js?v=20260523_stage_result_fix"></script>
+<script src="assets/js/supabase.js?v=20260523_stage_filter_fix"></script>
+<script src="assets/js/auth.js?v=20260523_stage_filter_fix"></script>
+<script src="./common.js?v=20260523_stage_filter_fix"></script>
+<script src="assets/js/candidate_utils.js?v=20260523_stage_filter_fix"></script>
+<script src="assets/js/ops_guard.js?v=20260523_stage_filter_fix"></script>
+<script src="assets/js/ui_utils.js?v=20260523_stage_filter_fix"></script>
+<script src="assets/js/audit_utils.js?v=20260523_stage_filter_fix"></script>
+<script src="assets/js/safe_utils.js?v=20260523_stage_filter_fix"></script>
 <script>
 const sb=window.getRecruitSupabaseClient();
 
@@ -793,6 +793,9 @@ function isHiringDecisionForList(r){
   const row=normalizedCandidateForList(r);
   return String(row.status||"").trim()==="採用" || ["採用","入社済"].includes(String(row.hiring_result||"").trim()) || validDate(row.join_date);
 }
+function isStageForList(r, stageName){
+  return window.isRecruitStage ? window.isRecruitStage(r, stageName) : String(normalizedCandidateForList(r).status||"").trim() === stageName;
+}
 function isDormant3Days(r){
   if(!validDate(r.applied_date) || isFinal(r))return false;
   if(validDate(r.appointment_date) || validDate(r.interview1_date) || validDate(r.interview_done_date))return false;
@@ -822,6 +825,16 @@ function applyListFilterRows(rows){
       return rows;
     case "applied":
       return rows.filter(r=>validDate(r.applied_date));
+    case "stage_appointment":
+      return rows.filter(r=>isStageForList(r,"アポ取得"));
+    case "stage_interview_set":
+      return rows.filter(r=>isStageForList(r,"面接設定"));
+    case "stage_interview_done":
+      return rows.filter(r=>isStageForList(r,"面接実施"));
+    case "stage_offer":
+      return rows.filter(r=>isStageForList(r,"内定"));
+    case "stage_hired":
+      return rows.filter(r=>isStageForList(r,"採用"));
     case "appointment":
       return rows.filter(r=>validDate(r.appointment_date));
     case "interview_set":
@@ -858,11 +871,16 @@ function getListFilterLabel(){
   const labels={
     all:"全件",
     applied:"応募",
-    appointment:"アポ取得",
-    interview_set:"面接設定",
+    appointment:"アポ取得到達",
+    stage_appointment:"アポ取得",
+    interview_set:"面接設定到達",
+    stage_interview_set:"面接設定",
     interview_done:"面接実施以上",
-    offer:"内定",
+    stage_interview_done:"面接実施",
+    offer:"内定到達",
+    stage_offer:"内定",
     hired:"採用決定",
+    stage_hired:"採用",
     action:"要対応",
     today:"要対応",
     not_done:"未実施",
@@ -1443,6 +1461,6 @@ async function initPageAfterLogin(){
 });
 authInit();
 </script>
-<script src="./sidebar.js?v=20260523_stage_result_fix"></script>
+<script src="./sidebar.js?v=20260523_stage_filter_fix"></script>
 </body>
 </html>

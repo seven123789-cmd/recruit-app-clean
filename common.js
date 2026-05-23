@@ -263,6 +263,12 @@
     return String(normalizeRecruitCandidateState(row || {}).hiring_result || "進行中").trim();
   }
 
+  function isRecruitStage(row, stageName){
+    const stage = String(stageName || "").trim();
+    if(!stage) return false;
+    return getRecruitStageStatus(row) === stage;
+  }
+
   function getRecruitDropStageLabel(row){
     return getRecruitStageStatus(row) || inferRecruitStageFromDates(row || {}) || "未設定";
   }
@@ -353,6 +359,7 @@
   window.isRecruitInterviewDeclined = window.isRecruitInterviewDeclined || isRecruitInterviewDeclined;
   window.getRecruitStageStatus = window.getRecruitStageStatus || getRecruitStageStatus;
   window.getRecruitHiringResult = window.getRecruitHiringResult || getRecruitHiringResult;
+  window.isRecruitStage = window.isRecruitStage || isRecruitStage;
   window.getRecruitDropStageLabel = window.getRecruitDropStageLabel || getRecruitDropStageLabel;
   window.isRecruitNoContact = window.isRecruitNoContact || isRecruitNoContact;
   window.isRecruitDropped = window.isRecruitDropped || isRecruitDropped;
