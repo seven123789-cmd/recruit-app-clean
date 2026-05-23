@@ -5,20 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>採用管理ダッシュボード</title>
 
-<link rel="stylesheet" href="./assets/css/common.css?v=20260523_ops_stability1">
-<link rel="stylesheet" href="./assets/css/header.css?v=20260523_ops_stability1">
-<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_ops_stability1">
-<link rel="stylesheet" href="./assets/css/dashboard.css?v=20260523_ops_stability1">
+<link rel="stylesheet" href="./assets/css/common.css?v=20260523_ops_speed2">
+<link rel="stylesheet" href="./assets/css/header.css?v=20260523_ops_speed2">
+<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_ops_speed2">
+<link rel="stylesheet" href="./assets/css/dashboard.css?v=20260523_ops_speed2">
 <link rel="icon" href="data:,">
-<script src="./common.js?v=20260523_ops_stability1"></script>
-<script src="assets/js/supabase.js?v=20260523_ops_stability1"></script>
-<script src="assets/js/auth.js?v=20260523_ops_stability1"></script>
-<script src="assets/js/ui_utils.js?v=20260523_ops_stability1"></script>
-<script src="assets/js/audit_utils.js?v=20260523_ops_stability1"></script>
-<script src="assets/js/ops_guard.js?v=20260523_ops_stability1"></script>
-<script src="assets/js/safe_utils.js?v=20260523_ops_stability1"></script>
-<script src="./sidebar.js?v=20260523_ops_stability1"></script>
-<link rel="stylesheet" href="./assets/css/dashboard_ui.css?v=20260523_ops_stability1">
+<script src="./common.js?v=20260523_ops_speed2"></script>
+<script src="assets/js/supabase.js?v=20260523_ops_speed2"></script>
+<script src="assets/js/auth.js?v=20260523_ops_speed2"></script>
+<script src="assets/js/ui_utils.js?v=20260523_ops_speed2"></script>
+<script src="assets/js/audit_utils.js?v=20260523_ops_speed2"></script>
+<script src="assets/js/ops_guard.js?v=20260523_ops_speed2"></script>
+<script src="assets/js/safe_utils.js?v=20260523_ops_speed2"></script>
+<script src="./sidebar.js?v=20260523_ops_speed2"></script>
+<link rel="stylesheet" href="./assets/css/dashboard_ui.css?v=20260523_ops_speed2">
 </head>
 <body class="auth-checking">
 
@@ -224,42 +224,7 @@ let CENTER_MASTER = {};
 let DIVISION_OPTIONS = [];
 let currentDashboardRows = [];
 let dashboardMasterChannels = [];
-const DASHBOARD_OPTION_CACHE_TTL_MS = 5 * 60 * 1000;
-const dashboardOptionCache = {
-  loadedAt: 0,
-  allData: null,
-  channels: null,
-  owners: null
-};
-
-function isDashboardOptionCacheFresh(){
-  return dashboardOptionCache.loadedAt && (Date.now() - dashboardOptionCache.loadedAt < DASHBOARD_OPTION_CACHE_TTL_MS);
-}
-
-async function getDashboardOptionCache(force=false){
-  if(!force && isDashboardOptionCacheFresh()) return dashboardOptionCache;
-  const [allRes, ownerMasters] = await Promise.all([
-    sb.from("candidates").select("channel, owner_name").eq("is_deleted", false),
-    window.RecruitMaster ? window.RecruitMaster.list("owners") : Promise.resolve([])
-  ]);
-  const allData = allRes && allRes.data ? allRes.data : [];
-  const channels = getDashboardChannelOptions(allData);
-  const owners = Array.isArray(ownerMasters) && ownerMasters.length ? ownerMasters : allData.map(x => x.owner_name);
-  dashboardOptionCache.loadedAt = Date.now();
-  dashboardOptionCache.allData = allData;
-  dashboardOptionCache.channels = channels;
-  dashboardOptionCache.owners = owners;
-  return dashboardOptionCache;
-}
-
-function clearDashboardOptionCache(){
-  dashboardOptionCache.loadedAt = 0;
-  dashboardOptionCache.allData = null;
-  dashboardOptionCache.channels = null;
-  dashboardOptionCache.owners = null;
-}
-
-window.addEventListener("recruit:master-updated", clearDashboardOptionCache);
+let dashboardOptionCache = { loaded:false, channels:[], owners:[], loadedAt:0 };
 
 
 function setLog(message){
@@ -492,6 +457,10 @@ function updateCenterOptionsForFilter(){
   if (centers.includes(current)) centerSelect.value = current;
 }
 function populateSelect(id, values, emptyLabel = "すべて"){
+  if(window.RecruitDashboard?.setSelectOptions){
+    window.RecruitDashboard.setSelectOptions(id, values, { blankLabel: emptyLabel });
+    return;
+  }
   const el = document.getElementById(id);
   if (!el) return;
   const current = el.value;
@@ -502,13 +471,30 @@ function populateSelect(id, values, emptyLabel = "すべて"){
 }
 
 async function loadDashboardMasterChannels(){
-
+  if(dashboardOptionCache.loaded && dashboardOptionCache.channels.length){
+    dashboardMasterChannels = dashboardOptionCache.channels;
+    return;
+  }
   try{
     dashboardMasterChannels = window.RecruitMaster ? await window.RecruitMaster.list("channels") : [];
+    dashboardOptionCache.channels = dashboardMasterChannels.slice();
   }catch(e){
     console.warn("媒体マスタ読込失敗", e);
     dashboardMasterChannels = [];
   }
+}
+async function loadDashboardOptionCache(){
+  if(dashboardOptionCache.loaded) return dashboardOptionCache;
+  try{
+    await loadDashboardMasterChannels();
+    dashboardOptionCache.owners = window.RecruitMaster ? await window.RecruitMaster.list("owners") : [];
+    dashboardOptionCache.loaded = true;
+    dashboardOptionCache.loadedAt = Date.now();
+  }catch(e){
+    console.warn("ダッシュボード候補キャッシュ読込失敗", e);
+    dashboardOptionCache.loaded = true;
+  }
+  return dashboardOptionCache;
 }
 function getDashboardChannelOptions(candidateRows=[]){
   const master=[...new Set((dashboardMasterChannels||[]).filter(Boolean))];
@@ -525,13 +511,14 @@ function updateDashboardUi(rows){
   const activeRows = (rows || []).filter(r => !r.is_deleted);
   const today = getSessionToday();
 
-  const applied = activeRows.filter(r => isValidDate(r.applied_date)).length;
+  const metrics = window.RecruitDashboard?.stageMetrics ? window.RecruitDashboard.stageMetrics(activeRows) : null;
+  const applied = metrics ? metrics.applied : activeRows.filter(r => isValidDate(r.applied_date)).length;
   const reached = (row, stage) => window.isRecruitStageReached ? window.isRecruitStageReached(row, stage) : false;
-  const appointment = activeRows.filter(r => reached(r, "アポ取得")).length;
-  const interviewSet = activeRows.filter(r => reached(r, "面接設定")).length;
-  const interviewDone = activeRows.filter(r => reached(r, "面接実施")).length;
-  const offer = activeRows.filter(r => reached(r, "内定")).length;
-  const join = activeRows.filter(r => window.isRecruitHired ? window.isRecruitHired(r) : reached(r, "採用")).length;
+  const appointment = metrics ? metrics.appointment : activeRows.filter(r => reached(r, "アポ取得")).length;
+  const interviewSet = metrics ? metrics.interviewSet : activeRows.filter(r => reached(r, "面接設定")).length;
+  const interviewDone = metrics ? metrics.interviewDone : activeRows.filter(r => reached(r, "面接実施")).length;
+  const offer = metrics ? metrics.offer : activeRows.filter(r => reached(r, "内定")).length;
+  const join = metrics ? metrics.hired : activeRows.filter(r => window.isRecruitHired ? window.isRecruitHired(r) : reached(r, "採用")).length;
 
   const priorityToday = activeRows.filter(isActionRequired).length;
   const priorityNotDone = activeRows.filter(r => isValidDate(r.interview1_date) && !isValidDate(r.interview_done_date) && !isFinal(r)).length;
@@ -542,8 +529,8 @@ function updateDashboardUi(rows){
     return days !== null && days >= 3;
   }).length;
 
-  const noContact = activeRows.filter(r => window.isRecruitNoContact ? window.isRecruitNoContact(r) : String(r.hiring_result||"").trim()==="不通").length;
-  const decline = activeRows.filter(r => window.isRecruitDeclined ? window.isRecruitDeclined(r) : (String(r.hiring_result||"").trim()==="辞退" || String(r.status||"").trim()==="辞退" || !!r.decline_reason)).length;
+  const noContact = metrics ? metrics.noContact : activeRows.filter(r => window.isRecruitNoContact ? window.isRecruitNoContact(r) : String(r.hiring_result||"").trim()==="不通").length;
+  const decline = metrics ? metrics.declined : activeRows.filter(r => window.isRecruitDeclined ? window.isRecruitDeclined(r) : (String(r.hiring_result||"").trim()==="辞退" || String(r.status||"").trim()==="辞退" || !!r.decline_reason)).length;
   const interviewNotSet = activeRows.filter(r => isValidDate(r.appointment_date) && !isValidDate(r.interview1_date) && !isFinal(r)).length;
   const ownerStagnation = activeRows.filter(r => isActionRequired(r)).length;
 
@@ -612,12 +599,15 @@ async function loadDashboard(){
     const rows = data || [];
     currentDashboardRows = rows;
 
-    const optionCache = await getDashboardOptionCache(false);
-    await loadDashboardMasterChannels();
-    populateSelect("filterChannel", optionCache.channels || []);
-    populateSelect("filterOwner", optionCache.owners || []);
-    if (filterChannel && (optionCache.channels || []).includes(filterChannel)) document.getElementById("filterChannel").value = filterChannel;
-    if (filterOwner && (optionCache.owners || []).includes(filterOwner)) document.getElementById("filterOwner").value = filterOwner;
+    const { data: allData } = await sb.from("candidates").select("channel, owner_name");
+    if (allData) {
+      const optionCache = await loadDashboardOptionCache();
+      const channelOptions = getDashboardChannelOptions(allData);
+      populateSelect("filterChannel", channelOptions);
+      populateSelect("filterOwner", optionCache.owners.length ? optionCache.owners : allData.map(x => x.owner_name));
+      if (filterChannel && channelOptions.includes(filterChannel)) document.getElementById("filterChannel").value = filterChannel;
+      if (filterOwner) document.getElementById("filterOwner").value = filterOwner;
+    }
 
     updateDashboardUi(rows);
     updateConnectionUi(true);

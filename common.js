@@ -1157,25 +1157,6 @@
     return normalizeRecruitRole(role) === "admin";
   }
 
-  function isRecruitEditor(role){
-    const r = normalizeRecruitRole(role);
-    return r === "editor" || r === "admin";
-  }
-
-  function canRecruitWrite(role){
-    if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.canWrite === "function"){
-      return window.RecruitOpsGuard.canWrite(role);
-    }
-    return isRecruitEditor(role);
-  }
-
-  function canRecruitDelete(role){
-    if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.canDelete === "function"){
-      return window.RecruitOpsGuard.canDelete(role);
-    }
-    return isRecruitAdmin(role);
-  }
-
   function isRecruitManager(role){
     if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.isManager === "function"){
       return window.RecruitOpsGuard.isManager(role);
@@ -1249,15 +1230,9 @@
     applyToPage: applyRecruitRoleGuard,
     isViewer: isRecruitViewer,
     isAdmin: isRecruitAdmin,
-    isEditor: isRecruitEditor,
     isManager: isRecruitManager,
-    canWrite: canRecruitWrite,
-    canDelete: canRecruitDelete,
     normalize: normalizeRecruitRole
   };
-  window.isRecruitEditor = window.isRecruitEditor || isRecruitEditor;
-  window.canRecruitWrite = window.canRecruitWrite || canRecruitWrite;
-  window.canRecruitDelete = window.canRecruitDelete || canRecruitDelete;
   window.writeRecruitAuditLog = window.writeRecruitAuditLog || writeRecruitAuditLog;
   window.diffRecruitObjects = window.diffRecruitObjects || diffRecruitObjects;
   document.addEventListener("DOMContentLoaded", () => {
@@ -1557,6 +1532,27 @@
   };
 })();
 
+
+/* RecruitRole : lightweight role helpers for front-end visibility control.
+   RLS本整理の前段として、各画面の表示・操作可否判定を共通化する。 */
+(function(){
+  function role(){
+    return String(window.currentRole || window.RecruitAuth?.currentRole || "viewer").trim().toLowerCase();
+  }
+  function hasRole(allowed){
+    const list = Array.isArray(allowed) ? allowed : String(allowed || "").split(",");
+    return list.map(v => String(v || "").trim().toLowerCase()).filter(Boolean).includes(role());
+  }
+  function isAdmin(){ return hasRole("admin"); }
+  function isEditor(){ return hasRole(["admin","editor"]); }
+  function isViewer(){ return role() === "viewer"; }
+  window.RecruitRole = Object.assign(window.RecruitRole || {}, { role, hasRole, isAdmin, isEditor, isViewer });
+  window.hasRole = window.hasRole || hasRole;
+  window.isAdmin = window.isAdmin || isAdmin;
+  window.isEditor = window.isEditor || isEditor;
+  window.isViewer = window.isViewer || isViewer;
+})();
+
 /* RecruitDashboard : dashboard/list helper functions shared across analysis pages */
 (function(){
   function escape(value){
@@ -1611,12 +1607,42 @@
     if(filters.job && String(row.job_type || "") !== filters.job) return false;
     return true;
   }
+  function stageMetrics(rows){
+    const list = (rows || []).filter(r => r && !r.is_deleted);
+    return {
+      applied: list.filter(r => window.isRecruitStageReached ? window.isRecruitStageReached(r, "応募") : true).length,
+      appointment: list.filter(r => window.isRecruitStageReached && window.isRecruitStageReached(r, "アポ取得")).length,
+      interviewSet: list.filter(r => window.isRecruitStageReached && window.isRecruitStageReached(r, "面接設定")).length,
+      interviewDone: list.filter(r => window.isRecruitStageReached && window.isRecruitStageReached(r, "面接実施")).length,
+      offer: list.filter(r => window.isRecruitStageReached && window.isRecruitStageReached(r, "内定")).length,
+      hired: list.filter(r => window.isRecruitHired && window.isRecruitHired(r)).length,
+      hiringDecision: list.filter(r => window.isRecruitHiringDecision && window.isRecruitHiringDecision(r)).length,
+      pendingJoin: list.filter(r => window.isRecruitPendingJoin && window.isRecruitPendingJoin(r)).length,
+      noContact: list.filter(r => window.isRecruitNoContact && window.isRecruitNoContact(r)).length,
+      declined: list.filter(r => window.isRecruitDeclined && window.isRecruitDeclined(r)).length,
+      rejected: list.filter(r => window.isRecruitRejected && window.isRecruitRejected(r)).length
+    };
+  }
+  function pct(num, den, digits=1){
+    const n = Number(num || 0);
+    const d = Number(den || 0);
+    if(!d) return 0;
+    return Number(((n / d) * 100).toFixed(digits));
+  }
+  function renderMetricCardHTML({label, value, rate, className="", sub=""}={}){
+    const rateText = rate === undefined || rate === null ? "" : `<span class="metric-rate">${escape(rate)}%</span>`;
+    const subText = sub ? `<div class="metric-sub">${escape(sub)}</div>` : "";
+    return `<div class="metric-card ${escape(className)}"><div class="metric-label">${escape(label || "")}</div><div class="metric-value">${escape(value ?? 0)}</div>${rateText}${subText}</div>`;
+  }
   window.RecruitDashboard = Object.assign(window.RecruitDashboard || {}, {
     escape,
     uniqueSorted,
     setSelectOptions,
     getFiscalRange,
     readFilterValue,
-    matchesBasicCandidateFilters
+    matchesBasicCandidateFilters,
+    stageMetrics,
+    pct,
+    renderMetricCardHTML
   });
 })();

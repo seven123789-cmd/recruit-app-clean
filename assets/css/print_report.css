@@ -1032,31 +1032,16 @@ tbody tr:last-child td{
   }
 }
 
-
-/* 2026-05-23 運用安定化：帳票テーブルの改ページ崩れ防止 */
+/* 2026-05-23 ops_speed2: 帳票印刷の改ページ・表ヘッダー安定化 */
 @media print{
-  .report-table,
-  .print-analysis-table,
-  .analysis-table{
-    width:100%;
-    border-collapse:collapse;
-  }
-  .report-table thead,
-  .print-analysis-table thead,
-  .analysis-table thead{
+  table.report-table thead,
+  table.print-table thead{
     display:table-header-group;
   }
-  .report-table tr,
-  .print-analysis-table tr,
-  .analysis-table tr{
-    break-inside:avoid;
-    page-break-inside:avoid;
-  }
-  .report-card,
-  .report-section,
-  .print-section,
-  .metric-grid,
-  .kpi-grid{
+  table.report-table tr,
+  table.print-table tr,
+  .kpi-card,
+  .summary-card{
     break-inside:avoid;
     page-break-inside:avoid;
   }
