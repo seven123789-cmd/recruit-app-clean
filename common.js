@@ -223,6 +223,12 @@
     return String(r.status || "").trim() === "採用" || ["採用","入社済"].includes(String(r.hiring_result || "").trim()) || isValidRecruitDate(r.join_date);
   }
 
+  function isRecruitInterviewDone(row){
+    const r = normalizeRecruitCandidateState(row || {});
+    const status = String(r.status || "").trim();
+    return isValidRecruitDate(r.interview_done_date) || isValidRecruitDate(r.offer_date) || isValidRecruitDate(r.join_date) || ["面接実施","内定","採用"].includes(status) || isRecruitHiringDecision(r);
+  }
+
   function isRecruitPendingJoin(row){
     const r = normalizeRecruitCandidateState(row || {});
     return isRecruitHiringDecision(r) && !isRecruitHired(r);
@@ -311,6 +317,7 @@
   window.isValidRecruitDate = window.isValidRecruitDate || isValidRecruitDate;
   window.isRecruitHired = window.isRecruitHired || isRecruitHired;
   window.isRecruitHiringDecision = window.isRecruitHiringDecision || isRecruitHiringDecision;
+  window.isRecruitInterviewDone = window.isRecruitInterviewDone || isRecruitInterviewDone;
   window.isRecruitPendingJoin = window.isRecruitPendingJoin || isRecruitPendingJoin;
   window.isRecruitRejected = window.isRecruitRejected || isRecruitRejected;
   window.isRecruitDeclined = window.isRecruitDeclined || isRecruitDeclined;
