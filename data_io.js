@@ -6,33 +6,35 @@
   window.supabaseClient=window.supabaseClient||sb;
 
   const CSV_COLUMNS=[
-    {label:"candidate_id",key:"id",system:true},
-    {label:"応募日",key:"applied_date",required:true,type:"date"},
-    {label:"氏名",key:"name",required:true},
-    {label:"年齢",key:"age",type:"number"},
-    {label:"本部",key:"division",master:"divisions"},
-    {label:"営業所",key:"center_name",master:"centers"},
-    {label:"媒体",key:"channel",master:"channels"},
-    {label:"媒体詳細",key:"channel_detail",master:"channelDetails"},
-    {label:"職種",key:"job_type",master:"jobTypes"},
-    {label:"担当者",key:"owner_name",master:"owners"},
-    {label:"ステータス",key:"status",required:true,master:"statuses"},
-    {label:"選考結果",key:"hiring_result"},
-    {label:"アポ日",key:"appointment_date",type:"date"},
-    {label:"面接予定日",key:"interview1_date",type:"date"},
-    {label:"面接実施日",key:"interview_done_date",type:"date"},
-    {label:"内定日",key:"offer_date",type:"date"},
-    {label:"入社日",key:"join_date",type:"date"},
-    {label:"最終対応日",key:"last_action_date",type:"date"},
-    {label:"次回対応日",key:"next_action_date",type:"date"},
-    {label:"辞退理由",key:"decline_reason",master:"declineReasons"},
-    {label:"不採用理由",key:"reject_reason",master:"rejectReasons"},
-    {label:"評価",key:"evaluation"},
-    {label:"評価コメント",key:"evaluation_comment"},
-    {label:"対応メモ",key:"action_memo"},
-    {label:"削除フラグ",key:"is_deleted",type:"boolean"}
+    {label:'候補者ID',key:'id',system:true},
+    {label:'年度',key:'fiscal_year'},
+    {label:'氏名',key:'name',required:true},
+    {label:'年齢',key:'age',type:'number'},
+    {label:'本部',key:'division',master:'divisions'},
+    {label:'営業所',key:'center_name',master:'centers'},
+    {label:'媒体',key:'channel',master:'channels'},
+    {label:'媒体詳細',key:'channel_detail',master:'channelDetails'},
+    {label:'職種',key:'job_type',master:'jobTypes'},
+    {label:'担当者',key:'owner_name',master:'owners'},
+    {label:'ステータス',key:'status',required:true,master:'statuses'},
+    {label:'選考結果',key:'hiring_result'},
+    {label:'応募日',key:'applied_date',required:true,type:'date'},
+    {label:'アポ日',key:'appointment_date',type:'date'},
+    {label:'面接予定日',key:'interview1_date',type:'date'},
+    {label:'面接実施日',key:'interview_done_date',type:'date'},
+    {label:'内定日',key:'offer_date',type:'date'},
+    {label:'入社日',key:'join_date',type:'date'},
+    {label:'最終対応日',key:'last_action_date',type:'date'},
+    {label:'次回対応日',key:'next_action_date',type:'date'},
+    {label:'辞退理由',key:'decline_reason',master:'declineReasons'},
+    {label:'不採用理由',key:'reject_reason',master:'rejectReasons'},
+    {label:'評価',key:'evaluation'},
+    {label:'評価コメント',key:'evaluation_comment'},
+    {label:'対応メモ',key:'action_memo'},
+    {label:'削除済みデータ',key:'is_deleted',type:'boolean'},
+    {label:'作成日時',key:'created_at'},
+    {label:'更新日時',key:'updated_at'}
   ];
-
   const $=id=>document.getElementById(id);
   let currentUser=null;
   let currentRole="viewer";
@@ -123,8 +125,7 @@
   function buildCsv(rows){
     const headers=CSV_COLUMNS.map(c=>c.label);
     const lines=[headers.map(csvEscape).join(",")];
-    (rows||[]).forEach(sourceRow=>{
-      const row=normalizeCandidateImportState(sourceRow);
+    (rows||[]).forEach(row=>{
       lines.push(CSV_COLUMNS.map(col=>csvEscape(formatExportValue(row[col.key],col))).join(","));
     });
     return lines.join("\n");
@@ -159,12 +160,41 @@
     return rows.filter(r=>r.some(v=>String(v||"").trim()!==""));
   }
 
-  function normalizePersonName(v){return String(v??"").replace(/[\u3000\s]+/g," ").trim();}
+  function normalizePersonName(v){
+    if(window.CandidateUtils && typeof window.CandidateUtils.normalizePersonName === 'function') return window.CandidateUtils.normalizePersonName(v);
+    return String(v??'').replace(/[\u3000\s]+/g,' ').trim();
+  }
   function normalizeHeader(h){return String(h||"").trim();}
   function validDate(v){return !v||/^\d{4}-\d{2}-\d{2}$/.test(String(v));}
   function parseBoolean(v){
     const s=String(v||"").trim().toLowerCase();
     return ["true","1","yes","y","削除","削除済み"].includes(s);
+  }
+
+  const STAGE_STATUS_OPTIONS=window.RECRUIT_STAGE_STATUSES||['応募','書類選考','アポ取得','面接設定','面接実施','内定','採用'];
+  const HIRING_RESULT_OPTIONS=window.RECRUIT_HIRING_RESULTS||['進行中','保留','辞退','不採用','不通','採用','入社済'];
+  function inferStageFromDates(row){
+    if(row.join_date)return '採用';
+    if(row.offer_date)return '内定';
+    if(row.interview_done_date)return '面接実施';
+    if(row.interview1_date)return '面接設定';
+    if(row.appointment_date)return 'アポ取得';
+    return row.status&&STAGE_STATUS_OPTIONS.includes(row.status)?row.status:'応募';
+  }
+  function normalizeCandidateImportState(row){
+    const r={...row};
+    r.status=String(r.status||'').trim();
+    r.hiring_result=String(r.hiring_result||'').trim();
+    if(r.hiring_result==='未判定'||r.hiring_result==='未設定')r.hiring_result='進行中';
+    const legacy={'保留':'保留','辞退':'辞退','不採用':'不採用','不通':'不通'};
+    if(r.status==='入社'){r.status='採用';r.hiring_result='入社済';}
+    else if(r.status==='合格'){r.status='採用';r.hiring_result=r.hiring_result||'採用';}
+    else if(legacy[r.status]){r.hiring_result=r.hiring_result||legacy[r.status];r.status=inferStageFromDates(r);}
+    else if(!r.status||r.status==='未設定'||r.status==='未判定'){r.status=inferStageFromDates(r);}
+    if(r.join_date){r.status='採用';r.hiring_result='入社済';}
+    else if(r.status==='採用'&&(!r.hiring_result||r.hiring_result==='進行中'))r.hiring_result='採用';
+    if(!r.hiring_result)r.hiring_result='進行中';
+    return r;
   }
 
   function validateRow(row,index){
@@ -174,7 +204,9 @@
       if(col.required&&!String(value||"").trim())errors.push(`${index}行目：${col.label}が未入力です`);
       if(col.type==="date"&&!validDate(value))errors.push(`${index}行目：${col.label}の日付形式が不正です（YYYY-MM-DD）`);
       if(col.type==="number"&&value!==""&&value!==null&&value!==undefined&&Number.isNaN(Number(value)))errors.push(`${index}行目：${col.label}は数値で入力してください`);
-      if(col.master&&value&&masterSets&&masterSets[col.master]&&!masterSets[col.master].has(String(value).trim()))errors.push(`${index}行目：${col.label}「${value}」は有効なマスタにありません`);
+      if(col.key==='status'&&value&&!STAGE_STATUS_OPTIONS.includes(String(value).trim()))errors.push(`${index}行目：${col.label}「${value}」は有効なステータスではありません`);
+      else if(col.key==='hiring_result'&&value&&!HIRING_RESULT_OPTIONS.includes(String(value).trim()))errors.push(`${index}行目：${col.label}「${value}」は有効な選考結果ではありません`);
+      else if(col.master&&value&&col.key!=='status'&&masterSets&&masterSets[col.master]&&!masterSets[col.master].has(String(value).trim()))errors.push(`${index}行目：${col.label}「${value}」は有効なマスタにありません`);
     });
     return errors;
   }
@@ -191,7 +223,7 @@
       row[col.key]=value;
     });
     if(window.RecruitMaster && typeof window.RecruitMaster.normalizeCandidate === "function"){
-      return await window.RecruitMaster.normalizeCandidate(row);
+      return normalizeCandidateImportState(await window.RecruitMaster.normalizeCandidate(row));
     }
     return normalizeCandidateImportState(row);
   }
