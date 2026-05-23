@@ -5,19 +5,19 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>ヒートマップ分析</title>
-<link href="./assets/css/common.css?v=20260524_heatmap_audit" rel="stylesheet"/>
-<link href="./assets/css/header.css?v=20260524_heatmap_audit" rel="stylesheet"/>
-<link href="./assets/css/sidebar.css?v=20260524_heatmap_audit" rel="stylesheet"/>
-<link href="./assets/css/dashboard_heatmap.css?v=20260524_heatmap_audit" rel="stylesheet"/>
-<script src="./common.js?v=20260524_heatmap_audit"></script>
-<script src="assets/js/supabase.js?v=20260524_heatmap_audit"></script>
-<script src="assets/js/auth.js?v=20260524_heatmap_audit"></script>
-<script src="assets/js/ui_utils.js?v=20260524_heatmap_audit"></script>
-<script src="assets/js/audit_utils.js?v=20260524_heatmap_audit"></script>
-<script src="assets/js/ops_guard.js?v=20260524_heatmap_audit"></script>
-<script src="assets/js/safe_utils.js?v=20260524_heatmap_audit"></script>
-<script src="./sidebar.js?v=20260524_heatmap_audit"></script>
-<link href="./assets/css/dashboard_ui.css?v=20260524_heatmap_audit" rel="stylesheet"/>
+<link href="./assets/css/common.css?v=20260524_heatmap_cellfix" rel="stylesheet"/>
+<link href="./assets/css/header.css?v=20260524_heatmap_cellfix" rel="stylesheet"/>
+<link href="./assets/css/sidebar.css?v=20260524_heatmap_cellfix" rel="stylesheet"/>
+<link href="./assets/css/dashboard_heatmap.css?v=20260524_heatmap_cellfix" rel="stylesheet"/>
+<script src="./common.js?v=20260524_heatmap_cellfix"></script>
+<script src="assets/js/supabase.js?v=20260524_heatmap_cellfix"></script>
+<script src="assets/js/auth.js?v=20260524_heatmap_cellfix"></script>
+<script src="assets/js/ui_utils.js?v=20260524_heatmap_cellfix"></script>
+<script src="assets/js/audit_utils.js?v=20260524_heatmap_cellfix"></script>
+<script src="assets/js/ops_guard.js?v=20260524_heatmap_cellfix"></script>
+<script src="assets/js/safe_utils.js?v=20260524_heatmap_cellfix"></script>
+<script src="./sidebar.js?v=20260524_heatmap_cellfix"></script>
+<link href="./assets/css/dashboard_ui.css?v=20260524_heatmap_cellfix" rel="stylesheet"/>
 </head>
 <body class="auth-checking">
 <div class="container hidden" id="authScreen">
@@ -91,7 +91,7 @@
 <div aria-label="応募者一覧で応募者を確認" class="metric-card kpi-applied heatmap-summary-link" data-heat-summary-filter="applied" role="button" tabindex="0"><div class="label">応募</div><div class="value" id="sumApplied">0</div><div class="sub">対象期間内の応募数</div></div>
 <div aria-label="応募者一覧で面接実施以上の対象者を確認" class="metric-card kpi-interview heatmap-summary-link" data-heat-summary-filter="interview_done" role="button" tabindex="0"><div class="label">面接実施</div><div class="value" id="sumInterview">0</div><div class="sub">面接実施以上の人数</div></div>
 <div aria-label="応募者一覧で実入社者を確認" class="metric-card kpi-hired heatmap-summary-link" data-heat-summary-filter="hired" role="button" tabindex="0"><div class="label">採用</div><div class="value" id="sumJoin">0</div><div class="sub">実入社数</div></div>
-<div aria-label="応募者一覧で危険対象者を確認" class="metric-card kpi-rate-interview heatmap-summary-link" data-heat-summary-filter="heat_danger" role="button" tabindex="0"><div class="label">危険者数</div><div class="value" id="sumDanger">0</div><div class="sub">要対応・不通・辞退などの人数</div></div>
+<div aria-label="危険判定セル数" class="metric-card kpi-rate-interview is-clickable" data-heat-summary-filter="heat_danger" role="button" tabindex="0"><div class="label">危険セル</div><div class="value" id="sumDanger">0</div><div class="sub">赤判定セル関連の候補者を確認</div></div>
 <div aria-label="応募5件未満の参考行数" class="metric-card kpi-rate-hired"><div class="label">参考行</div><div class="value" id="sumReference">0</div><div class="sub">応募5件未満の行数</div></div>
 </div>
 </section>
@@ -561,12 +561,15 @@ function heatAttrs(axis,key,filter,label){
   return `data-heat-axis="${escAttr(axis)}" data-heat-key="${escAttr(key)}" data-heat-filter="${escAttr(filter||"all")}" title="${escAttr(label||"対象者を確認")}"`;
 }
 function statusCell(value,judge,suffix="%",axis="",key="",filter="all",label="対象者を確認"){
-  const clickable=axis&&key;
-  return `<td class="heat-cell ${judge.cls} ${clickable?"is-clickable":""}" ${heatAttrs(axis,key,filter,label)}><strong>${esc(value)}${suffix}</strong><span>${esc(judge.label)}</span></td>`;
+  // 応募5件未満の「参考」セルは分析上の参考値なのでLIST遷移させない。
+  const clickable=axis&&key&&judge.cls!=="neutral";
+  return `<td class="heat-cell ${judge.cls} ${clickable?"is-clickable":""}" ${clickable?heatAttrs(axis,key,filter,label):""}><strong>${esc(value)}${suffix}</strong><span>${esc(judge.label)}</span></td>`;
 }
 function countCell(value,judge,axis="",key="",filter="all",label="対象者を確認"){
-  const clickable=axis&&key;
-  return `<td class="heat-cell ${judge.cls} ${clickable?"is-clickable":""}" ${heatAttrs(axis,key,filter,label)}><strong>${esc(value)}</strong><span>${esc(judge.label)}</span></td>`;
+  // 参考セル・0件セルは遷移対象が曖昧なので遷移しない。危険/注意/良好の実数セルは確認可能にする。
+  const n=Number(value||0);
+  const clickable=axis&&key&&judge.cls!=="neutral"&&n>0;
+  return `<td class="heat-cell ${judge.cls} ${clickable?"is-clickable":""}" ${clickable?heatAttrs(axis,key,filter,label):""}><strong>${esc(value)}</strong><span>${esc(judge.label)}</span></td>`;
 }
 function escAttr(v){
   return String(v??"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -665,7 +668,7 @@ function renderHeatmap(headId,bodyId,items,label,options={}){
       ${statusCell(noContact.toFixed(1),jNoContact,"%",label,x.key,"no_contact","不通対象者を確認")}
       ${countCell(x.todo,jTodo,label,x.key,"heat_action","要対応者を確認")}
       ${countCell(x.dormant,jDormant,label,x.key,"dormant","放置3日以上を確認")}
-      <td class="level-col is-clickable" ${heatAttrs(label,x.key,"all","対象者一覧で確認")}>${levelBadge(level)}</td>
+      <td class="level-col">${levelBadge(level)}</td>
     </tr>`;
   }).join("");
   body.innerHTML=rowsHtml;
@@ -688,8 +691,7 @@ function updateSummary(data,stats){
   setText("sumApplied",applied);
   setText("sumInterview",interview);
   setText("sumJoin",join);
-  const dangerCandidates=data.filter(isHeatmapDangerCandidate).length;
-  setText("sumDanger",dangerCandidates);
+  setText("sumDanger",stats.danger);
   setText("sumReference",stats.reference);
   setText("sideRows",data.length);
   setText("sideDivision",$("division").value||"すべて");
@@ -759,6 +761,6 @@ async function initPageAfterLogin(){
 }
 authInit();
 </script>
-<script src="dashboard_summary_links.js?v=20260524_heatmap_audit"></script>
+<script src="dashboard_summary_links.js?v=20260524_heatmap_cellfix"></script>
 </body>
 </html>
