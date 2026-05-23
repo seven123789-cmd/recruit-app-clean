@@ -321,6 +321,22 @@
     return ["辞退","不採用","不通","保留"].includes(result) || isRecruitDeclined(row) || isRecruitRejected(row) || isRecruitNoContact(row);
   }
 
+
+  function isRecruitOwnerStagnation(row){
+    // 担当停滞は「期限切れ」だけを対象にする。
+    // 未設定・今日・未来日は、要対応や予定管理で扱い、停滞には含めない。
+    const r = normalizeRecruitCandidateState(row || {});
+    if(r.is_deleted === true) return false;
+    const result = String(r.hiring_result || "進行中").trim() || "進行中";
+    if(result !== "進行中") return false;
+    const status = String(r.status || "").trim();
+    if(status === "採用") return false;
+    if(isFinal(r)) return false;
+    const next = String(r.next_action_date || "").slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return false;
+    return next < todayJST();
+  }
+
   function isFinal(row){
     const r = normalizeRecruitCandidateState(row || {});
     const status = String(r.status || "").trim();
@@ -399,6 +415,7 @@
   window.getRecruitDropStageLabel = window.getRecruitDropStageLabel || getRecruitDropStageLabel;
   window.isRecruitNoContact = window.isRecruitNoContact || isRecruitNoContact;
   window.isRecruitDropped = window.isRecruitDropped || isRecruitDropped;
+  window.isRecruitOwnerStagnation = window.isRecruitOwnerStagnation || isRecruitOwnerStagnation;
   window.isFinal = window.isFinal || isFinal;
   window.getRecruitCurrentFiscalYear = window.getRecruitCurrentFiscalYear || getRecruitCurrentFiscalYear;
   window.formatRecruitFiscalYearLabel = window.formatRecruitFiscalYearLabel || formatRecruitFiscalYearLabel;

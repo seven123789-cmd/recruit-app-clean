@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_real_speed_role">
 <link rel="stylesheet" href="./assets/css/dashboard.css?v=20260523_real_speed_role">
 <link rel="icon" href="data:,">
-<script src="./common.js?v=20260523_real_speed_role"></script>
+<script src="./common.js?v=20260523_stagnation_fix"></script>
 <script src="assets/js/supabase.js?v=20260523_real_speed_role"></script>
 <script src="assets/js/auth.js?v=20260523_real_speed_role"></script>
 <script src="assets/js/ui_utils.js?v=20260523_real_speed_role"></script>
@@ -199,7 +199,7 @@
             <div class="reason-value" id="reasonInterviewNotSet">0</div>
           </div>
           <div class="reason-card warning dashboard-link-card" onclick="goListFilter('owner_stagnation')" onkeydown="activateDashboardLink(event,'owner_stagnation')" role="button" tabindex="0" aria-label="担当停滞の応募者一覧を開く" title="担当停滞の応募者一覧を開く">
-            <div class="reason-title">担当停滞 → 対応確認</div>
+            <div class="reason-title">担当停滞 → 期限切れ確認</div>
             <div class="reason-value" id="reasonOwnerStagnation">0</div>
           </div>
         </div>
@@ -508,7 +508,7 @@ function updateDashboardUi(rows){
   const noContact = activeRows.filter(r => window.isRecruitNoContact ? window.isRecruitNoContact(r) : String(r.hiring_result||"").trim()==="不通").length;
   const decline = activeRows.filter(r => window.isRecruitDeclined ? window.isRecruitDeclined(r) : (String(r.hiring_result||"").trim()==="辞退" || String(r.status||"").trim()==="辞退" || !!r.decline_reason)).length;
   const interviewNotSet = activeRows.filter(r => isValidDate(r.appointment_date) && !isValidDate(r.interview1_date) && !isFinal(r)).length;
-  const ownerStagnation = activeRows.filter(r => isActionRequired(r)).length;
+  const ownerStagnation = activeRows.filter(r => window.isRecruitOwnerStagnation ? window.isRecruitOwnerStagnation(r) : (isActionRequired(r) && r.next_action_date && r.next_action_date < today)).length;
 
   setText("priorityToday", priorityToday);
   setText("priorityNotDone", priorityNotDone);
