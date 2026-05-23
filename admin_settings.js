@@ -1214,9 +1214,7 @@ function auditTargetLabel(type){
 function formatDateTime(value){
   if(!value)return "-";
   if(window.RecruitDate?.formatJSTDateTime) return window.RecruitDate.formatJSTDateTime(value);
-  const d=new Date(value);
-  if(Number.isNaN(d.getTime()))return String(value);
-  return d.toLocaleString("ja-JP",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});
+  return "-";
 }
 function compactValue(value){
   if(value===undefined||value===null||value==="")return "-";
