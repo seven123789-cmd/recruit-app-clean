@@ -11,6 +11,7 @@
 <link href="./assets/css/dashboard_channel.css" rel="stylesheet"/>
 <script src="./common.js"></script>
 <script src="assets/js/supabase.js"></script>
+<script src="assets/js/auth.js?v=20260523_phase2a"></script>
 <script src="assets/js/ui_utils.js"></script>
 <script src="assets/js/audit_utils.js"></script>
 <script src="assets/js/ops_guard.js"></script>
@@ -188,11 +189,39 @@ function channelLink(channel,filter="all",cls="analysis-link"){
   return `<a class="${cls}" href="${esc(buildListUrlForChannel(label,filter))}">${esc(label)}</a>`;
 }
 
-async function getUser(){if(currentUser)return currentUser;const {data:{session}}=await sb.auth.getSession();currentUser=session?.user||null;return currentUser}
-async function getRole(userId){if(currentRole)return currentRole;try{const {data}=await sb.from("profiles").select("role").eq("user_id",userId).single();currentRole=data?.role||"viewer"}catch(e){currentRole="viewer"}return currentRole}
-function showAuth(msg="未ログインです",type="info"){const a=$("authScreen"),b=$("appScreen");if(a)a.classList.remove("hidden");if(b)b.classList.add("hidden");currentUser=null;currentRole=null;setMsg("authMessage",msg,type);document.body.classList.remove("auth-checking")}
-async function showApp(){const user=await getUser();if(!user){showAuth();return false}await getRole(user.id);$("authScreen")?.classList.add("hidden");$("appScreen")?.classList.remove("hidden");document.body.classList.remove("auth-checking");return true}
-async function login(){const email=$("loginEmail")?.value.trim();const password=$("loginPassword")?.value;if(!email||!password){setMsg("authMessage","メールアドレスとパスワードを入力してください","error");return}try{const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;currentUser=null;currentRole=null;if(await showApp()) await initPageAfterLogin()}catch(e){setMsg("authMessage","ログイン失敗: "+(e.message||e),"error")}}
+async function getUser(){
+  currentUser = await window.RecruitPageAuth.getUser({ client: sb, currentUser });
+  return currentUser;
+}
+async function getRole(userId){
+  if(currentRole) return currentRole;
+  const user = currentUser || (userId ? { id:userId } : null);
+  currentRole = await window.RecruitPageAuth.getRole({ client: sb, user, currentRole });
+  return currentRole;
+}
+function showAuth(msg="未ログインです", type="info"){
+  currentUser = null;
+  currentRole = null;
+  window.RecruitPageAuth.showAuth({ msg, type, setMsg });
+}
+async function showApp(){
+  const user = await getUser();
+  if(!user){ showAuth(); return false; }
+  await getRole(user.id);
+  window.RecruitPageAuth.showApp();
+  return true;
+}
+async function login(){
+  await window.RecruitPageAuth.login({
+    client: sb,
+    setMsg,
+    afterLogin: async function(){
+      currentUser = null;
+      currentRole = null;
+      if(await showApp()) await initPageAfterLogin();
+    }
+  });
+}
 async function logout(){
   if(window.RecruitAuth && typeof window.RecruitAuth.logoutToIndex === "function"){
     await window.RecruitAuth.logoutToIndex();
@@ -207,7 +236,14 @@ sb.auth.onAuthStateChange((ev)=>{
     showAuth("ログアウトしました","success");
   }
 });
-async function authInit(){try{if(await showApp()) await initPageAfterLogin()}catch(e){console.error(e);showAuth("初期化に失敗しました","error")}finally{document.body.classList.remove("auth-checking")}}
+async function authInit(){
+  await window.RecruitPageAuth.authInit({
+    client: sb,
+    setMsg,
+    onRole: function(role, user){ currentRole = role; currentUser = user; },
+    afterAuth: async function(){ await initPageAfterLogin(); }
+  });
+}
 
 function setSelectOptions(id,values,blank="すべて"){const el=$(id);if(!el)return;const current=el.value;const list=[...new Set((values||[]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));el.innerHTML=`<option value="">${blank}</option>`;list.forEach(v=>{el.innerHTML+=`<option value="${esc(v)}">${esc(v)}</option>`});if(list.includes(current))el.value=current}
 async function fetchChannelMasterRows(){

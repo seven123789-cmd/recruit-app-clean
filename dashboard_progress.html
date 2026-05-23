@@ -11,6 +11,7 @@
 <link href="./assets/css/dashboard_progress.css" rel="stylesheet">
 <script src="./common.js"></script>
 <script src="assets/js/supabase.js"></script>
+<script src="assets/js/auth.js?v=20260523_phase2a"></script>
 <script src="assets/js/ui_utils.js"></script>
 <script src="assets/js/audit_utils.js"></script>
 <script src="assets/js/ops_guard.js"></script>
@@ -107,7 +108,7 @@ let currentRole="viewer";
 let CENTER_MASTER={};
 let ALL_CANDIDATES=[];
 let ALL_TARGETS=[];
-const STAGE_STATUSES=["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
+const STAGE_STATUSES=window.RECRUIT_STAGE_STATUSES || ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
 const RESULT_DONE=["入社済"];
 function $(id){return document.getElementById(id)}
 function escLocal(v){return window.escapeHtml?window.escapeHtml(v):String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]))}

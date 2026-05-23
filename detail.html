@@ -1366,6 +1366,7 @@
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260513_authfix"></script>
+<script src="assets/js/auth.js?v=20260523_phase2a"></script>
 <script src="./common.js?v=20260513_authfix"></script>
 <script src="assets/js/candidate_utils.js?v=20260513_authfix"></script>
 <script src="assets/js/ui_utils.js"></script>
@@ -1766,8 +1767,8 @@ let JOB_TYPE_OPTIONS = [];
 let CHANNEL_OPTIONS = [];
 let CHANNEL_DETAIL_OPTIONS = [];
 let STATUS_OPTIONS = [];
-const STAGE_STATUS_OPTIONS = ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
-const HIRING_RESULT_OPTIONS = ["進行中","保留","辞退","不採用","不通","採用","入社済"];
+const STAGE_STATUS_OPTIONS = window.RECRUIT_STAGE_STATUSES || ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
+const HIRING_RESULT_OPTIONS = window.RECRUIT_HIRING_RESULTS || ["進行中","保留","辞退","不採用","不通","採用","入社済"];
 let DECLINE_REASON_OPTIONS = [];
 let REJECT_REASON_OPTIONS = [];
 
@@ -2820,7 +2821,7 @@ setPageMessage("詳細を読込しました", "success");
 function collectPayload() {
   const payload = {
     name: (window.normalizePersonName ? window.normalizePersonName(document.getElementById("name").value) : document.getElementById("name").value.trim()) || null,
-    age: document.getElementById("age").value ? Number(document.getElementById("age").value) : null,
+    age: (function(v){ if(!v) return null; const n = parseInt(v, 10); return (!isNaN(n) && n > 0 && n < 150) ? n : null; })(document.getElementById("age").value),
     division: getSelectedDivision() || null,
     center_name: getSelectedCenterName() || null,
     channel: getSelectedChannel() || null,

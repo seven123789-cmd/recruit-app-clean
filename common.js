@@ -294,6 +294,9 @@
   window.daysBetween = window.daysBetween || daysBetween;
   window.fiscalYear = window.fiscalYear || fiscalYear;
   window.getFiscalYearFromDate = window.getFiscalYearFromDate || getFiscalYearFromDate;
+  window.RECRUIT_STAGE_STATUSES = window.RECRUIT_STAGE_STATUSES || recruitStatusDefaultNames();
+  window.RECRUIT_HIRING_RESULTS = window.RECRUIT_HIRING_RESULTS || recruitHiringResultNames();
+  window.RECRUIT_FINAL_RESULTS = window.RECRUIT_FINAL_RESULTS || ["保留","辞退","不採用","不通","採用","入社済"];
   window.RECRUIT_STATUS_MASTER_DEFAULTS = window.RECRUIT_STATUS_MASTER_DEFAULTS || RECRUIT_STATUS_MASTER_DEFAULTS;
   window.recruitStatusDefaultNames = window.recruitStatusDefaultNames || recruitStatusDefaultNames;
   window.mergeRecruitStatusNames = window.mergeRecruitStatusNames || mergeRecruitStatusNames;

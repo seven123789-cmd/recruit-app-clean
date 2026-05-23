@@ -215,6 +215,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js"></script>
+<script src="assets/js/auth.js?v=20260523_phase2a"></script>
 <script src="./common.js"></script>
 <script src="assets/js/candidate_utils.js"></script>
 <script src="assets/js/ops_guard.js"></script>
@@ -242,8 +243,8 @@ let selectedResultFilters=new Set();
 let dashboardJob="";
 const selectedIds = new Set();
 
-const ACTIVE_STATUSES=["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
-const HIRING_RESULT_OPTIONS=["進行中","保留","辞退","不採用","不通","採用","入社済"];
+const ACTIVE_STATUSES=window.RECRUIT_STAGE_STATUSES || ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
+const HIRING_RESULT_OPTIONS=window.RECRUIT_HIRING_RESULTS || ["進行中","保留","辞退","不採用","不通","採用","入社済"];
 const STATE="recruit_list_filter_state";
 const NAV="recruit_list_navigation_state";
 

@@ -11,6 +11,7 @@
 <link href="./assets/css/dashboard_trend.css" rel="stylesheet">
 <script src="./common.js"></script>
 <script src="assets/js/supabase.js"></script>
+<script src="assets/js/auth.js?v=20260523_phase2a"></script>
 <script src="assets/js/ui_utils.js"></script>
 <script src="assets/js/safe_utils.js"></script>
 <script src="./sidebar.js?v=20260513_role"></script>
@@ -320,11 +321,39 @@ function renderCost(){
 }
 function setActiveTab(tab){currentTab=tab;document.querySelectorAll(".trend-tab").forEach(btn=>btn.classList.toggle("active",btn.dataset.tab===tab));document.querySelectorAll(".trend-section").forEach(sec=>sec.classList.add("hidden"));const map={overall:"sectionOverall",media:"sectionMedia",division:"sectionDivision",owner:"sectionOwner",job:"sectionJob",cost:"sectionCost"};$(map[tab])?.classList.remove("hidden");renderCurrentTab();renderKpis();}
 function renderCurrentTab(){if(currentTab==="overall")renderOverall();if(currentTab==="media")renderMedia();if(currentTab==="division")renderAxisTable({label:"本部",keyFn:r=>r.division||"未設定"},"divisionHead","divisionBody","divisionTrendChart");if(currentTab==="owner")renderAxisTable({label:"担当",keyFn:r=>r.owner_name||"未設定"},"ownerHead","ownerBody","ownerTrendChart");if(currentTab==="job")renderAxisTable({label:"職種",keyFn:r=>r.job_type||"未設定"},"jobHead","jobBody","jobTrendChart");if(currentTab==="cost")renderCost();}
-async function getUser(){if(currentUser)return currentUser;const {data:{session}}=await sb.auth.getSession();currentUser=session?.user||null;return currentUser}
-async function getRole(userId){if(currentRole)return currentRole;if(window.RecruitAuth&&typeof window.RecruitAuth.getCurrentRole==="function"){currentRole=await window.RecruitAuth.getCurrentRole();return currentRole;}try{const {data}=await sb.from("profiles").select("role,is_active").eq("user_id",userId).maybeSingle();currentRole=data&&data.is_active!==false&&data.role?String(data.role).toLowerCase():"viewer";}catch(e){currentRole="viewer"}return currentRole}
-function showAuth(msg="未ログインです",type="info"){$("authScreen")?.classList.remove("hidden");$("appScreen")?.classList.add("hidden");currentUser=null;currentRole=null;setMsg("authMessage",msg,type);document.body.classList.remove("auth-checking")}
-async function showApp(){const user=await getUser();if(!user){showAuth();return false}await getRole(user.id);$("authScreen")?.classList.add("hidden");$("appScreen")?.classList.remove("hidden");document.body.classList.remove("auth-checking");return true}
-async function login(){const email=$("loginEmail")?.value.trim();const password=$("loginPassword")?.value;if(!email||!password){setMsg("authMessage","メールアドレスとパスワードを入力してください","error");return}try{const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;currentUser=null;currentRole=null;if(await showApp()) await initPageAfterLogin()}catch(e){setMsg("authMessage","ログイン失敗: "+(e.message||e),"error")}}
+async function getUser(){
+  currentUser = await window.RecruitPageAuth.getUser({ client: sb, currentUser });
+  return currentUser;
+}
+async function getRole(userId){
+  if(currentRole) return currentRole;
+  const user = currentUser || (userId ? { id:userId } : null);
+  currentRole = await window.RecruitPageAuth.getRole({ client: sb, user, currentRole });
+  return currentRole;
+}
+function showAuth(msg="未ログインです", type="info"){
+  currentUser = null;
+  currentRole = null;
+  window.RecruitPageAuth.showAuth({ msg, type, setMsg });
+}
+async function showApp(){
+  const user = await getUser();
+  if(!user){ showAuth(); return false; }
+  await getRole(user.id);
+  window.RecruitPageAuth.showApp();
+  return true;
+}
+async function login(){
+  await window.RecruitPageAuth.login({
+    client: sb,
+    setMsg,
+    afterLogin: async function(){
+      currentUser = null;
+      currentRole = null;
+      if(await showApp()) await initPageAfterLogin();
+    }
+  });
+}
 async function logout(){
   if(window.RecruitAuth && typeof window.RecruitAuth.logoutToIndex === "function"){
     await window.RecruitAuth.logoutToIndex();
@@ -341,7 +370,14 @@ sb.auth.onAuthStateChange((ev)=>{
 });
 async function loadAnalysis(){try{setMsg("pageMessage","","info");applyFy();await Promise.all([loadCenterMaster(),loadOwnerMaster()]);const {data,error}=await sb.from("candidates").select("*").order("applied_date",{ascending:true});if(error)throw error;rows=data||[];try{const costRes=await sb.from("channel_costs").select("*");costRows=costRes.error?[]:(costRes.data||[]);}catch(e){costRows=[];}bindMasters();filterRows();setupMediaMonthOptions(filteredRows);renderKpis();renderCurrentTab();}catch(e){console.error(e);setMsg("pageMessage","読込失敗: "+(e.message||e),"error")}}
 async function initPageAfterLogin(){applyFy();await loadAnalysis()}
-async function authInit(){try{if(await showApp()) await initPageAfterLogin()}catch(e){console.error(e);showAuth("初期化に失敗しました","error")}finally{document.body.classList.remove("auth-checking")}}
+async function authInit(){
+  await window.RecruitPageAuth.authInit({
+    client: sb,
+    setMsg,
+    onRole: function(role, user){ currentRole = role; currentUser = user; },
+    afterAuth: async function(){ await initPageAfterLogin(); }
+  });
+}
 ["fy","division","center","owner"].forEach(id=>document.addEventListener("change",e=>{if(e.target&&e.target.id===id){if(id==="division")updateCenterOptions();filterRows();setupMediaMonthOptions();renderKpis();renderCurrentTab();}}));
 ["mediaMode","mediaDivision","mediaMonth","costMode","costDivision"].forEach(id=>document.addEventListener("change",e=>{if(e.target&&e.target.id===id)renderCurrentTab();}));
 document.addEventListener("click",e=>{const btn=e.target.closest(".trend-tab");if(btn)setActiveTab(btn.dataset.tab);});
