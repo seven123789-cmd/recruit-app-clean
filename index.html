@@ -427,8 +427,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260523_phase5_cleanup"></script>
-<script src="assets/js/auth.js?v=20260523_phase5_cleanup"></script>
-<script src="./common.js?v=20260523_reason_strict"></script>
+<script src="assets/js/auth.js?v=20260523_real_dashboard_common"></script>
+<script src="./common.js?v=20260523_real_dashboard_common"></script>
 <script src="assets/js/candidate_utils.js?v=20260523_phase5_cleanup"></script>
 <script src="assets/js/ops_guard.js?v=20260523_phase5_cleanup"></script>
 <script src="assets/js/ui_utils.js?v=20260523_phase5_cleanup"></script>
@@ -729,7 +729,7 @@ async function fetchMasterOptionRows(tableName){
     return await window.RecruitMaster.list(key);
   }
   // RecruitMaster がまだ起動していない時だけ既存DBへフォールバック。
-  // 通常画面では直接 master_* を読まず、common.js の RecruitMaster を入口にする。
+  // 通常画面では直接 master_* を読まず、common.js?v=20260523_real_dashboard_common の RecruitMaster を入口にする。
   try {
     const { data, error } = await sb
       .from(tableName)

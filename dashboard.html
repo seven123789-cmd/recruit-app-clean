@@ -10,9 +10,9 @@
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_join_actual_fix">
 <link rel="stylesheet" href="./assets/css/dashboard.css?v=20260523_join_actual_fix">
 <link rel="icon" href="data:,">
-<script src="./common.js?v=20260523_join_actual_fix"></script>
+<script src="./common.js?v=20260523_real_dashboard_common"></script>
 <script src="assets/js/supabase.js?v=20260523_join_actual_fix"></script>
-<script src="assets/js/auth.js?v=20260523_join_actual_fix"></script>
+<script src="assets/js/auth.js?v=20260523_real_dashboard_common"></script>
 <script src="assets/js/ui_utils.js?v=20260523_join_actual_fix"></script>
 <script src="assets/js/audit_utils.js?v=20260523_join_actual_fix"></script>
 <script src="assets/js/ops_guard.js?v=20260523_join_actual_fix"></script>
@@ -488,14 +488,25 @@ function setText(id, value){
 function updateDashboardUi(rows){
   const activeRows = (rows || []).filter(r => !r.is_deleted);
   const today = getSessionToday();
+  const helper = window.RecruitDashboard || {};
 
-  const applied = activeRows.filter(r => isValidDate(r.applied_date)).length;
-  const reached = (row, stage) => window.isRecruitStageReached ? window.isRecruitStageReached(row, stage) : false;
-  const appointment = activeRows.filter(r => reached(r, "アポ取得")).length;
-  const interviewSet = activeRows.filter(r => reached(r, "面接設定")).length;
-  const interviewDone = activeRows.filter(r => reached(r, "面接実施")).length;
-  const offer = activeRows.filter(r => reached(r, "内定")).length;
-  const join = activeRows.filter(r => window.isRecruitHired ? window.isRecruitHired(r) : reached(r, "採用")).length;
+  const funnel = helper.summarizeFunnel
+    ? helper.summarizeFunnel(rows)
+    : {
+        applied: activeRows.filter(r => isValidDate(r.applied_date)).length,
+        appointment: activeRows.filter(r => window.isRecruitStageReached && window.isRecruitStageReached(r, "アポ取得")).length,
+        interviewSet: activeRows.filter(r => window.isRecruitStageReached && window.isRecruitStageReached(r, "面接設定")).length,
+        interviewDone: activeRows.filter(r => window.isRecruitStageReached && window.isRecruitStageReached(r, "面接実施")).length,
+        offer: activeRows.filter(r => window.isRecruitStageReached && window.isRecruitStageReached(r, "内定")).length,
+        join: activeRows.filter(r => window.isRecruitHired ? window.isRecruitHired(r) : (window.isRecruitStageReached && window.isRecruitStageReached(r, "採用"))).length
+      };
+
+  const reasons = helper.summarizeReasons
+    ? helper.summarizeReasons(rows)
+    : {
+        noContact: activeRows.filter(r => window.isRecruitNoContact ? window.isRecruitNoContact(r) : String(r.hiring_result||"").trim()==="不通").length,
+        decline: activeRows.filter(r => window.isRecruitDeclined ? window.isRecruitDeclined(r) : (String(r.hiring_result||"").trim()==="辞退" || !!r.decline_reason)).length
+      };
 
   const priorityToday = activeRows.filter(isActionRequired).length;
   const priorityNotDone = activeRows.filter(r => isValidDate(r.interview1_date) && !isValidDate(r.interview_done_date) && !isFinal(r)).length;
@@ -506,39 +517,34 @@ function updateDashboardUi(rows){
     return days !== null && days >= 3;
   }).length;
 
-  const noContact = activeRows.filter(r => window.isRecruitNoContact ? window.isRecruitNoContact(r) : String(r.hiring_result||"").trim()==="不通").length;
-  const decline = activeRows.filter(r => window.isRecruitDeclined ? window.isRecruitDeclined(r) : (String(r.hiring_result||"").trim()==="辞退" || String(r.status||"").trim()==="辞退" || !!r.decline_reason)).length;
   const interviewNotSet = activeRows.filter(r => isValidDate(r.appointment_date) && !isValidDate(r.interview1_date) && !isFinal(r)).length;
   const ownerStagnation = activeRows.filter(r => isActionRequired(r)).length;
 
-  setText("priorityToday", priorityToday);
-  setText("priorityNotDone", priorityNotDone);
-  setText("priorityDormant", priorityDormant);
-
-  setText("flowApplied", applied);
-  setText("flowAppointment", appointment);
-  setText("flowInterviewSet", interviewSet);
-  setText("flowInterviewDone", interviewDone);
-  setText("flowOffer", offer);
-  setText("flowJoin", join);
-
-  setText("rateAppointment", calcRate(appointment, applied));
-  setText("rateInterviewSet", calcRate(interviewSet, applied));
-  setText("rateInterviewDone", calcRate(interviewDone, applied));
-  setText("rateOffer", calcRate(offer, applied));
-  setText("rateJoin", calcRate(join, applied));
-
-  setText("reasonNoContact", noContact);
-  setText("reasonDecline", decline);
-  setText("reasonInterviewNotSet", interviewNotSet);
-  setText("reasonOwnerStagnation", ownerStagnation);
-
-  setText("summaryRows", rows.length);
-  setText("summaryDivision", document.getElementById("filterDivision").value || "すべて");
-  setText("summaryCenter", document.getElementById("filterCenter").value || "すべて");
-  const ch = document.getElementById("filterChannel").value || "すべて";
-  const ow = document.getElementById("filterOwner").value || "すべて";
-  setText("summaryChannelOwner", ch + " / " + ow);
+  const render = helper.renderMetricMap || (map => Object.entries(map).forEach(([id, value]) => setText(id, value)));
+  render({
+    priorityToday,
+    priorityNotDone,
+    priorityDormant,
+    flowApplied: funnel.applied,
+    flowAppointment: funnel.appointment,
+    flowInterviewSet: funnel.interviewSet,
+    flowInterviewDone: funnel.interviewDone,
+    flowOffer: funnel.offer,
+    flowJoin: funnel.join,
+    rateAppointment: calcRate(funnel.appointment, funnel.applied),
+    rateInterviewSet: calcRate(funnel.interviewSet, funnel.applied),
+    rateInterviewDone: calcRate(funnel.interviewDone, funnel.applied),
+    rateOffer: calcRate(funnel.offer, funnel.applied),
+    rateJoin: calcRate(funnel.join, funnel.applied),
+    reasonNoContact: reasons.noContact,
+    reasonDecline: reasons.decline,
+    reasonInterviewNotSet: interviewNotSet,
+    reasonOwnerStagnation: ownerStagnation,
+    summaryRows: rows.length,
+    summaryDivision: document.getElementById("filterDivision").value || "すべて",
+    summaryCenter: document.getElementById("filterCenter").value || "すべて",
+    summaryChannelOwner: (document.getElementById("filterChannel").value || "すべて") + " / " + (document.getElementById("filterOwner").value || "すべて")
+  });
 }
 async function loadDashboard(){
   if (isLoading) return;

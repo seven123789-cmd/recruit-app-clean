@@ -120,7 +120,27 @@
     }
   }
 
+  function normalizeRole(role){
+    return String(role || "viewer").trim().toLowerCase();
+  }
+
+  function hasRole(role, allowed){
+    const current = normalizeRole(role);
+    const list = Array.isArray(allowed) ? allowed : [allowed];
+    return list.map(normalizeRole).includes(current);
+  }
+
+  function isAdmin(role){ return hasRole(role, "admin"); }
+  function isEditor(role){ return hasRole(role, ["admin", "editor"]); }
+  function isViewer(role){ return hasRole(role, ["admin", "editor", "viewer"]); }
+
   window.RecruitPageAuth = Object.assign(window.RecruitPageAuth || {}, {
-    getUser, getRole, showAuth, showApp, login, logoutToIndex, authInit
+    getUser, getRole, showAuth, showApp, login, logoutToIndex, authInit,
+    normalizeRole, hasRole, isAdmin, isEditor, isViewer
   });
+
+  window.hasRecruitRole = window.hasRecruitRole || hasRole;
+  window.isRecruitAdmin = window.isRecruitAdmin || isAdmin;
+  window.isRecruitEditor = window.isRecruitEditor || isEditor;
+  window.isRecruitViewer = window.isRecruitViewer || isViewer;
 })();

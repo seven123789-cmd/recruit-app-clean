@@ -1586,12 +1586,117 @@
     if(filters.job && String(row.job_type || "") !== filters.job) return false;
     return true;
   }
+  function setText(id, value){
+    const el = typeof id === "string" ? document.getElementById(id) : id;
+    if(el) el.textContent = value ?? "";
+  }
+
+  function calcRateNumber(n, d){
+    const numerator = Number(n) || 0;
+    const denominator = Number(d) || 0;
+    return denominator ? Number(((numerator / denominator) * 100).toFixed(1)) : 0;
+  }
+
+  function formatRate(n, d){
+    return calcRateNumber(n, d).toFixed(1) + "%";
+  }
+
+  function countRows(rows, predicate){
+    return (rows || []).filter(row => {
+      try{ return Boolean(predicate(row)); }catch(e){ return false; }
+    }).length;
+  }
+
+  function isActiveCandidate(row){
+    return row && row.is_deleted !== true;
+  }
+
+  function summarizeFunnel(rows){
+    const activeRows = (rows || []).filter(isActiveCandidate);
+    const reached = typeof window.isRecruitStageReached === "function"
+      ? window.isRecruitStageReached
+      : (() => false);
+    const hired = typeof window.isRecruitHired === "function"
+      ? window.isRecruitHired
+      : (row => reached(row, "採用"));
+    const applied = countRows(activeRows, row => /^\d{4}-\d{2}-\d{2}$/.test(String(row.applied_date || "").slice(0,10)));
+    return {
+      rows: activeRows.length,
+      applied,
+      appointment: countRows(activeRows, row => reached(row, "アポ取得")),
+      interviewSet: countRows(activeRows, row => reached(row, "面接設定")),
+      interviewDone: countRows(activeRows, row => reached(row, "面接実施")),
+      offer: countRows(activeRows, row => reached(row, "内定")),
+      join: countRows(activeRows, row => hired(row))
+    };
+  }
+
+  function summarizeReasons(rows){
+    const activeRows = (rows || []).filter(isActiveCandidate);
+    const noContact = typeof window.isRecruitNoContact === "function"
+      ? window.isRecruitNoContact
+      : (row => String(row.hiring_result || "").trim() === "不通");
+    const declined = typeof window.isRecruitDeclined === "function"
+      ? window.isRecruitDeclined
+      : (row => String(row.hiring_result || "").trim() === "辞退" || !!String(row.decline_reason || "").trim());
+    const rejected = typeof window.isRecruitRejected === "function"
+      ? window.isRecruitRejected
+      : (row => String(row.hiring_result || "").trim() === "不採用");
+    return {
+      noContact: countRows(activeRows, noContact),
+      decline: countRows(activeRows, declined),
+      rejected: countRows(activeRows, rejected)
+    };
+  }
+
+  function renderMetricMap(map){
+    Object.entries(map || {}).forEach(([id, value]) => setText(id, value));
+  }
+
+  function statusClass(stage){
+    const key = String(stage || "").trim();
+    const map = {
+      "応募":"is-apply",
+      "書類選考":"is-screening",
+      "アポ取得":"is-appointment",
+      "面接設定":"is-interview-set",
+      "面接実施":"is-interview-done",
+      "内定":"is-offer",
+      "採用":"is-join"
+    };
+    return map[key] || "is-neutral";
+  }
+
+  function resultClass(result){
+    const key = String(result || "").trim();
+    const map = {
+      "進行中":"is-progress",
+      "保留":"is-hold",
+      "辞退":"is-decline",
+      "不採用":"is-reject",
+      "不通":"is-no-contact",
+      "採用":"is-hiring-decision",
+      "入社済":"is-joined"
+    };
+    return map[key] || "is-neutral";
+  }
+
   window.RecruitDashboard = Object.assign(window.RecruitDashboard || {}, {
     escape,
     uniqueSorted,
     setSelectOptions,
     getFiscalRange,
     readFilterValue,
-    matchesBasicCandidateFilters
+    matchesBasicCandidateFilters,
+    setText,
+    calcRateNumber,
+    formatRate,
+    countRows,
+    isActiveCandidate,
+    summarizeFunnel,
+    summarizeReasons,
+    renderMetricMap,
+    statusClass,
+    resultClass
   });
 })();
