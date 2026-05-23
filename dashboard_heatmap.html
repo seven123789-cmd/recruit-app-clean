@@ -92,7 +92,6 @@
 <div aria-label="応募者一覧で面接実施以上の対象者を確認" class="metric-card kpi-interview heatmap-summary-link" data-heat-summary-filter="interview_done" role="button" tabindex="0"><div class="label">面接実施</div><div class="value" id="sumInterview">0</div><div class="sub">面接実施以上の人数</div></div>
 <div aria-label="応募者一覧で実入社者を確認" class="metric-card kpi-hired heatmap-summary-link" data-heat-summary-filter="hired" role="button" tabindex="0"><div class="label">採用</div><div class="value" id="sumJoin">0</div><div class="sub">実入社数</div></div>
 <div aria-label="応募者一覧で危険判定者を確認" class="metric-card kpi-rate-interview heatmap-summary-link" data-heat-summary-filter="heat_danger" role="button" tabindex="0"><div class="label">危険判定者</div><div class="value" id="sumDanger">0</div><div class="sub">期限切れの進行中候補者</div></div>
-<div aria-label="応募5件未満の参考行数" class="metric-card kpi-rate-hired"><div class="label">参考行</div><div class="value" id="sumReference">0</div><div class="sub">応募5件未満の行数</div></div>
 </div>
 </section>
 <section class="insight-card" id="heatmapInsight">
@@ -344,7 +343,10 @@ function buildListUrl(axis,key,filter="all"){
 function goHeatmapList(axis,key,filter="all"){
   window.location.href=buildListUrl(axis,key,filter);
 }
-function keyLink(axis,key){
+function keyLink(axis,key,disabled=false){
+  if(disabled){
+    return `<span class="heatmap-key-link is-disabled" aria-disabled="true">${esc(key)}</span>`;
+  }
   const href=buildAnalysisUrl(axis,key);
   return `<a class="heatmap-key-link" href="${esc(href)}">${esc(key)}</a>`;
 }
@@ -661,7 +663,7 @@ function renderHeatmap(headId,bodyId,items,label,options={}){
     const level=rowLevel(x);
     const isHidden=limit>0&&!expanded&&index>=limit;
     return `<tr class="${isHidden?"is-extra-row hidden":""}">
-      <td class="key-cell"><strong>${keyLink(label,x.key)}</strong><span>${x.applied<5?"応募5件未満":"通常判定"}</span></td>
+      <td class="key-cell"><strong>${keyLink(label,x.key,x.applied<5)}</strong><span>${x.applied<5?"応募5件未満":"通常判定"}</span></td>
       <td class="count-col ${x.applied>=5?"is-clickable":""}" ${x.applied>=5?heatAttrs(label,x.key,"applied","応募者一覧で確認"):""}>${x.applied}</td>
       ${statusCell(interview.toFixed(1),jInterview,"%",label,x.key,"interview_done","面接実施以上の対象者を確認")}
       ${statusCell(join.toFixed(1),jJoin,"%",label,x.key,"hired","採用者を確認")}
@@ -694,7 +696,6 @@ function updateSummary(data,stats){
   setText("sumInterview",interview);
   setText("sumJoin",join);
   setText("sumDanger",dangerCandidates);
-  setText("sumReference",stats.reference);
   setText("sideRows",data.length);
   setText("sideDivision",$("division").value||"すべて");
   setText("sideCenter",$("center").value||"すべて");
@@ -763,6 +764,6 @@ async function initPageAfterLogin(){
 }
 authInit();
 </script>
-<script src="dashboard_summary_links.js?v=20260524_heatmap_dangerperson"></script>
+<script src="dashboard_summary_links.js?v=20260524_heatmap_reference_removed"></script>
 </body>
 </html>
