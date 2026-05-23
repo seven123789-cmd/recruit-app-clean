@@ -9,7 +9,7 @@
 <link href="./assets/css/header.css?v=20260524_heatmap_cellfix" rel="stylesheet"/>
 <link href="./assets/css/sidebar.css?v=20260524_heatmap_cellfix" rel="stylesheet"/>
 <link href="./assets/css/dashboard_heatmap.css?v=20260524_heatmap_cellfix" rel="stylesheet"/>
-<script src="./common.js?v=20260524_heatmap_cellfix"></script>
+<script src="./common.js?v=20260524_heatmap_dangerperson"></script>
 <script src="assets/js/supabase.js?v=20260524_heatmap_cellfix"></script>
 <script src="assets/js/auth.js?v=20260524_heatmap_cellfix"></script>
 <script src="assets/js/ui_utils.js?v=20260524_heatmap_cellfix"></script>
@@ -49,7 +49,7 @@
 <div class="app-layout">
 <aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
 <main class="main-content">
-<header class="page-header dashboard-page-header"><div class="dashboard-title-line"><h1>ヒートマップ分析</h1><div aria-label="集計状態" class="dashboard-header-meta"><span class="dashboard-header-chip">対象年度：<span id="sideFiscalYear">-</span></span><span class="dashboard-header-chip">対象件数：<span id="sideRows">0</span></span><span class="dashboard-header-chip">対象本部：<span id="sideDivision">すべて</span></span><span class="dashboard-header-chip">対象営業所：<span id="sideCenter">すべて</span></span><span class="dashboard-header-chip">危険セル：<span id="sideDangerCount">0</span></span><span class="dashboard-header-chip">注意セル：<span id="sideWarningCount">0</span></span><span class="dashboard-header-chip">対象期間：<span id="sidePeriod">-</span></span></div></div></header>
+<header class="page-header dashboard-page-header"><div class="dashboard-title-line"><h1>ヒートマップ分析</h1><div aria-label="集計状態" class="dashboard-header-meta"><span class="dashboard-header-chip">対象年度：<span id="sideFiscalYear">-</span></span><span class="dashboard-header-chip">対象件数：<span id="sideRows">0</span></span><span class="dashboard-header-chip">対象本部：<span id="sideDivision">すべて</span></span><span class="dashboard-header-chip">対象営業所：<span id="sideCenter">すべて</span></span><span class="dashboard-header-chip">危険判定者：<span id="sideDangerCount">0</span></span><span class="dashboard-header-chip">注意セル：<span id="sideWarningCount">0</span></span><span class="dashboard-header-chip">対象期間：<span id="sidePeriod">-</span></span></div></div></header>
 <section class="heatmap-control-card analysis-control-card">
 <div class="heatmap-control-copy analysis-control-copy">
 <p>分析条件</p>
@@ -91,7 +91,7 @@
 <div aria-label="応募者一覧で応募者を確認" class="metric-card kpi-applied heatmap-summary-link" data-heat-summary-filter="applied" role="button" tabindex="0"><div class="label">応募</div><div class="value" id="sumApplied">0</div><div class="sub">対象期間内の応募数</div></div>
 <div aria-label="応募者一覧で面接実施以上の対象者を確認" class="metric-card kpi-interview heatmap-summary-link" data-heat-summary-filter="interview_done" role="button" tabindex="0"><div class="label">面接実施</div><div class="value" id="sumInterview">0</div><div class="sub">面接実施以上の人数</div></div>
 <div aria-label="応募者一覧で実入社者を確認" class="metric-card kpi-hired heatmap-summary-link" data-heat-summary-filter="hired" role="button" tabindex="0"><div class="label">採用</div><div class="value" id="sumJoin">0</div><div class="sub">実入社数</div></div>
-<div aria-label="危険判定セル数" class="metric-card kpi-rate-interview is-clickable" data-heat-summary-filter="heat_danger" role="button" tabindex="0"><div class="label">危険セル</div><div class="value" id="sumDanger">0</div><div class="sub">赤判定セル関連の候補者を確認</div></div>
+<div aria-label="応募者一覧で危険判定者を確認" class="metric-card kpi-rate-interview heatmap-summary-link" data-heat-summary-filter="heat_danger" role="button" tabindex="0"><div class="label">危険判定者</div><div class="value" id="sumDanger">0</div><div class="sub">期限切れの進行中候補者</div></div>
 <div aria-label="応募5件未満の参考行数" class="metric-card kpi-rate-hired"><div class="label">参考行</div><div class="value" id="sumReference">0</div><div class="sub">応募5件未満の行数</div></div>
 </div>
 </section>
@@ -387,7 +387,8 @@ function isDormant(r){
   return days!==null&&days>=3;
 }
 function isHeatmapDangerCandidate(r){
-  return window.isRecruitHeatmapDangerCandidate ? window.isRecruitHeatmapDangerCandidate(r) : (isActionRequired(r)||isDormant(r)||isNoContact(r)||isDeclined(r));
+  if(window.isRecruitHeatmapDangerCandidate) return window.isRecruitHeatmapDangerCandidate(r);
+  return window.isRecruitOwnerStagnation ? window.isRecruitOwnerStagnation(r) : (isActionRequired(r) && r.next_action_date && r.next_action_date < todayStr());
 }
 function fiscalRange(type){
   const fy=fiscalYear();
@@ -661,7 +662,7 @@ function renderHeatmap(headId,bodyId,items,label,options={}){
     const isHidden=limit>0&&!expanded&&index>=limit;
     return `<tr class="${isHidden?"is-extra-row hidden":""}">
       <td class="key-cell"><strong>${keyLink(label,x.key)}</strong><span>${x.applied<5?"応募5件未満":"通常判定"}</span></td>
-      <td class="count-col is-clickable" ${heatAttrs(label,x.key,"applied","応募者一覧で確認")}>${x.applied}</td>
+      <td class="count-col ${x.applied>=5?"is-clickable":""}" ${x.applied>=5?heatAttrs(label,x.key,"applied","応募者一覧で確認"):""}>${x.applied}</td>
       ${statusCell(interview.toFixed(1),jInterview,"%",label,x.key,"interview_done","面接実施以上の対象者を確認")}
       ${statusCell(join.toFixed(1),jJoin,"%",label,x.key,"hired","採用者を確認")}
       ${statusCell(decline.toFixed(1),jDecline,"%",label,x.key,"decline","辞退対象者を確認")}
@@ -688,15 +689,16 @@ function updateSummary(data,stats){
   const applied=data.length;
   const interview=data.filter(hasInterviewReached).length;
   const join=data.filter(isHired).length;
+  const dangerCandidates=data.filter(isHeatmapDangerCandidate).length;
   setText("sumApplied",applied);
   setText("sumInterview",interview);
   setText("sumJoin",join);
-  setText("sumDanger",stats.danger);
+  setText("sumDanger",dangerCandidates);
   setText("sumReference",stats.reference);
   setText("sideRows",data.length);
   setText("sideDivision",$("division").value||"すべて");
   setText("sideCenter",$("center").value||"すべて");
-  setText("sideDangerCount",stats.danger);
+  setText("sideDangerCount",dangerCandidates);
   setText("sideWarningCount",stats.warning);
 }
 function updateInsight(groups){
@@ -761,6 +763,6 @@ async function initPageAfterLogin(){
 }
 authInit();
 </script>
-<script src="dashboard_summary_links.js?v=20260524_heatmap_cellfix"></script>
+<script src="dashboard_summary_links.js?v=20260524_heatmap_dangerperson"></script>
 </body>
 </html>

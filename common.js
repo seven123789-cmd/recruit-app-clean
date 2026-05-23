@@ -365,9 +365,9 @@
   }
 
   function isRecruitHeatmapDangerCandidate(row){
-    // ヒートマップの候補者単位の危険者数。
-    // 率が悪い「セル」はグループ指標なので、LISTに出す対象は候補者単位の危険条件に限定する。
-    return isRecruitActionRequired(row) || isRecruitDormant3Days(row) || isRecruitNoContact(row) || isRecruitDeclined(row);
+    // ヒートマップの「危険判定者」は、LIST上で赤帯になる期限切れ候補者に限定する。
+    // 不通・辞退・率が悪いセルは、それぞれのセルクリックで確認する。
+    return isRecruitOwnerStagnation(row);
   }
 
   function recruitMetricCounts(rows){

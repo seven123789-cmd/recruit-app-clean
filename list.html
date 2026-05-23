@@ -216,7 +216,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260523_join_actual_fix"></script>
 <script src="assets/js/auth.js?v=20260523_join_actual_fix"></script>
-<script src="./common.js?v=20260523_stagnation_fix"></script>
+<script src="./common.js?v=20260524_heatmap_dangerperson"></script>
 <script src="assets/js/candidate_utils.js?v=20260523_join_actual_fix"></script>
 <script src="assets/js/ops_guard.js?v=20260523_join_actual_fix"></script>
 <script src="assets/js/ui_utils.js?v=20260523_join_actual_fix"></script>
@@ -808,7 +808,8 @@ function isDormant3Days(r){
   return days!==null && days>=3;
 }
 function isHeatmapDangerCandidate(r){
-  return window.isRecruitHeatmapDangerCandidate ? window.isRecruitHeatmapDangerCandidate(r) : (isActionRequired(r)||isDormant3Days(r)||isNoContact(r)||isDecline(r));
+  if(window.isRecruitHeatmapDangerCandidate) return window.isRecruitHeatmapDangerCandidate(r);
+  return window.isRecruitOwnerStagnation ? window.isRecruitOwnerStagnation(r) : (isActionRequired(r) && r.next_action_date && r.next_action_date < todayStr());
 }
 function isNoContact(r){
   return window.isRecruitNoContact ? window.isRecruitNoContact(r) : (String(r.hiring_result||"").trim()==="不通");
@@ -901,7 +902,7 @@ function getListFilterLabel(){
     decline:"辞退",
     interview_not_set:"面接未設定",
     heat_action:"要対応",
-    heat_danger:"危険セル関連",
+    heat_danger:"危険判定者",
     heat_interview_gap:"面接未到達",
     heat_hire_gap:"採用未到達",
     owner_stagnation:"担当停滞（期限切れ）"
