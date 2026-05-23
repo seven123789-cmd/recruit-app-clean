@@ -214,11 +214,14 @@
   }
 
   function isRecruitHired(row){
+    // 実入社の判定。
+    // status=採用 / hiring_result=採用 は「採用決定」であり、入社日未登録なら採用数には含めない。
     const r = normalizeRecruitCandidateState(row || {});
     return String(r.hiring_result || "").trim() === "入社済" || isValidRecruitDate(r.join_date);
   }
 
   function isRecruitHiringDecision(row){
+    // 採用決定の判定。実入社とは分ける。
     const r = normalizeRecruitCandidateState(row || {});
     return String(r.status || "").trim() === "採用" || ["採用","入社済"].includes(String(r.hiring_result || "").trim()) || isValidRecruitDate(r.join_date);
   }
@@ -279,20 +282,23 @@
 
   function isRecruitStageReached(row, stageName){
     // 採用進行フロー・到達率用。
-    // ステータスは「現在の到達地点」なので、採用者はアポ取得/面接設定/面接実施/内定にも到達済みとして数える。
+    // 採用決定（status=採用 / hiring_result=採用）は、内定までは到達済みとして扱う。
+    // 採用数は実入社（join_dateあり / hiring_result=入社済）のみ。
     const target = getRecruitStageRank(stageName);
     if(target < 0) return false;
     const r = normalizeRecruitCandidateState(row || {});
+    const stage = String(stageName || "").trim();
+    if(stage === "採用") return isRecruitHired(r);
+
     const statusRank = getRecruitStageRank(String(r.status || "").trim());
     if(statusRank >= target) return true;
 
-    const stage = String(stageName || "").trim();
     if(stage === "応募") return isValidRecruitDate(r.applied_date) || statusRank >= 0;
     if(stage === "アポ取得") return isValidRecruitDate(r.appointment_date) || isValidRecruitDate(r.interview1_date) || isValidRecruitDate(r.interview_date) || isValidRecruitDate(r.interview_done_date) || isValidRecruitDate(r.offer_date) || isValidRecruitDate(r.join_date);
     if(stage === "面接設定") return isValidRecruitDate(r.interview1_date) || isValidRecruitDate(r.interview_date) || isValidRecruitDate(r.interview_done_date) || isValidRecruitDate(r.offer_date) || isValidRecruitDate(r.join_date);
     if(stage === "面接実施") return isValidRecruitDate(r.interview_done_date) || isValidRecruitDate(r.offer_date) || isValidRecruitDate(r.join_date) || isRecruitHiringDecision(r);
     if(stage === "内定") return isValidRecruitDate(r.offer_date) || isValidRecruitDate(r.join_date) || isRecruitHiringDecision(r);
-    if(stage === "採用") return isRecruitHiringDecision(r);
+    if(stage === "採用") return isRecruitHired(r);
     return false;
   }
 

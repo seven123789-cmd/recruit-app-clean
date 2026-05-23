@@ -183,7 +183,7 @@ function groupByOwner(data){
     if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"面接設定") : validDate(r.interview1_date))x.set++;
     if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"面接実施") : validDate(r.interview_done_date))x.interview++;
     if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"内定") : validDate(r.offer_date))x.offer++;
-    if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"採用") : isHired(r))x.join++;
+    if(window.isRecruitHired ? window.isRecruitHired(r) : isHired(r))x.join++;
     if(isActionRequired(r))x.todo++;
     if(ACTIVE_STATUSES.includes(String(r.status||""))&&!isFinal(r)){
       if(!validDate(r.next_action_date))x.nextUnset++;
