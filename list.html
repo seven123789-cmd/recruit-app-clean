@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>応募者一覧</title>
 
-<link rel="stylesheet" href="./assets/css/common.css?v=20260523_phase5_cleanup">
-<link rel="stylesheet" href="./assets/css/header.css?v=20260523_phase5_cleanup">
-<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_phase5_cleanup">
-<link rel="stylesheet" href="./assets/css/list.css?v=20260523_phase5_cleanup">
+<link rel="stylesheet" href="./assets/css/common.css?v=20260523_heatmap_definition_fix">
+<link rel="stylesheet" href="./assets/css/header.css?v=20260523_heatmap_definition_fix">
+<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_heatmap_definition_fix">
+<link rel="stylesheet" href="./assets/css/list.css?v=20260523_heatmap_definition_fix">
 </head>
 <body class="auth-checking">
 
@@ -214,14 +214,14 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/supabase.js?v=20260523_phase5_cleanup"></script>
-<script src="assets/js/auth.js?v=20260523_phase5_cleanup"></script>
-<script src="./common.js?v=20260523_phase5_cleanup"></script>
-<script src="assets/js/candidate_utils.js?v=20260523_phase5_cleanup"></script>
-<script src="assets/js/ops_guard.js?v=20260523_phase5_cleanup"></script>
-<script src="assets/js/ui_utils.js?v=20260523_phase5_cleanup"></script>
-<script src="assets/js/audit_utils.js?v=20260523_phase5_cleanup"></script>
-<script src="assets/js/safe_utils.js?v=20260523_phase5_cleanup"></script>
+<script src="assets/js/supabase.js?v=20260523_heatmap_definition_fix"></script>
+<script src="assets/js/auth.js?v=20260523_heatmap_definition_fix"></script>
+<script src="./common.js?v=20260523_heatmap_definition_fix"></script>
+<script src="assets/js/candidate_utils.js?v=20260523_heatmap_definition_fix"></script>
+<script src="assets/js/ops_guard.js?v=20260523_heatmap_definition_fix"></script>
+<script src="assets/js/ui_utils.js?v=20260523_heatmap_definition_fix"></script>
+<script src="assets/js/audit_utils.js?v=20260523_heatmap_definition_fix"></script>
+<script src="assets/js/safe_utils.js?v=20260523_heatmap_definition_fix"></script>
 <script>
 const sb=window.getRecruitSupabaseClient();
 
@@ -775,6 +775,24 @@ function dateTime(value, emptyValue){
 function isInterviewNotDone(r){
   return validDate(r.interview1_date) && !validDate(r.interview_done_date) && !isFinal(r);
 }
+function normalizedCandidateForList(r){
+  return window.normalizeRecruitCandidateState ? window.normalizeRecruitCandidateState(r || {}) : (r || {});
+}
+function hasInterviewReachedForList(r){
+  const row=normalizedCandidateForList(r);
+  const st=String(row.status||"").trim();
+  const result=String(row.hiring_result||"").trim();
+  return validDate(row.interview_done_date)
+    || validDate(row.offer_date)
+    || validDate(row.join_date)
+    || ["面接実施","内定","採用"].includes(st)
+    || ["採用","入社済"].includes(result);
+}
+function isHiringDecisionForList(r){
+  if(window.isRecruitHiringDecision) return window.isRecruitHiringDecision(r);
+  const row=normalizedCandidateForList(r);
+  return String(row.status||"").trim()==="採用" || ["採用","入社済"].includes(String(row.hiring_result||"").trim()) || validDate(row.join_date);
+}
 function isDormant3Days(r){
   if(!validDate(r.applied_date) || isFinal(r))return false;
   if(validDate(r.appointment_date) || validDate(r.interview1_date) || validDate(r.interview_done_date))return false;
@@ -807,11 +825,11 @@ function applyListFilterRows(rows){
     case "interview_set":
       return rows.filter(r=>validDate(r.interview1_date));
     case "interview_done":
-      return rows.filter(r=>validDate(r.interview_done_date));
+      return rows.filter(hasInterviewReachedForList);
     case "offer":
       return rows.filter(r=>validDate(r.offer_date));
     case "hired":
-      return rows.filter(isHired);
+      return rows.filter(isHiringDecisionForList);
     case "action":
     case "today":
     case "owner_stagnation":
@@ -840,9 +858,9 @@ function getListFilterLabel(){
     applied:"応募",
     appointment:"アポ取得",
     interview_set:"面接設定",
-    interview_done:"面接実施",
+    interview_done:"面接実施以上",
     offer:"内定",
-    hired:"採用",
+    hired:"採用決定",
     action:"要対応",
     today:"要対応",
     not_done:"未実施",
@@ -1423,6 +1441,6 @@ async function initPageAfterLogin(){
 });
 authInit();
 </script>
-<script src="./sidebar.js?v=20260523_phase5_cleanup"></script>
+<script src="./sidebar.js?v=20260523_heatmap_definition_fix"></script>
 </body>
 </html>
