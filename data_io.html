@@ -232,9 +232,10 @@ function parseCsv(text){
 }
 function normalizeHeader(h){ const m=CSV_COLUMNS.find(c=>c[1]===h || c[0]===h); return m ? m[0] : String(h||'').trim(); }
 function toIsoDate(v){ if(!v) return ''; const s=String(v).trim().replaceAll('/','-'); if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)){ const [y,m,d]=s.split('-'); return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`; } return s; }
-function normalizePersonName(v){
-  const fn = window.CandidateUtils && window.CandidateUtils.normalizePersonName;
-  if(typeof fn === 'function') return fn(v);
+function normalizePersonNameLocal(v){
+  if(window.normalizePersonName && window.normalizePersonName !== normalizePersonNameLocal){
+    return window.normalizePersonName(v);
+  }
   return String(v ?? '').replace(/[\u3000\s]+/g, ' ').trim();
 }
 function fiscalYearFromDateText(v){ const s=toIsoDate(v); if(!s) return ''; const d=new Date(s+'T00:00:00'); if(Number.isNaN(d.getTime())) return ''; return d.getMonth()+1>=4 ? d.getFullYear() : d.getFullYear()-1; }
@@ -299,6 +300,35 @@ function resetPreview(){
 }
 async function getMasters(){ const m = window.RecruitMaster && await window.RecruitMaster.load(true); return m || {divisions:[],centers:[],channels:[],channelDetails:[],jobTypes:[],statuses:[],declineReasons:[],rejectReasons:[]}; }
 function inMaster(list, value){ return !value || (list||[]).includes(value); }
+function normalizeCandidateImportState(row){
+  const source = { ...(row || {}) };
+  if(window.normalizeRecruitCandidateState){
+    const normalized = window.normalizeRecruitCandidateState(source);
+    source.status = normalized.status || source.status || "応募";
+    source.hiring_result = normalized.hiring_result || source.hiring_result || "進行中";
+    return source;
+  }
+  const rawStatus = String(source.status || "").trim();
+  const rawResult = String(source.hiring_result || "").trim();
+  const finalStatusMap = {"入社":"入社済","辞退":"辞退","不採用":"不採用","不通":"不通","保留":"保留","合格":"採用"};
+  if(source.join_date){ source.status = "採用"; source.hiring_result = "入社済"; return source; }
+  if(finalStatusMap[rawStatus]){
+    source.hiring_result = rawResult || finalStatusMap[rawStatus];
+    if(rawStatus === "入社" || source.hiring_result === "採用") source.status = "採用";
+    else if(source.offer_date) source.status = "内定";
+    else if(source.interview_done_date) source.status = "面接実施";
+    else if(source.interview1_date) source.status = "面接設定";
+    else if(source.appointment_date) source.status = "アポ取得";
+    else source.status = "応募";
+    return source;
+  }
+  source.status = rawStatus || "応募";
+  source.hiring_result = rawResult || "進行中";
+  return source;
+}
+function normalizedExportRow(row){
+  return normalizeCandidateImportState(row || {});
+}
 
 async function getExistingCandidateIdSet(ids){
   const list=[...new Set((ids||[]).map(v=>String(v||"").trim()).filter(Boolean))];
@@ -322,7 +352,7 @@ async function previewImportCsv(){
   const missing=required.filter(k=>!headers.includes(k));
   if(missing.length){ previewErrors=missing.map(k=>`必須列がありません：${CSV_COLUMNS.find(c=>c[0]===k)?.[1]||k}`); renderPreview(); return; }
   const masters=await getMasters();
-  previewRows=parsed.slice(1).map((cells,i)=>{ const r={_row:i+2}; headers.forEach((h,idx)=>{ if(CSV_COLUMNS.some(c=>c[0]===h)) r[h]=String(cells[idx]??'').trim(); }); if(r.name) r.name=normalizePersonName(r.name); DATE_KEYS.forEach(k=>{ if(r[k]) r[k]=toIsoDate(r[k]); }); if(!r.fiscal_year) r.fiscal_year=String(fiscalYearFromDateText(r.applied_date)||''); return r; });
+  previewRows=parsed.slice(1).map((cells,i)=>{ const r={_row:i+2}; headers.forEach((h,idx)=>{ if(CSV_COLUMNS.some(c=>c[0]===h)) r[h]=String(cells[idx]??'').trim(); }); if(r.name) r.name=normalizePersonNameLocal(r.name); DATE_KEYS.forEach(k=>{ if(r[k]) r[k]=toIsoDate(r[k]); }); if(!r.fiscal_year) r.fiscal_year=String(fiscalYearFromDateText(r.applied_date)||''); return normalizeCandidateImportState(r); });
   const existingIds = await getExistingCandidateIdSet(previewRows.map(r=>r.candidate_id));
   previewDuplicateRows = previewRows.filter(r=>r.candidate_id && existingIds.has(String(r.candidate_id)));
   previewUpdateCount = previewDuplicateRows.length;
@@ -376,7 +406,7 @@ async function normalizeExistingCandidateNames(){
     const {data,error}=await sb.from('candidates').select('id,name').order('applied_date',{ascending:false});
     if(error) throw error;
     const targets=(data||[])
-      .map(r=>({id:r.id,before:String(r.name||''),after:normalizePersonName(r.name)}))
+      .map(r=>({id:r.id,before:String(r.name||''),after:normalizePersonNameLocal(r.name)}))
       .filter(r=>r.id && r.before !== r.after);
     for(const row of targets){
       const {error:updateError}=await sb.from('candidates').update({name:row.after}).eq('id',row.id);
@@ -621,7 +651,7 @@ async function exportCandidatesCsv(){
   const {data,error}=await q; if(error){ RecruitUI.showError("CSV出力に失敗しました。\n\n"+error.message); return; }
   const filtered=(data||[]).filter(r=>{ const rowFy=fiscalYearFromDateText(r.applied_date); if(fy && fy.startsWith('fy:')) return Number(rowFy)===Number(fy.replace('fy:','')); return true; });
   const header=CSV_COLUMNS.map(c=>csvEscape(c[1])).join(',');
-  const body=filtered.map(r=>CSV_COLUMNS.map(([k])=>{ if(k==='candidate_id') return csvEscape(r.id||''); if(k==='fiscal_year') return csvEscape(fiscalYearFromDateText(r.applied_date)||''); return csvEscape(r[k]??''); }).join(',')).join('\n');
+  const body=filtered.map(row=>{ const r=normalizedExportRow(row); return CSV_COLUMNS.map(([k])=>{ if(k==='candidate_id') return csvEscape(row.id||''); if(k==='fiscal_year') return csvEscape(fiscalYearFromDateText(row.applied_date)||''); return csvEscape(r[k]??''); }).join(','); }).join('\n');
   downloadText(`recruit_candidates_${window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date())}.csv`, header+'\n'+body+'\n');
 }
 </script>
