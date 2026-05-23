@@ -9,7 +9,7 @@
 <link href="./assets/css/header.css?v=20260523_phase5_cleanup" rel="stylesheet"/>
 <link href="./assets/css/sidebar.css?v=20260523_phase5_cleanup" rel="stylesheet"/>
 <link href="./assets/css/dashboard_reason.css?v=20260523_phase5_cleanup" rel="stylesheet"/>
-<script src="./common.js?v=20260523_phase5_cleanup"></script>
+<script src="./common.js?v=20260523_stage_result_crosscheck"></script>
 <script src="assets/js/supabase.js?v=20260523_phase5_cleanup"></script>
 <script src="assets/js/auth.js?v=20260523_phase5_cleanup"></script>
 <script src="assets/js/ui_utils.js?v=20260523_phase5_cleanup"></script>
@@ -254,12 +254,13 @@ function handleDivisionChange(){
 }
 
 function isDecline(r){
-  return normalizeText(r.hiring_result)==="辞退" || normalizeText(r.status)==="辞退" || !!normalizeText(r.decline_reason);
+  return window.isRecruitDeclined ? window.isRecruitDeclined(r) : (normalizeText(r.hiring_result)==="辞退" || normalizeText(r.status)==="辞退" || !!normalizeText(r.decline_reason));
 }
 function isNoContact(r){
-  const status=normalizeText(r.status);
-  const text=[r.status,r.decline_reason,r.reject_reason,r.action_memo,r.hiring_result].map(v=>normalizeText(v)).join(" ");
-  return normalizeText(r.hiring_result)==="不通" || status==="不通" || text.includes("不通") || text.includes("連絡取れず") || text.includes("連絡不能") || text.includes("連絡不通");
+  return window.isRecruitNoContact ? window.isRecruitNoContact(r) : (normalizeText(r.hiring_result)==="不通" || normalizeText(r.status)==="不通");
+}
+function dropStageLabel(r){
+  return window.getRecruitDropStageLabel ? window.getRecruitDropStageLabel(r) : (normalizeText(r.status)||"未設定");
 }
 function isBeforeInterviewDecline(r){
   return isDecline(r)&&!validDate(r.interview_done_date);
@@ -667,11 +668,11 @@ function renderChannelLost(data){
 }
 function renderTable(data){
   const target=data.filter(isLost).sort((a,b)=>String(b.applied_date||"").localeCompare(String(a.applied_date||"")));
-  const head=["氏名","応募日","本部","営業所","媒体","担当者","区分","分類","理由"];
+  const head=["氏名","応募日","到達地点","本部","営業所","媒体","担当者","区分","分類","理由"];
   $("tableHead").innerHTML="<tr>"+head.map(h=>"<th>"+h+"</th>").join("")+"</tr>";
 
   if(!target.length){
-    $("tableBody").innerHTML='<tr><td class="empty" colspan="9">データがありません</td></tr>';
+    $("tableBody").innerHTML='<tr><td class="empty" colspan="10">データがありません</td></tr>';
     return;
   }
 
@@ -681,6 +682,7 @@ function renderTable(data){
     <tr>
       <td><strong>${candidateLink(r)}</strong></td>
       <td>${esc(r.applied_date||"-")}</td>
+      <td><span class="mini-status neutral">${esc(dropStageLabel(r))}</span></td>
       <td>${analysisLink(r.division,"./dashboard_division.html",{division:r.division})}</td>
       <td>${esc(r.center_name||"-")}</td>
       <td>${analysisLink(r.channel,"./dashboard_channel.html",{channel:r.channel})}</td>

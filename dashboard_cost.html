@@ -9,7 +9,7 @@
 <link href="./assets/css/header.css?v=20260523_phase5_cleanup" rel="stylesheet"/>
 <link href="./assets/css/sidebar.css?v=20260523_phase5_cleanup" rel="stylesheet"/>
 <link href="./assets/css/dashboard_cost.css?v=20260523_phase5_cleanup" rel="stylesheet"/>
-<script src="./common.js?v=20260523_phase5_cleanup"></script>
+<script src="./common.js?v=20260523_stage_result_crosscheck"></script>
 <script src="assets/js/supabase.js?v=20260523_phase5_cleanup"></script>
 <script src="assets/js/auth.js?v=20260523_phase5_cleanup"></script>
 <script src="assets/js/ui_utils.js?v=20260523_phase5_cleanup"></script>
@@ -471,8 +471,8 @@ function groupByChannel(data,costMap){
     if(validDate(r.interview_done_date))x.interview++;
     if(validDate(r.offer_date))x.offer++;
     if(isHired(r))x.join++;
-    if(String(r.hiring_result||"").trim()==="辞退"||r.decline_reason)x.decline++;
-    if(String(r.hiring_result||"").trim()==="不通")x.lost++;
+    if(window.isRecruitDeclined ? window.isRecruitDeclined(r) : (String(r.hiring_result||"").trim()==="辞退"||r.decline_reason))x.decline++;
+    if(window.isRecruitNoContact ? window.isRecruitNoContact(r) : String(r.hiring_result||"").trim()==="不通")x.lost++;
     if(String(r.hiring_result||"").trim()==="保留")x.hold++;
     if(isActionRequired(r))x.todo++;
   });

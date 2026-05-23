@@ -255,11 +255,30 @@
     return isRecruitDeclined(row);
   }
 
+  function getRecruitStageStatus(row){
+    return String(normalizeRecruitCandidateState(row || {}).status || "").trim();
+  }
+
+  function getRecruitHiringResult(row){
+    return String(normalizeRecruitCandidateState(row || {}).hiring_result || "進行中").trim();
+  }
+
+  function getRecruitDropStageLabel(row){
+    return getRecruitStageStatus(row) || inferRecruitStageFromDates(row || {}) || "未設定";
+  }
+
   function isRecruitNoContact(row){
     const r = normalizeRecruitCandidateState(row || {});
-    const memo = String(r.action_memo || "");
     const status = String(r.status || "").trim();
-    return String(r.hiring_result || "").trim() === "不通" || status === "不通" || String(r.reject_reason || "") === "連絡取れず" || String(r.decline_reason || "") === "連絡取れず" || memo.includes("不通") || memo.includes("連絡取れず");
+    const result = String(r.hiring_result || "").trim();
+    const rejectReason = String(r.reject_reason || "").trim();
+    const declineReason = String(r.decline_reason || "").trim();
+    return result === "不通" || status === "不通" || rejectReason === "連絡取れず" || declineReason === "連絡取れず" || rejectReason === "連絡不通" || declineReason === "連絡不通";
+  }
+
+  function isRecruitDropped(row){
+    const result = getRecruitHiringResult(row);
+    return ["辞退","不採用","不通","保留"].includes(result) || isRecruitDeclined(row) || isRecruitRejected(row) || isRecruitNoContact(row);
   }
 
   function isFinal(row){
@@ -331,7 +350,11 @@
   window.isRecruitRejected = window.isRecruitRejected || isRecruitRejected;
   window.isRecruitDeclined = window.isRecruitDeclined || isRecruitDeclined;
   window.isRecruitInterviewDeclined = window.isRecruitInterviewDeclined || isRecruitInterviewDeclined;
+  window.getRecruitStageStatus = window.getRecruitStageStatus || getRecruitStageStatus;
+  window.getRecruitHiringResult = window.getRecruitHiringResult || getRecruitHiringResult;
+  window.getRecruitDropStageLabel = window.getRecruitDropStageLabel || getRecruitDropStageLabel;
   window.isRecruitNoContact = window.isRecruitNoContact || isRecruitNoContact;
+  window.isRecruitDropped = window.isRecruitDropped || isRecruitDropped;
   window.isFinal = window.isFinal || isFinal;
   window.getRecruitCurrentFiscalYear = window.getRecruitCurrentFiscalYear || getRecruitCurrentFiscalYear;
   window.formatRecruitFiscalYearLabel = window.formatRecruitFiscalYearLabel || formatRecruitFiscalYearLabel;
