@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>応募者詳細</title>
 
-<link rel="stylesheet" href="./assets/css/common.css?v=20260523_phase3de">
-<link rel="stylesheet" href="./assets/css/header.css?v=20260523_phase3de">
-<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_phase3de">
+<link rel="stylesheet" href="./assets/css/common.css?v=20260523_detail_timefix">
+<link rel="stylesheet" href="./assets/css/header.css?v=20260523_detail_timefix">
+<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_detail_timefix">
 
 <style>
 /* detail.css : page specific styles only */
@@ -1365,14 +1365,14 @@
 
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/supabase.js?v=20260523_phase3de"></script>
-<script src="assets/js/auth.js?v=20260523_phase3de"></script>
-<script src="./common.js?v=20260523_phase3de"></script>
-<script src="assets/js/candidate_utils.js?v=20260523_phase3de"></script>
-<script src="assets/js/ui_utils.js?v=20260523_phase3de"></script>
-<script src="assets/js/audit_utils.js?v=20260523_phase3de"></script>
-<script src="assets/js/ops_guard.js?v=20260523_phase3de"></script>
-<script src="assets/js/safe_utils.js?v=20260523_phase3de"></script>
+<script src="assets/js/supabase.js?v=20260523_detail_timefix"></script>
+<script src="assets/js/auth.js?v=20260523_detail_timefix"></script>
+<script src="./common.js?v=20260523_detail_timefix"></script>
+<script src="assets/js/candidate_utils.js?v=20260523_detail_timefix"></script>
+<script src="assets/js/ui_utils.js?v=20260523_detail_timefix"></script>
+<script src="assets/js/audit_utils.js?v=20260523_detail_timefix"></script>
+<script src="assets/js/ops_guard.js?v=20260523_detail_timefix"></script>
+<script src="assets/js/safe_utils.js?v=20260523_detail_timefix"></script>
 </head>
 <body class="auth-checking">
 
@@ -3312,7 +3312,7 @@ async function loadCandidateAuditTimeline(){
     const rows=data||[];
     if(!rows.length){body.textContent="この応募者の更新履歴はまだありません。";return;}
     body.innerHTML=rows.map(row=>`<div class="history-row">
-      <div>${escapeHtml(String(row.created_at||"").replace("T"," ").slice(0,16))}</div>
+      <div>${escapeHtml(window.RecruitDate?.formatJSTDateTimeMinute ? window.RecruitDate.formatJSTDateTimeMinute(row.created_at) : String(row.created_at||"").replace("T"," ").slice(0,16))}</div>
       <div><div class="history-action">${escapeHtml(auditActionLabelForDetail(row.action_type))}</div><div>${escapeHtml(row.user_email||"-")}</div></div>
       <div class="history-detail">${escapeHtml(formatAuditDetailForDetail(row.detail_json))}</div>
     </div>`).join("");
@@ -3384,6 +3384,6 @@ if (sb && sb.auth) {
   }
 })();
 </script>
-<script src="./sidebar.js?v=20260523_phase3de"></script>
+<script src="./sidebar.js?v=20260523_detail_timefix"></script>
 </body>
 </html>
