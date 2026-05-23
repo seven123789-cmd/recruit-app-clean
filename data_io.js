@@ -158,7 +158,7 @@
     return rows.filter(r=>r.some(v=>String(v||"").trim()!==""));
   }
 
-  function normalizePersonName(v){return String(v??"").replace(/[\u3000\s]+/g," ").trim();}
+  const normalizePersonName = (v) => window.normalizePersonName(v);
   function normalizeHeader(h){return String(h||"").trim();}
   function validDate(v){return !v||/^\d{4}-\d{2}-\d{2}$/.test(String(v));}
   function parseBoolean(v){
@@ -217,7 +217,7 @@
     renderPreview();
   }
 
-  function escapeHtml(v){return String(v??"").replace(/[&<>"]/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[s]));}
+  const escapeHtml = (v) => window.escapeHtml(v);
 
   function renderPreview(){
     const tbody=$("previewBody");

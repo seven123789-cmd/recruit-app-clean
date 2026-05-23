@@ -957,14 +957,7 @@
     setMsg("復元プレビューを表示しました。", "success");
   }
 
-  function escapeHtml(value){
-    return String(value ?? "")
-      .replace(/&/g,"&amp;")
-      .replace(/</g,"&lt;")
-      .replace(/>/g,"&gt;")
-      .replace(/"/g,"&quot;")
-      .replace(/'/g,"&#039;");
-  }
+  const escapeHtml = (value) => window.escapeHtml(value);
 
   async function createBackup(type="manual", options={}){
     const isAuto = type === "auto" || type.startsWith("auto_");

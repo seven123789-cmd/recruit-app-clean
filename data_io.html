@@ -231,7 +231,7 @@ function parseCsv(text){
 }
 function normalizeHeader(h){ const m=CSV_COLUMNS.find(c=>c[1]===h || c[0]===h); return m ? m[0] : String(h||'').trim(); }
 function toIsoDate(v){ if(!v) return ''; const s=String(v).trim().replaceAll('/','-'); if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)){ const [y,m,d]=s.split('-'); return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`; } return s; }
-function normalizePersonName(v){ return String(v ?? '').replace(/[\u3000\s]+/g, ' ').trim(); }
+const normalizePersonName = (v) => window.normalizePersonName(v);
 function fiscalYearFromDateText(v){ const s=toIsoDate(v); if(!s) return ''; const d=new Date(s+'T00:00:00'); if(Number.isNaN(d.getTime())) return ''; return d.getMonth()+1>=4 ? d.getFullYear() : d.getFullYear()-1; }
 async function handleCsvFileSelected(ev){
   const f=ev.target.files?.[0];
