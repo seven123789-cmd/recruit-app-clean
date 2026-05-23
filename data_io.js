@@ -33,6 +33,57 @@
     {label:"削除フラグ",key:"is_deleted",type:"boolean"}
   ];
 
+
+  const STAGE_STATUSES = window.RECRUIT_STAGE_STATUSES || ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
+  const HIRING_RESULTS = window.RECRUIT_HIRING_RESULTS || ["進行中","保留","辞退","不採用","不通","採用","入社済"];
+  const LEGACY_FINAL_STATUS_MAP = {
+    "入社":"入社済",
+    "合格":"採用",
+    "未設定":"進行中",
+    "未判定":"進行中",
+    "保留":"保留",
+    "辞退":"辞退",
+    "不採用":"不採用",
+    "不通":"不通"
+  };
+
+  function inferStageFromDates(row){
+    if(row?.join_date) return "採用";
+    if(row?.offer_date) return "内定";
+    if(row?.interview_done_date) return "面接実施";
+    if(row?.interview1_date) return "面接設定";
+    if(row?.appointment_date) return "アポ取得";
+    return "応募";
+  }
+
+  function normalizeStatusAndResult(row){
+    if(!row) return row;
+    let status = String(row.status || "").trim();
+    let result = String(row.hiring_result || "").trim();
+
+    if(status === "入社" || row.join_date){
+      row.status = "採用";
+      row.hiring_result = "入社済";
+      return row;
+    }
+
+    if(status === "合格") status = "採用";
+    if(result === "合格") result = "採用";
+    if(result === "未設定" || result === "未判定") result = "進行中";
+
+    if(LEGACY_FINAL_STATUS_MAP[status] && !STAGE_STATUSES.includes(status)){
+      row.status = inferStageFromDates(row);
+      row.hiring_result = LEGACY_FINAL_STATUS_MAP[status];
+      return row;
+    }
+
+    row.status = STAGE_STATUSES.includes(status) ? status : inferStageFromDates(row);
+    row.hiring_result = HIRING_RESULTS.includes(result) ? result : "進行中";
+
+    if(row.status === "採用" && row.hiring_result === "進行中") row.hiring_result = "採用";
+    return row;
+  }
+
   const $=id=>document.getElementById(id);
   let currentUser=null;
   let currentRole="viewer";
@@ -177,7 +228,13 @@
       if(col.required&&!String(value||"").trim())errors.push(`${index}行目：${col.label}が未入力です`);
       if(col.type==="date"&&!validDate(value))errors.push(`${index}行目：${col.label}の日付形式が不正です（YYYY-MM-DD）`);
       if(col.type==="number"&&value!==""&&value!==null&&value!==undefined&&Number.isNaN(Number(value)))errors.push(`${index}行目：${col.label}は数値で入力してください`);
-      if(col.master&&value&&masterSets&&masterSets[col.master]&&!masterSets[col.master].has(String(value).trim()))errors.push(`${index}行目：${col.label}「${value}」は有効なマスタにありません`);
+      if(col.master&&value&&masterSets&&masterSets[col.master]){
+        const trimmed = String(value).trim();
+        const allowedByConstant = col.key === "status" && STAGE_STATUSES.includes(trimmed);
+        if(!allowedByConstant && !masterSets[col.master].has(trimmed)){
+          errors.push(`${index}行目：${col.label}「${value}」は有効なマスタにありません`);
+        }
+      }
     });
     return errors;
   }
@@ -193,10 +250,12 @@
       if(value==="")value=null;
       row[col.key]=value;
     });
+    const normalized = normalizeStatusAndResult(row);
     if(window.RecruitMaster && typeof window.RecruitMaster.normalizeCandidate === "function"){
-      return await window.RecruitMaster.normalizeCandidate(row);
+      const candidate = await window.RecruitMaster.normalizeCandidate(normalized);
+      return normalizeStatusAndResult(candidate);
     }
-    return row;
+    return normalized;
   }
 
   async function previewCsv(file){
@@ -336,7 +395,9 @@
     const {data,error}=await q;
     if(error)throw error;
     const year=$("exportYear")?.value||"";
-    return (data||[]).filter(r=>!year||String(fiscalYearFromDate(r.applied_date))===String(year));
+    return (data||[])
+      .filter(r=>!year||String(fiscalYearFromDate(r.applied_date))===String(year))
+      .map(r=>normalizeStatusAndResult({...r}));
   }
 
   async function refreshExportCount(){
