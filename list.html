@@ -803,7 +803,9 @@ function isNoContact(r){
   return window.isRecruitNoContact ? window.isRecruitNoContact(r) : (String(r.hiring_result||"").trim()==="不通");
 }
 function isDecline(r){
-  return window.isRecruitDeclined ? window.isRecruitDeclined(r) : (String(r.hiring_result||"").trim()==="辞退" || String(r.status||"").trim()==="辞退" || !!r.decline_reason);
+  return window.isRecruitInterviewDeclined
+    ? window.isRecruitInterviewDeclined(r)
+    : ((String(r.hiring_result||"").trim()==="辞退" || String(r.status||"").trim()==="辞退" || !!r.decline_reason) && (validDate(r.interview1_date) || validDate(r.interview_done_date) || ["面接設定","面接実施","内定","採用"].includes(String(r.status||"").trim())));
 }
 function isInterviewNotSet(r){
   return validDate(r.appointment_date) && !validDate(r.interview1_date) && !isFinal(r);

@@ -246,6 +246,17 @@
     return String(r.hiring_result || "").trim() === "辞退" || status === "辞退" || !!String(r.decline_reason || "").trim();
   }
 
+
+
+  function isRecruitInterviewDeclined(row){
+    const r = normalizeRecruitCandidateState(row || {});
+    if(!isRecruitDeclined(r)) return false;
+    const status = String(r.status || "").trim();
+    return isValidRecruitDate(r.interview1_date)
+      || isRecruitInterviewDone(r)
+      || ["面接設定","面接実施","内定","採用"].includes(status);
+  }
+
   function isRecruitNoContact(row){
     const r = normalizeRecruitCandidateState(row || {});
     const memo = String(r.action_memo || "");
@@ -321,6 +332,7 @@
   window.isRecruitPendingJoin = window.isRecruitPendingJoin || isRecruitPendingJoin;
   window.isRecruitRejected = window.isRecruitRejected || isRecruitRejected;
   window.isRecruitDeclined = window.isRecruitDeclined || isRecruitDeclined;
+  window.isRecruitInterviewDeclined = window.isRecruitInterviewDeclined || isRecruitInterviewDeclined;
   window.isRecruitNoContact = window.isRecruitNoContact || isRecruitNoContact;
   window.isFinal = window.isFinal || isFinal;
   window.getRecruitCurrentFiscalYear = window.getRecruitCurrentFiscalYear || getRecruitCurrentFiscalYear;

@@ -506,7 +506,7 @@ function updateDashboardUi(rows){
   }).length;
 
   const noContact = activeRows.filter(r => window.isRecruitNoContact ? window.isRecruitNoContact(r) : String(r.hiring_result||"").trim()==="不通").length;
-  const decline = activeRows.filter(r => window.isRecruitDeclined ? window.isRecruitDeclined(r) : (String(r.hiring_result||"").trim()==="辞退" || !!r.decline_reason)).length;
+  const decline = activeRows.filter(r => window.isRecruitInterviewDeclined ? window.isRecruitInterviewDeclined(r) : ((String(r.hiring_result||"").trim()==="辞退" || !!r.decline_reason) && (validDate(r.interview1_date) || validDate(r.interview_done_date) || ["面接設定","面接実施","内定","採用"].includes(String(r.status||"").trim())))).length;
   const interviewNotSet = activeRows.filter(r => isValidDate(r.appointment_date) && !isValidDate(r.interview1_date) && !isFinal(r)).length;
   const ownerStagnation = activeRows.filter(r => isActionRequired(r)).length;
 
