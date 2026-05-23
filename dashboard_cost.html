@@ -353,10 +353,13 @@ function getActiveChannelOptions(){
   return [...new Set((masterChannels||[]).map(normalizeChannel).filter(Boolean))];
 }
 async function loadCenterMaster(){
-
-  const master = window.RecruitMaster ? await window.RecruitMaster.divisionCenter() : { centersByDivision:{}, centers:[] };
-  CENTER_MASTER = master.centersByDivision || {};
-  return master.centers || [];
+  if(window.RecruitMaster && typeof window.RecruitMaster.loadCenterMaster === "function"){
+    return await window.RecruitMaster.loadCenterMaster({
+      assignCenterMaster: value => { CENTER_MASTER = value || {}; }
+    });
+  }
+  CENTER_MASTER = {};
+  return [];
 }
 function bindMasters(data){
   const divisions=Object.keys(CENTER_MASTER).length ? Object.keys(CENTER_MASTER) : data.map(r=>r.division);

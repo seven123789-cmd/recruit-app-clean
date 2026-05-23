@@ -179,7 +179,15 @@ function fiscalRange(type){const fy=fiscalYear();if(type==="previous")return {fy
 function monthList(){const range=fiscalRange($("fy").value);if(!range.from||!range.to){const keys=[...new Set(rows.map(r=>monthKey(r.applied_date)).filter(Boolean))].sort();return keys.length?keys:[]}const start=Number(range.from.slice(0,4));return [4,5,6,7,8,9,10,11,12,1,2,3].map(m=>`${m>=4?start:start+1}-${String(m).padStart(2,"0")}`)}
 function applyFy(){const range=fiscalRange($("fy").value);const period=range.from&&range.to?`${range.from} ～ ${range.to}`:"全期間";setText("periodText","対象期間："+period);setText("headYear",range.label);setText("headPeriod",period);return range}
 function setSelectOptions(id,values,blank="すべて"){const el=$(id);if(!el)return;const current=el.value;const list=[...new Set((values||[]).map(v=>String(v||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ja"));el.innerHTML=`<option value="">${blank}</option>`+list.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");if(list.includes(current))el.value=current}
-async function loadCenterMaster(){try{const master=window.RecruitMaster?await window.RecruitMaster.divisionCenter():{centersByDivision:{},centers:[]};CENTER_MASTER=master.centersByDivision||{};return master.centers||[]}catch(e){CENTER_MASTER={};return []}}
+async function loadCenterMaster(){
+  if(window.RecruitMaster && typeof window.RecruitMaster.loadCenterMaster === "function"){
+    return await window.RecruitMaster.loadCenterMaster({
+      assignCenterMaster: value => { CENTER_MASTER = value || {}; }
+    });
+  }
+  CENTER_MASTER = {};
+  return [];
+}
 async function loadOwnerMaster(){try{const owners=window.RecruitMaster?await window.RecruitMaster.list("owners"):[];MASTER_OWNER_OPTIONS=(owners||[]).filter(Boolean);return MASTER_OWNER_OPTIONS}catch(e){MASTER_OWNER_OPTIONS=[];return []}}
 function updateCenterOptions(){const div=$("division")?.value||"";const centers=div&&CENTER_MASTER[div]?CENTER_MASTER[div]:Object.values(CENTER_MASTER).flat();setSelectOptions("center",centers.length?centers:rows.map(r=>r.center_name))}
 function bindMasters(){const divisions=Object.keys(CENTER_MASTER).length?Object.keys(CENTER_MASTER):rows.map(r=>r.division);setSelectOptions("division",divisions);updateCenterOptions();setSelectOptions("owner",MASTER_OWNER_OPTIONS.length?MASTER_OWNER_OPTIONS:rows.map(r=>r.owner_name));setSelectOptions("mediaDivision",divisions,"すべて");setSelectOptions("costDivision",divisions,"すべて")}

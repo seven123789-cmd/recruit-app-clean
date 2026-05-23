@@ -2043,10 +2043,15 @@ async function logout() {
 
 
 async function loadCenterMaster(){
-  const master = window.RecruitMaster ? await window.RecruitMaster.divisionCenter() : { divisions:[], centersByDivision:{}, centers:[] };
-  CENTER_MASTER = master.centersByDivision || {};
-  DIVISION_OPTIONS = normalizeMasterOptions(master.divisions || Object.keys(CENTER_MASTER));
-  return master.centers || [];
+  if(window.RecruitMaster && typeof window.RecruitMaster.loadCenterMaster === "function"){
+    return await window.RecruitMaster.loadCenterMaster({
+      assignCenterMaster: value => { CENTER_MASTER = value || {}; },
+      assignDivisions: value => { DIVISION_OPTIONS = normalizeMasterOptions(value || Object.keys(CENTER_MASTER)); }
+    });
+  }
+  CENTER_MASTER = {};
+  DIVISION_OPTIONS = [];
+  return [];
 }
 
 function inferDivisionByCenterName(centerName){

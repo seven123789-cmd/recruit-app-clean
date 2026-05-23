@@ -816,6 +816,31 @@
     };
   }
 
+
+
+  async function loadRecruitCenterMasterState(options={}){
+    try{
+      const master = await getRecruitDivisionCenterMaster({ force: Boolean(options.force) });
+      const centersByDivision = master.centersByDivision || {};
+      if(typeof options.assignCenterMaster === "function"){
+        options.assignCenterMaster(centersByDivision);
+      }
+      if(typeof options.assignDivisions === "function"){
+        options.assignDivisions(uniqueClean(master.divisions || Object.keys(centersByDivision)));
+      }
+      return master.centers || [];
+    }catch(e){
+      if(typeof options.assignCenterMaster === "function"){
+        options.assignCenterMaster({});
+      }
+      if(typeof options.assignDivisions === "function"){
+        options.assignDivisions([]);
+      }
+      console.warn("loadRecruitCenterMasterState failed", e);
+      return [];
+    }
+  }
+
   async function getRecruitDivisionByCenter(centerName, options={}){
     const center = String(centerName || "").trim();
     if(!center) return "";
@@ -862,6 +887,7 @@
     load: loadRecruitMasters,
     list: getRecruitMasterList,
     divisionCenter: getRecruitDivisionCenterMaster,
+    loadCenterMaster: loadRecruitCenterMasterState,
     divisionByCenter: getRecruitDivisionByCenter,
     normalizeCandidate: normalizeRecruitCandidateMasters,
     renderSelect: renderRecruitMasterSelect,

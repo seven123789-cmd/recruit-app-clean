@@ -386,10 +386,13 @@ async function loadMasterDivisionCenterOptions(){
   return { divisions:[], centersByDivision:{} };
 }
 async function loadCenterMaster(){
-
-  const master = window.RecruitMaster ? await window.RecruitMaster.divisionCenter() : { centersByDivision:{}, centers:[] };
-  CENTER_MASTER = master.centersByDivision || {};
-  return master.centers || [];
+  if(window.RecruitMaster && typeof window.RecruitMaster.loadCenterMaster === "function"){
+    return await window.RecruitMaster.loadCenterMaster({
+      assignCenterMaster: value => { CENTER_MASTER = value || {}; }
+    });
+  }
+  CENTER_MASTER = {};
+  return [];
 }
 function setSelectOptions(id,values,blank="すべて"){
   const el=$(id);

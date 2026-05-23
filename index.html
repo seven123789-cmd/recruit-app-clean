@@ -704,10 +704,13 @@ async function logout(){
   window.location.replace("./index.html");
 }
 async function loadCenterMaster(){
-
-  const master = window.RecruitMaster ? await window.RecruitMaster.divisionCenter() : { centersByDivision:{}, centers:[] };
-  CENTER_MASTER = master.centersByDivision || {};
-  return master.centers || [];
+  if(window.RecruitMaster && typeof window.RecruitMaster.loadCenterMaster === "function"){
+    return await window.RecruitMaster.loadCenterMaster({
+      assignCenterMaster: value => { CENTER_MASTER = value || {}; }
+    });
+  }
+  CENTER_MASTER = {};
+  return [];
 }
 
 async function fetchMasterOptionRows(tableName){
