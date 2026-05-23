@@ -25,18 +25,41 @@ function hasDivision(r){return !!String(r?.division||"").trim()}
 function fiscalRange(type){const fy=fiscalYear();if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};if(type==="all")return {fy:null,label:"全期間",from:"",to:""};return {fy,label:fy+"年度",from:fy+"-04-01",to:(fy+1)+"-03-31"}}
 function applyFy(){const range=fiscalRange($("fy").value);$("from").value=range.from;$("to").value=range.to;const period=range.from&&range.to ? `${range.from} ～ ${range.to}` : "全期間";setText("periodText","対象期間："+period);setText("sideFiscalYear",range.label);setText("sidePeriod",period)}
 function handleFilterChange(){applyFy();loadAnalysis()}
-async function getUser(){if(currentUser)return currentUser;const {data:{session}}=await sb.auth.getSession();currentUser=session?.user||null;return currentUser}
-async function getRole(userId){if(currentRole)return currentRole;try{const {data}=await sb.from("profiles").select("role").eq("user_id",userId).single();currentRole=data?.role||"viewer"}catch(e){currentRole="viewer"}return currentRole}
-function showAuth(msg="未ログインです",type="info"){const a=$("authScreen"),b=$("appScreen");if(a)a.classList.remove("hidden");if(b)b.classList.add("hidden");currentUser=null;currentRole=null;setMsg("authMessage",msg,type);document.body.classList.remove("auth-checking")}
-async function showApp(){const user=await getUser();if(!user){showAuth();return false}await getRole(user.id);$("authScreen")?.classList.add("hidden");$("appScreen")?.classList.remove("hidden");document.body.classList.remove("auth-checking");return true}
-async function login(){const email=$("loginEmail")?.value.trim();const password=$("loginPassword")?.value;if(!email||!password){setMsg("authMessage","メールアドレスとパスワードを入力してください","error");return}try{const {error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;currentUser=null;currentRole=null;if(await showApp()) await initPageAfterLogin()}catch(e){setMsg("authMessage","ログイン失敗: "+(e.message||e),"error")}}
+async function getUser(){
+  currentUser = await window.RecruitPageAuth.getUser({ client: sb, currentUser });
+  return currentUser;
+}
+async function getRole(userId){
+  if(currentRole)return currentRole;
+  const user = currentUser || (userId ? { id:userId } : null);
+  currentRole = await window.RecruitPageAuth.getRole({ client: sb, user, currentRole });
+  return currentRole;
+}
+function showAuth(msg="未ログインです",type="info"){
+  currentUser=null;
+  currentRole=null;
+  window.RecruitPageAuth.showAuth({ msg, type, setMsg });
+}
+async function showApp(){
+  const user=await getUser();
+  if(!user){showAuth();return false}
+  await getRole(user.id);
+  window.RecruitPageAuth.showApp();
+  return true;
+}
+async function login(){
+  await window.RecruitPageAuth.login({
+    client: sb,
+    setMsg,
+    afterLogin: async function(){
+      currentUser=null;
+      currentRole=null;
+      if(await showApp()) await initPageAfterLogin();
+    }
+  });
+}
 async function logout(){
-  if(window.RecruitAuth && typeof window.RecruitAuth.logoutToIndex === "function"){
-    await window.RecruitAuth.logoutToIndex();
-    return;
-  }
-  try{await sb.auth.signOut()}catch(e){}
-  window.location.replace("./index.html");
+  await window.RecruitPageAuth.logoutToIndex(sb);
 }
 sb.auth.onAuthStateChange((ev)=>{
   if(ev==="SIGNED_OUT"){
@@ -44,7 +67,14 @@ sb.auth.onAuthStateChange((ev)=>{
     showAuth("ログアウトしました","success");
   }
 });
-async function authInit(){try{if(await showApp()) await initPageAfterLogin()}catch(e){console.error(e);showAuth("初期化に失敗しました","error")}finally{document.body.classList.remove("auth-checking")}}
+async function authInit(){
+  await window.RecruitPageAuth.authInit({
+    client: sb,
+    setMsg,
+    onRole: function(role, user){ currentRole=role; currentUser=user; },
+    afterAuth: async function(){ await initPageAfterLogin(); }
+  });
+}
 function setSelectOptions(id,values,blank="すべて"){const el=$(id);if(!el)return;const current=el.value;const list=[...new Set((values||[]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));el.innerHTML=`<option value="">${blank}</option>`;list.forEach(v=>{el.innerHTML+=`<option value="${esc(v)}">${esc(v)}</option>`});if(list.includes(current))el.value=current}
 function filtered(data){const f=$("from").value;const t=$("to").value;const d=$("divisionFilter").value;return (data||[]).filter(r=>!r.is_deleted).filter(r=>{if(!validDate(r.applied_date))return false;if(!hasDivision(r))return false;if(f&&r.applied_date<f)return false;if(t&&r.applied_date>t)return false;if(d&&r.division!==d)return false;return true})}
 

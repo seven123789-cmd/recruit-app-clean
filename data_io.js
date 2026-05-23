@@ -270,7 +270,7 @@
     renderPreview();
   }
 
-  function escapeHtml(v){return String(v??"").replace(/[&<>"]/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[s]));}
+  const escapeHtml = window.escapeHtml || function(v){return String(v??"").replace(/[&<>"]/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[s]));};
 
   function renderPreview(){
     const tbody=$("previewBody");
