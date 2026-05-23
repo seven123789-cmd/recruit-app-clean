@@ -5,20 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>採用管理ダッシュボード</title>
 
-<link rel="stylesheet" href="./assets/css/common.css?v=20260523_phase5_cleanup">
-<link rel="stylesheet" href="./assets/css/header.css?v=20260523_phase5_cleanup">
-<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_phase5_cleanup">
-<link rel="stylesheet" href="./assets/css/dashboard.css?v=20260523_phase5_cleanup">
+<link rel="stylesheet" href="./assets/css/common.css?v=20260523_stage_result_fix">
+<link rel="stylesheet" href="./assets/css/header.css?v=20260523_stage_result_fix">
+<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_stage_result_fix">
+<link rel="stylesheet" href="./assets/css/dashboard.css?v=20260523_stage_result_fix">
 <link rel="icon" href="data:,">
-<script src="./common.js?v=20260523_phase5_cleanup"></script>
-<script src="assets/js/supabase.js?v=20260523_phase5_cleanup"></script>
-<script src="assets/js/auth.js?v=20260523_phase5_cleanup"></script>
-<script src="assets/js/ui_utils.js?v=20260523_phase5_cleanup"></script>
-<script src="assets/js/audit_utils.js?v=20260523_phase5_cleanup"></script>
-<script src="assets/js/ops_guard.js?v=20260523_phase5_cleanup"></script>
-<script src="assets/js/safe_utils.js?v=20260523_phase5_cleanup"></script>
-<script src="./sidebar.js?v=20260523_phase5_cleanup"></script>
-<link rel="stylesheet" href="./assets/css/dashboard_ui.css?v=20260523_phase5_cleanup">
+<script src="./common.js?v=20260523_stage_result_fix"></script>
+<script src="assets/js/supabase.js?v=20260523_stage_result_fix"></script>
+<script src="assets/js/auth.js?v=20260523_stage_result_fix"></script>
+<script src="assets/js/ui_utils.js?v=20260523_stage_result_fix"></script>
+<script src="assets/js/audit_utils.js?v=20260523_stage_result_fix"></script>
+<script src="assets/js/ops_guard.js?v=20260523_stage_result_fix"></script>
+<script src="assets/js/safe_utils.js?v=20260523_stage_result_fix"></script>
+<script src="./sidebar.js?v=20260523_stage_result_fix"></script>
+<link rel="stylesheet" href="./assets/css/dashboard_ui.css?v=20260523_stage_result_fix">
 </head>
 <body class="auth-checking">
 
@@ -190,8 +190,8 @@
             <div class="reason-title">連絡不通 → 再連絡</div>
             <div class="reason-value" id="reasonNoContact">0</div>
           </div>
-          <div class="reason-card warning dashboard-link-card" onclick="goListFilter('decline')" onkeydown="activateDashboardLink(event,'decline')" role="button" tabindex="0" aria-label="面接辞退の応募者一覧を開く" title="面接辞退の応募者一覧を開く">
-            <div class="reason-title">面接辞退 → 原因確認</div>
+          <div class="reason-card warning dashboard-link-card" onclick="goListFilter('decline')" onkeydown="activateDashboardLink(event,'decline')" role="button" tabindex="0" aria-label="辞退者一覧を開く" title="辞退者一覧を開く">
+            <div class="reason-title">辞退 → 原因確認</div>
             <div class="reason-value" id="reasonDecline">0</div>
           </div>
           <div class="reason-card warning dashboard-link-card" onclick="goListFilter('interview_not_set')" onkeydown="activateDashboardLink(event,'interview_not_set')" role="button" tabindex="0" aria-label="面接未設定の応募者一覧を開く" title="面接未設定の応募者一覧を開く">
@@ -506,7 +506,7 @@ function updateDashboardUi(rows){
   }).length;
 
   const noContact = activeRows.filter(r => window.isRecruitNoContact ? window.isRecruitNoContact(r) : String(r.hiring_result||"").trim()==="不通").length;
-  const decline = activeRows.filter(r => window.isRecruitInterviewDeclined ? window.isRecruitInterviewDeclined(r) : ((String(r.hiring_result||"").trim()==="辞退" || !!r.decline_reason) && (validDate(r.interview1_date) || validDate(r.interview_done_date) || ["面接設定","面接実施","内定","採用"].includes(String(r.status||"").trim())))).length;
+  const decline = activeRows.filter(r => window.isRecruitDeclined ? window.isRecruitDeclined(r) : (String(r.hiring_result||"").trim()==="辞退" || String(r.status||"").trim()==="辞退" || !!r.decline_reason)).length;
   const interviewNotSet = activeRows.filter(r => isValidDate(r.appointment_date) && !isValidDate(r.interview1_date) && !isFinal(r)).length;
   const ownerStagnation = activeRows.filter(r => isActionRequired(r)).length;
 

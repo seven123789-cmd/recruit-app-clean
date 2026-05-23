@@ -249,12 +249,10 @@
 
 
   function isRecruitInterviewDeclined(row){
-    const r = normalizeRecruitCandidateState(row || {});
-    if(!isRecruitDeclined(r)) return false;
-    const status = String(r.status || "").trim();
-    return isValidRecruitDate(r.interview1_date)
-      || isRecruitInterviewDone(r)
-      || ["面接設定","面接実施","内定","採用"].includes(status);
+    // 互換用。
+    // ステータスは「到達地点」、選考結果は「その地点で消えた理由・現在結果」として扱う。
+    // そのため、辞退をステータス段階で除外しない。
+    return isRecruitDeclined(row);
   }
 
   function isRecruitNoContact(row){

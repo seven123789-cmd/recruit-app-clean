@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>応募者一覧</title>
 
-<link rel="stylesheet" href="./assets/css/common.css?v=20260523_heatmap_definition_fix">
-<link rel="stylesheet" href="./assets/css/header.css?v=20260523_heatmap_definition_fix">
-<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_heatmap_definition_fix">
-<link rel="stylesheet" href="./assets/css/list.css?v=20260523_heatmap_definition_fix">
+<link rel="stylesheet" href="./assets/css/common.css?v=20260523_stage_result_fix">
+<link rel="stylesheet" href="./assets/css/header.css?v=20260523_stage_result_fix">
+<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_stage_result_fix">
+<link rel="stylesheet" href="./assets/css/list.css?v=20260523_stage_result_fix">
 </head>
 <body class="auth-checking">
 
@@ -214,14 +214,14 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/supabase.js?v=20260523_heatmap_definition_fix"></script>
-<script src="assets/js/auth.js?v=20260523_heatmap_definition_fix"></script>
-<script src="./common.js?v=20260523_heatmap_definition_fix"></script>
-<script src="assets/js/candidate_utils.js?v=20260523_heatmap_definition_fix"></script>
-<script src="assets/js/ops_guard.js?v=20260523_heatmap_definition_fix"></script>
-<script src="assets/js/ui_utils.js?v=20260523_heatmap_definition_fix"></script>
-<script src="assets/js/audit_utils.js?v=20260523_heatmap_definition_fix"></script>
-<script src="assets/js/safe_utils.js?v=20260523_heatmap_definition_fix"></script>
+<script src="assets/js/supabase.js?v=20260523_stage_result_fix"></script>
+<script src="assets/js/auth.js?v=20260523_stage_result_fix"></script>
+<script src="./common.js?v=20260523_stage_result_fix"></script>
+<script src="assets/js/candidate_utils.js?v=20260523_stage_result_fix"></script>
+<script src="assets/js/ops_guard.js?v=20260523_stage_result_fix"></script>
+<script src="assets/js/ui_utils.js?v=20260523_stage_result_fix"></script>
+<script src="assets/js/audit_utils.js?v=20260523_stage_result_fix"></script>
+<script src="assets/js/safe_utils.js?v=20260523_stage_result_fix"></script>
 <script>
 const sb=window.getRecruitSupabaseClient();
 
@@ -803,9 +803,9 @@ function isNoContact(r){
   return window.isRecruitNoContact ? window.isRecruitNoContact(r) : (String(r.hiring_result||"").trim()==="不通");
 }
 function isDecline(r){
-  return window.isRecruitInterviewDeclined
-    ? window.isRecruitInterviewDeclined(r)
-    : ((String(r.hiring_result||"").trim()==="辞退" || String(r.status||"").trim()==="辞退" || !!r.decline_reason) && (validDate(r.interview1_date) || validDate(r.interview_done_date) || ["面接設定","面接実施","内定","採用"].includes(String(r.status||"").trim())));
+  return window.isRecruitDeclined
+    ? window.isRecruitDeclined(r)
+    : (String(r.hiring_result||"").trim()==="辞退" || String(r.status||"").trim()==="辞退" || !!r.decline_reason);
 }
 function isInterviewNotSet(r){
   return validDate(r.appointment_date) && !validDate(r.interview1_date) && !isFinal(r);
@@ -868,7 +868,7 @@ function getListFilterLabel(){
     not_done:"未実施",
     dormant:"放置",
     no_contact:"連絡不通",
-    decline:"面接辞退",
+    decline:"辞退",
     interview_not_set:"面接未設定",
     heat_interview_gap:"面接未到達",
     heat_hire_gap:"採用未到達",
@@ -1443,6 +1443,6 @@ async function initPageAfterLogin(){
 });
 authInit();
 </script>
-<script src="./sidebar.js?v=20260523_heatmap_definition_fix"></script>
+<script src="./sidebar.js?v=20260523_stage_result_fix"></script>
 </body>
 </html>
