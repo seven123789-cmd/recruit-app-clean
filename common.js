@@ -1158,16 +1158,22 @@
   }
 
   function isRecruitEditor(role){
-    if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.canEdit === "function"){
-      return window.RecruitOpsGuard.canEdit(role);
-    }
-    return ["admin","editor"].includes(normalizeRecruitRole(role));
+    const r = normalizeRecruitRole(role);
+    return r === "editor" || r === "admin";
   }
 
-  function hasRecruitRole(role, allowed){
-    const r = normalizeRecruitRole(role);
-    const list = Array.isArray(allowed) ? allowed : String(allowed || "").split(",");
-    return list.map(v => normalizeRecruitRole(v)).includes(r);
+  function canRecruitWrite(role){
+    if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.canWrite === "function"){
+      return window.RecruitOpsGuard.canWrite(role);
+    }
+    return isRecruitEditor(role);
+  }
+
+  function canRecruitDelete(role){
+    if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.canDelete === "function"){
+      return window.RecruitOpsGuard.canDelete(role);
+    }
+    return isRecruitAdmin(role);
   }
 
   function isRecruitManager(role){
@@ -1242,12 +1248,16 @@
     apply: applyRecruitRoleGuard,
     applyToPage: applyRecruitRoleGuard,
     isViewer: isRecruitViewer,
-    isEditor: isRecruitEditor,
     isAdmin: isRecruitAdmin,
+    isEditor: isRecruitEditor,
     isManager: isRecruitManager,
-    hasRole: hasRecruitRole,
+    canWrite: canRecruitWrite,
+    canDelete: canRecruitDelete,
     normalize: normalizeRecruitRole
   };
+  window.isRecruitEditor = window.isRecruitEditor || isRecruitEditor;
+  window.canRecruitWrite = window.canRecruitWrite || canRecruitWrite;
+  window.canRecruitDelete = window.canRecruitDelete || canRecruitDelete;
   window.writeRecruitAuditLog = window.writeRecruitAuditLog || writeRecruitAuditLog;
   window.diffRecruitObjects = window.diffRecruitObjects || diffRecruitObjects;
   document.addEventListener("DOMContentLoaded", () => {
@@ -1601,68 +1611,12 @@
     if(filters.job && String(row.job_type || "") !== filters.job) return false;
     return true;
   }
-  function rate(num, den){
-    const n = Number(num || 0);
-    const d = Number(den || 0);
-    return d ? ((n / d) * 100).toFixed(1) + "%" : "0.0%";
-  }
-  function countRows(rows, predicate){
-    return (rows || []).filter(row => !row?.is_deleted && predicate(row)).length;
-  }
-  function calculateFlowMetrics(rows){
-    const activeRows = (rows || []).filter(row => !row?.is_deleted);
-    const reached = window.isRecruitStageReached || (() => false);
-    const hired = window.isRecruitHired || (row => reached(row, "採用"));
-    const applied = activeRows.filter(row => /^\d{4}-\d{2}-\d{2}$/.test(String(row.applied_date || "").slice(0,10))).length;
-    const appointment = activeRows.filter(row => reached(row, "アポ取得")).length;
-    const interviewSet = activeRows.filter(row => reached(row, "面接設定")).length;
-    const interviewDone = activeRows.filter(row => reached(row, "面接実施")).length;
-    const offer = activeRows.filter(row => reached(row, "内定")).length;
-    const join = activeRows.filter(row => hired(row)).length;
-    return {
-      applied, appointment, interviewSet, interviewDone, offer, join,
-      rates:{
-        appointment: rate(appointment, applied),
-        interviewSet: rate(interviewSet, applied),
-        interviewDone: rate(interviewDone, applied),
-        offer: rate(offer, applied),
-        join: rate(join, applied)
-      }
-    };
-  }
-  function setText(id, value){
-    const el = document.getElementById(id);
-    if(el) el.textContent = value == null ? "" : String(value);
-  }
-  function applyFlowMetrics(metrics, ids={}){
-    const map = Object.assign({
-      applied:"flowApplied", appointment:"flowAppointment", interviewSet:"flowInterviewSet",
-      interviewDone:"flowInterviewDone", offer:"flowOffer", join:"flowJoin",
-      rateAppointment:"rateAppointment", rateInterviewSet:"rateInterviewSet",
-      rateInterviewDone:"rateInterviewDone", rateOffer:"rateOffer", rateJoin:"rateJoin"
-    }, ids || {});
-    setText(map.applied, metrics.applied);
-    setText(map.appointment, metrics.appointment);
-    setText(map.interviewSet, metrics.interviewSet);
-    setText(map.interviewDone, metrics.interviewDone);
-    setText(map.offer, metrics.offer);
-    setText(map.join, metrics.join);
-    setText(map.rateAppointment, metrics.rates?.appointment);
-    setText(map.rateInterviewSet, metrics.rates?.interviewSet);
-    setText(map.rateInterviewDone, metrics.rates?.interviewDone);
-    setText(map.rateOffer, metrics.rates?.offer);
-    setText(map.rateJoin, metrics.rates?.join);
-  }
   window.RecruitDashboard = Object.assign(window.RecruitDashboard || {}, {
     escape,
     uniqueSorted,
     setSelectOptions,
     getFiscalRange,
     readFilterValue,
-    matchesBasicCandidateFilters,
-    rate,
-    countRows,
-    calculateFlowMetrics,
-    applyFlowMetrics
+    matchesBasicCandidateFilters
   });
 })();

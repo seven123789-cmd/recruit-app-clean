@@ -1032,28 +1032,32 @@ tbody tr:last-child td{
   }
 }
 
-/* 2026-05-23 shared print stability utilities */
+
+/* 2026-05-23 運用安定化：帳票テーブルの改ページ崩れ防止 */
 @media print{
-  .print-page,
-  .report-page{
-    break-inside: avoid;
-    page-break-inside: avoid;
+  .report-table,
+  .print-analysis-table,
+  .analysis-table{
+    width:100%;
+    border-collapse:collapse;
   }
-  .print-no-break,
-  .kpi-grid,
-  .summary-grid,
-  .report-kpis{
-    break-inside: avoid;
-    page-break-inside: avoid;
+  .report-table thead,
+  .print-analysis-table thead,
+  .analysis-table thead{
+    display:table-header-group;
   }
-  table{
-    break-inside: auto;
-    page-break-inside: auto;
+  .report-table tr,
+  .print-analysis-table tr,
+  .analysis-table tr{
+    break-inside:avoid;
+    page-break-inside:avoid;
   }
-  thead{
-    display: table-header-group;
-  }
-  tfoot{
-    display: table-footer-group;
+  .report-card,
+  .report-section,
+  .print-section,
+  .metric-grid,
+  .kpi-grid{
+    break-inside:avoid;
+    page-break-inside:avoid;
   }
 }

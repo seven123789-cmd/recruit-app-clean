@@ -1194,3 +1194,59 @@
     grid-template-columns:1fr;
   }
 }
+
+
+/* 2026-05-23 運用安定化：印刷時の余白・改ページ・表ヘッダーを安定化 */
+@media print{
+  @page{
+    size:A4 portrait;
+    margin:10mm;
+  }
+  body{
+    background:#fff !important;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .sidebar,
+  .app-header,
+  .page-actions,
+  .output-control-panel,
+  .no-print{
+    display:none !important;
+  }
+  .app-shell,
+  .main-with-sidebar,
+  .print-main,
+  .report-workspace{
+    display:block !important;
+    width:100% !important;
+    max-width:none !important;
+    margin:0 !important;
+    padding:0 !important;
+  }
+  .print-panel,
+  .print-hero,
+  .report-card,
+  .paper-preview,
+  .paper-section{
+    box-shadow:none !important;
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+  table{
+    width:100% !important;
+    border-collapse:collapse;
+  }
+  thead{
+    display:table-header-group;
+  }
+  tfoot{
+    display:table-footer-group;
+  }
+  tr,
+  th,
+  td{
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+}
