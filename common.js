@@ -1142,6 +1142,27 @@
 
   const POPUP_ID = "recruitOverdueActionModal";
   const MAX_ROWS = 50;
+  const HIDE_TODAY_KEY_PREFIX = "recruit_overdue_hide_";
+
+  function getHideTodayKey(){
+    return HIDE_TODAY_KEY_PREFIX + todayText();
+  }
+
+  function isHiddenToday(){
+    try{
+      return localStorage.getItem(getHideTodayKey()) === "1";
+    }catch(e){
+      return false;
+    }
+  }
+
+  function hideToday(){
+    try{
+      localStorage.setItem(getHideTodayKey(), "1");
+    }catch(e){
+      // localStorageが使えない環境では、通常の閉じる動作のみ行う
+    }
+  }
 
   function wait(ms){
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -1318,7 +1339,13 @@
         </div>
         <div class="overdue-modal-footer">
           <span>詳細確認、または次回対応日を今日・明日に再設定できます。</span>
-          <button type="button" class="overdue-secondary-btn" data-action="close">閉じる</button>
+          <div class="overdue-footer-actions">
+            <label class="overdue-hide-today">
+              <input type="checkbox" data-action="hide-today">
+              <span>今日は表示しない</span>
+            </label>
+            <button type="button" class="overdue-secondary-btn" data-action="close">閉じる</button>
+          </div>
         </div>
       </div>
     `;
@@ -1329,6 +1356,14 @@
       const action = actionEl.dataset.action;
       if(action === "close"){
         removeModal();
+        return;
+      }
+
+      if(action === "hide-today"){
+        if(actionEl.checked){
+          hideToday();
+          removeModal();
+        }
         return;
       }
 
@@ -1359,6 +1394,7 @@
 
   async function showOverduePopup(){
     if(document.body && document.body.dataset.recruitOverduePopup === "off") return;
+    if(isHiddenToday()) return;
     const client = await getClient();
     if(!client) return;
     if(!(await hasSession(client))) return;

@@ -399,10 +399,34 @@ tbody tr:hover{background:#eef6ff}
   color:#64748b;
   font-size:12px;
 }
+.overdue-footer-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.overdue-hide-today{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  color:#475569;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+  user-select:none;
+}
+.overdue-hide-today input{
+  width:15px;
+  height:15px;
+  margin:0;
+  accent-color:#2563eb;
+}
 @media (max-width:760px){
   .overdue-modal-backdrop{padding:12px;align-items:flex-start;}
   .overdue-modal{max-height:92vh;margin-top:16px;}
   .overdue-modal-header,.overdue-modal-footer{padding-left:16px;padding-right:16px;}
   .overdue-modal-footer{align-items:flex-start;flex-direction:column;}
+  .overdue-footer-actions{width:100%;justify-content:space-between;}
   .overdue-table{min-width:760px;}
 }
