@@ -263,10 +263,37 @@
     return String(normalizeRecruitCandidateState(row || {}).hiring_result || "進行中").trim();
   }
 
+  const RECRUIT_STAGE_ORDER = ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
+
+  function getRecruitStageRank(stageName){
+    const stage = String(stageName || "").trim();
+    return RECRUIT_STAGE_ORDER.indexOf(stage);
+  }
+
   function isRecruitStage(row, stageName){
+    // 現在ステータスの完全一致。滞留者を見たい時だけ使う。
     const stage = String(stageName || "").trim();
     if(!stage) return false;
     return getRecruitStageStatus(row) === stage;
+  }
+
+  function isRecruitStageReached(row, stageName){
+    // 採用進行フロー・到達率用。
+    // ステータスは「現在の到達地点」なので、採用者はアポ取得/面接設定/面接実施/内定にも到達済みとして数える。
+    const target = getRecruitStageRank(stageName);
+    if(target < 0) return false;
+    const r = normalizeRecruitCandidateState(row || {});
+    const statusRank = getRecruitStageRank(String(r.status || "").trim());
+    if(statusRank >= target) return true;
+
+    const stage = String(stageName || "").trim();
+    if(stage === "応募") return isValidRecruitDate(r.applied_date) || statusRank >= 0;
+    if(stage === "アポ取得") return isValidRecruitDate(r.appointment_date) || isValidRecruitDate(r.interview1_date) || isValidRecruitDate(r.interview_date) || isValidRecruitDate(r.interview_done_date) || isValidRecruitDate(r.offer_date) || isValidRecruitDate(r.join_date);
+    if(stage === "面接設定") return isValidRecruitDate(r.interview1_date) || isValidRecruitDate(r.interview_date) || isValidRecruitDate(r.interview_done_date) || isValidRecruitDate(r.offer_date) || isValidRecruitDate(r.join_date);
+    if(stage === "面接実施") return isValidRecruitDate(r.interview_done_date) || isValidRecruitDate(r.offer_date) || isValidRecruitDate(r.join_date) || isRecruitHiringDecision(r);
+    if(stage === "内定") return isValidRecruitDate(r.offer_date) || isValidRecruitDate(r.join_date) || isRecruitHiringDecision(r);
+    if(stage === "採用") return isRecruitHiringDecision(r);
+    return false;
   }
 
   function getRecruitDropStageLabel(row){
@@ -359,7 +386,10 @@
   window.isRecruitInterviewDeclined = window.isRecruitInterviewDeclined || isRecruitInterviewDeclined;
   window.getRecruitStageStatus = window.getRecruitStageStatus || getRecruitStageStatus;
   window.getRecruitHiringResult = window.getRecruitHiringResult || getRecruitHiringResult;
+  window.RECRUIT_STAGE_ORDER = window.RECRUIT_STAGE_ORDER || RECRUIT_STAGE_ORDER;
+  window.getRecruitStageRank = window.getRecruitStageRank || getRecruitStageRank;
   window.isRecruitStage = window.isRecruitStage || isRecruitStage;
+  window.isRecruitStageReached = window.isRecruitStageReached || isRecruitStageReached;
   window.getRecruitDropStageLabel = window.getRecruitDropStageLabel || getRecruitDropStageLabel;
   window.isRecruitNoContact = window.isRecruitNoContact || isRecruitNoContact;
   window.isRecruitDropped = window.isRecruitDropped || isRecruitDropped;

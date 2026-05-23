@@ -9,7 +9,7 @@
 <link href="./assets/css/header.css?v=20260523_phase5_cleanup" rel="stylesheet"/>
 <link href="./assets/css/sidebar.css?v=20260523_phase5_cleanup" rel="stylesheet"/>
 <link href="./assets/css/dashboard_job.css?v=20260523_phase5_cleanup" rel="stylesheet"/>
-<script src="./common.js?v=20260523_reason_strict"></script>
+<script src="./common.js?v=20260523_stage_reached"></script>
 <script src="assets/js/supabase.js?v=20260523_phase5_cleanup"></script>
 <script src="assets/js/auth.js?v=20260523_phase5_cleanup"></script>
 <script src="assets/js/ui_utils.js?v=20260523_phase5_cleanup"></script>
@@ -349,11 +349,11 @@ function groupByJob(data){
     if(!m.has(key))m.set(key,{key,applied:0,appointment:0,set:0,interview:0,offer:0,join:0,todo:0,notDone:0,dormant:0});
     const x=m.get(key);
     if(validDate(r.applied_date))x.applied++;
-    if(validDate(r.appointment_date))x.appointment++;
-    if(validDate(r.interview1_date))x.set++;
-    if(validDate(r.interview_done_date))x.interview++;
-    if(validDate(r.offer_date))x.offer++;
-    if(isHired(r))x.join++;
+    if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"アポ取得") : validDate(r.appointment_date))x.appointment++;
+    if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"面接設定") : validDate(r.interview1_date))x.set++;
+    if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"面接実施") : validDate(r.interview_done_date))x.interview++;
+    if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"内定") : validDate(r.offer_date))x.offer++;
+    if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"採用") : isHired(r))x.join++;
     if(isActionRequired(r))x.todo++;
     if(validDate(r.interview1_date)&&!validDate(r.interview_done_date)&&!isFinal(r))x.notDone++;
     if(validDate(r.applied_date)&&!validDate(r.appointment_date)&&!validDate(r.interview1_date)&&!isFinal(r)){

@@ -796,6 +796,9 @@ function isHiringDecisionForList(r){
 function isStageForList(r, stageName){
   return window.isRecruitStage ? window.isRecruitStage(r, stageName) : String(normalizedCandidateForList(r).status||"").trim() === stageName;
 }
+function isStageReachedForList(r, stageName){
+  return window.isRecruitStageReached ? window.isRecruitStageReached(r, stageName) : isStageForList(r, stageName);
+}
 function isDormant3Days(r){
   if(!validDate(r.applied_date) || isFinal(r))return false;
   if(validDate(r.appointment_date) || validDate(r.interview1_date) || validDate(r.interview_done_date))return false;
@@ -836,15 +839,15 @@ function applyListFilterRows(rows){
     case "stage_hired":
       return rows.filter(r=>isStageForList(r,"採用"));
     case "appointment":
-      return rows.filter(r=>validDate(r.appointment_date));
+      return rows.filter(r=>isStageReachedForList(r,"アポ取得"));
     case "interview_set":
-      return rows.filter(r=>validDate(r.interview1_date));
+      return rows.filter(r=>isStageReachedForList(r,"面接設定"));
     case "interview_done":
-      return rows.filter(hasInterviewReachedForList);
+      return rows.filter(r=>isStageReachedForList(r,"面接実施"));
     case "offer":
-      return rows.filter(r=>validDate(r.offer_date));
+      return rows.filter(r=>isStageReachedForList(r,"内定"));
     case "hired":
-      return rows.filter(isHiringDecisionForList);
+      return rows.filter(r=>isStageReachedForList(r,"採用"));
     case "action":
     case "today":
     case "owner_stagnation":
@@ -871,16 +874,16 @@ function getListFilterLabel(){
   const labels={
     all:"全件",
     applied:"応募",
-    appointment:"アポ取得到達",
-    stage_appointment:"アポ取得",
-    interview_set:"面接設定到達",
-    stage_interview_set:"面接設定",
+    appointment:"アポ取得以上",
+    stage_appointment:"アポ取得滞留",
+    interview_set:"面接設定以上",
+    stage_interview_set:"面接設定滞留",
     interview_done:"面接実施以上",
-    stage_interview_done:"面接実施",
-    offer:"内定到達",
-    stage_offer:"内定",
+    stage_interview_done:"面接実施滞留",
+    offer:"内定以上",
+    stage_offer:"内定滞留",
     hired:"採用決定",
-    stage_hired:"採用",
+    stage_hired:"採用滞留",
     action:"要対応",
     today:"要対応",
     not_done:"未実施",

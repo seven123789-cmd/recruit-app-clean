@@ -9,7 +9,7 @@
 <link href="./assets/css/header.css?v=20260523_heatmap_definition_fix" rel="stylesheet"/>
 <link href="./assets/css/sidebar.css?v=20260523_heatmap_definition_fix" rel="stylesheet"/>
 <link href="./assets/css/dashboard_heatmap.css?v=20260523_heatmap_definition_fix" rel="stylesheet"/>
-<script src="./common.js?v=20260523_reason_strict"></script>
+<script src="./common.js?v=20260523_stage_reached"></script>
 <script src="assets/js/supabase.js?v=20260523_heatmap_definition_fix"></script>
 <script src="assets/js/auth.js?v=20260523_heatmap_definition_fix"></script>
 <script src="assets/js/ui_utils.js?v=20260523_heatmap_definition_fix"></script>
@@ -521,11 +521,11 @@ function groupBy(data,field,fallback="未設定"){
     if(!m.has(key))m.set(key,makeEmpty(key));
     const x=m.get(key);
     x.applied++;
-    if(validDate(r.appointment_date))x.appointment++;
-    if(validDate(r.interview1_date))x.set++;
-    if(hasInterviewReached(r))x.interview++;
-    if(validDate(r.offer_date))x.offer++;
-    if(isHiringDecision(r))x.join++;
+    if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"アポ取得") : validDate(r.appointment_date))x.appointment++;
+    if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"面接設定") : validDate(r.interview1_date))x.set++;
+    if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"面接実施") : hasInterviewReached(r))x.interview++;
+    if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"内定") : validDate(r.offer_date))x.offer++;
+    if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"採用") : isHiringDecision(r))x.join++;
     if(isDeclined(r))x.decline++;
     if(isNoContact(r))x.noContact++;
     if(isActionRequired(r))x.todo++;
