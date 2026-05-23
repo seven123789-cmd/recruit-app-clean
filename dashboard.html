@@ -5,20 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>採用管理ダッシュボード</title>
 
-<link rel="stylesheet" href="./assets/css/common.css?v=20260523_ops_speed2">
-<link rel="stylesheet" href="./assets/css/header.css?v=20260523_ops_speed2">
-<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_ops_speed2">
-<link rel="stylesheet" href="./assets/css/dashboard.css?v=20260523_ops_speed2">
+<link rel="stylesheet" href="./assets/css/common.css?v=20260523_real_speed_role">
+<link rel="stylesheet" href="./assets/css/header.css?v=20260523_real_speed_role">
+<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_real_speed_role">
+<link rel="stylesheet" href="./assets/css/dashboard.css?v=20260523_real_speed_role">
 <link rel="icon" href="data:,">
-<script src="./common.js?v=20260523_ops_speed2"></script>
-<script src="assets/js/supabase.js?v=20260523_ops_speed2"></script>
-<script src="assets/js/auth.js?v=20260523_ops_speed2"></script>
-<script src="assets/js/ui_utils.js?v=20260523_ops_speed2"></script>
-<script src="assets/js/audit_utils.js?v=20260523_ops_speed2"></script>
-<script src="assets/js/ops_guard.js?v=20260523_ops_speed2"></script>
-<script src="assets/js/safe_utils.js?v=20260523_ops_speed2"></script>
-<script src="./sidebar.js?v=20260523_ops_speed2"></script>
-<link rel="stylesheet" href="./assets/css/dashboard_ui.css?v=20260523_ops_speed2">
+<script src="./common.js?v=20260523_real_speed_role"></script>
+<script src="assets/js/supabase.js?v=20260523_real_speed_role"></script>
+<script src="assets/js/auth.js?v=20260523_real_speed_role"></script>
+<script src="assets/js/ui_utils.js?v=20260523_real_speed_role"></script>
+<script src="assets/js/audit_utils.js?v=20260523_real_speed_role"></script>
+<script src="assets/js/ops_guard.js?v=20260523_real_speed_role"></script>
+<script src="assets/js/safe_utils.js?v=20260523_real_speed_role"></script>
+<script src="./sidebar.js?v=20260523_real_speed_role"></script>
+<link rel="stylesheet" href="./assets/css/dashboard_ui.css?v=20260523_real_speed_role">
 </head>
 <body class="auth-checking">
 
@@ -224,7 +224,6 @@ let CENTER_MASTER = {};
 let DIVISION_OPTIONS = [];
 let currentDashboardRows = [];
 let dashboardMasterChannels = [];
-let dashboardOptionCache = { loaded:false, channels:[], owners:[], loadedAt:0 };
 
 
 function setLog(message){
@@ -251,11 +250,13 @@ function updateConnectionUi(connected){
 function updateRoleUi(role){
   const badge = document.getElementById("roleBadge");
   if (!badge) return;
-  badge.textContent = "権限：" + (role || "editor");
+  const normalizedRole = window.RecruitRole && window.RecruitRole.normalize ? window.RecruitRole.normalize(role) : String(role || "viewer").toLowerCase();
+  badge.textContent = "権限：" + normalizedRole;
   const deleted = document.getElementById("filterDeleted");
+  const canSeeDeleted = window.canRecruitAdmin ? window.canRecruitAdmin(normalizedRole) : normalizedRole === "admin";
   if (deleted) {
-    deleted.disabled = role !== "admin";
-    if (role !== "admin") deleted.value = "active";
+    deleted.disabled = !canSeeDeleted;
+    if (!canSeeDeleted) deleted.value = "active";
   }
 }
 function showAuth(message = "未ログインです", type = "info"){
@@ -457,10 +458,6 @@ function updateCenterOptionsForFilter(){
   if (centers.includes(current)) centerSelect.value = current;
 }
 function populateSelect(id, values, emptyLabel = "すべて"){
-  if(window.RecruitDashboard?.setSelectOptions){
-    window.RecruitDashboard.setSelectOptions(id, values, { blankLabel: emptyLabel });
-    return;
-  }
   const el = document.getElementById(id);
   if (!el) return;
   const current = el.value;
@@ -471,30 +468,13 @@ function populateSelect(id, values, emptyLabel = "すべて"){
 }
 
 async function loadDashboardMasterChannels(){
-  if(dashboardOptionCache.loaded && dashboardOptionCache.channels.length){
-    dashboardMasterChannels = dashboardOptionCache.channels;
-    return;
-  }
+
   try{
     dashboardMasterChannels = window.RecruitMaster ? await window.RecruitMaster.list("channels") : [];
-    dashboardOptionCache.channels = dashboardMasterChannels.slice();
   }catch(e){
     console.warn("媒体マスタ読込失敗", e);
     dashboardMasterChannels = [];
   }
-}
-async function loadDashboardOptionCache(){
-  if(dashboardOptionCache.loaded) return dashboardOptionCache;
-  try{
-    await loadDashboardMasterChannels();
-    dashboardOptionCache.owners = window.RecruitMaster ? await window.RecruitMaster.list("owners") : [];
-    dashboardOptionCache.loaded = true;
-    dashboardOptionCache.loadedAt = Date.now();
-  }catch(e){
-    console.warn("ダッシュボード候補キャッシュ読込失敗", e);
-    dashboardOptionCache.loaded = true;
-  }
-  return dashboardOptionCache;
 }
 function getDashboardChannelOptions(candidateRows=[]){
   const master=[...new Set((dashboardMasterChannels||[]).filter(Boolean))];
@@ -511,14 +491,10 @@ function updateDashboardUi(rows){
   const activeRows = (rows || []).filter(r => !r.is_deleted);
   const today = getSessionToday();
 
-  const metrics = window.RecruitDashboard?.stageMetrics ? window.RecruitDashboard.stageMetrics(activeRows) : null;
-  const applied = metrics ? metrics.applied : activeRows.filter(r => isValidDate(r.applied_date)).length;
-  const reached = (row, stage) => window.isRecruitStageReached ? window.isRecruitStageReached(row, stage) : false;
-  const appointment = metrics ? metrics.appointment : activeRows.filter(r => reached(r, "アポ取得")).length;
-  const interviewSet = metrics ? metrics.interviewSet : activeRows.filter(r => reached(r, "面接設定")).length;
-  const interviewDone = metrics ? metrics.interviewDone : activeRows.filter(r => reached(r, "面接実施")).length;
-  const offer = metrics ? metrics.offer : activeRows.filter(r => reached(r, "内定")).length;
-  const join = metrics ? metrics.hired : activeRows.filter(r => window.isRecruitHired ? window.isRecruitHired(r) : reached(r, "採用")).length;
+  const flowMetrics = window.RecruitDashboard && window.RecruitDashboard.calcRecruitFlowMetrics
+    ? window.RecruitDashboard.calcRecruitFlowMetrics(activeRows)
+    : null;
+  const applied = flowMetrics ? flowMetrics.applied : activeRows.filter(r => isValidDate(r.applied_date)).length;
 
   const priorityToday = activeRows.filter(isActionRequired).length;
   const priorityNotDone = activeRows.filter(r => isValidDate(r.interview1_date) && !isValidDate(r.interview_done_date) && !isFinal(r)).length;
@@ -529,8 +505,8 @@ function updateDashboardUi(rows){
     return days !== null && days >= 3;
   }).length;
 
-  const noContact = metrics ? metrics.noContact : activeRows.filter(r => window.isRecruitNoContact ? window.isRecruitNoContact(r) : String(r.hiring_result||"").trim()==="不通").length;
-  const decline = metrics ? metrics.declined : activeRows.filter(r => window.isRecruitDeclined ? window.isRecruitDeclined(r) : (String(r.hiring_result||"").trim()==="辞退" || String(r.status||"").trim()==="辞退" || !!r.decline_reason)).length;
+  const noContact = activeRows.filter(r => window.isRecruitNoContact ? window.isRecruitNoContact(r) : String(r.hiring_result||"").trim()==="不通").length;
+  const decline = activeRows.filter(r => window.isRecruitDeclined ? window.isRecruitDeclined(r) : (String(r.hiring_result||"").trim()==="辞退" || String(r.status||"").trim()==="辞退" || !!r.decline_reason)).length;
   const interviewNotSet = activeRows.filter(r => isValidDate(r.appointment_date) && !isValidDate(r.interview1_date) && !isFinal(r)).length;
   const ownerStagnation = activeRows.filter(r => isActionRequired(r)).length;
 
@@ -538,18 +514,21 @@ function updateDashboardUi(rows){
   setText("priorityNotDone", priorityNotDone);
   setText("priorityDormant", priorityDormant);
 
-  setText("flowApplied", applied);
-  setText("flowAppointment", appointment);
-  setText("flowInterviewSet", interviewSet);
-  setText("flowInterviewDone", interviewDone);
-  setText("flowOffer", offer);
-  setText("flowJoin", join);
-
-  setText("rateAppointment", calcRate(appointment, applied));
-  setText("rateInterviewSet", calcRate(interviewSet, applied));
-  setText("rateInterviewDone", calcRate(interviewDone, applied));
-  setText("rateOffer", calcRate(offer, applied));
-  setText("rateJoin", calcRate(join, applied));
+  if (window.RecruitDashboard && window.RecruitDashboard.applyRecruitFlowMetrics && flowMetrics) {
+    window.RecruitDashboard.applyRecruitFlowMetrics(null, flowMetrics);
+  } else {
+    setText("flowApplied", applied);
+    setText("flowAppointment", 0);
+    setText("flowInterviewSet", 0);
+    setText("flowInterviewDone", 0);
+    setText("flowOffer", 0);
+    setText("flowJoin", 0);
+    setText("rateAppointment", "0.0%");
+    setText("rateInterviewSet", "0.0%");
+    setText("rateInterviewDone", "0.0%");
+    setText("rateOffer", "0.0%");
+    setText("rateJoin", "0.0%");
+  }
 
   setText("reasonNoContact", noContact);
   setText("reasonDecline", decline);
@@ -601,11 +580,11 @@ async function loadDashboard(){
 
     const { data: allData } = await sb.from("candidates").select("channel, owner_name");
     if (allData) {
-      const optionCache = await loadDashboardOptionCache();
-      const channelOptions = getDashboardChannelOptions(allData);
-      populateSelect("filterChannel", channelOptions);
-      populateSelect("filterOwner", optionCache.owners.length ? optionCache.owners : allData.map(x => x.owner_name));
-      if (filterChannel && channelOptions.includes(filterChannel)) document.getElementById("filterChannel").value = filterChannel;
+      await loadDashboardMasterChannels();
+      populateSelect("filterChannel", getDashboardChannelOptions(allData));
+      const ownerMasters = window.RecruitMaster ? await window.RecruitMaster.list("owners") : [];
+      populateSelect("filterOwner", ownerMasters.length ? ownerMasters : allData.map(x => x.owner_name));
+      if (filterChannel && getDashboardChannelOptions(allData).includes(filterChannel)) document.getElementById("filterChannel").value = filterChannel;
       if (filterOwner) document.getElementById("filterOwner").value = filterOwner;
     }
 

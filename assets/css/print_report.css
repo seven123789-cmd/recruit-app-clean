@@ -1032,16 +1032,33 @@ tbody tr:last-child td{
   }
 }
 
-/* 2026-05-23 ops_speed2: 帳票印刷の改ページ・表ヘッダー安定化 */
+/* 2026-05-23 real_speed_role: print stability */
 @media print{
+  .report-page,
+  .print-page,
+  .report-section,
+  .report-card,
+  .metric-card,
+  .kpi-card,
+  .paper-mini{
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+  table.report-table,
+  table.print-table{
+    break-inside:auto;
+    page-break-inside:auto;
+  }
   table.report-table thead,
   table.print-table thead{
     display:table-header-group;
   }
+  table.report-table tfoot,
+  table.print-table tfoot{
+    display:table-footer-group;
+  }
   table.report-table tr,
-  table.print-table tr,
-  .kpi-card,
-  .summary-card{
+  table.print-table tr{
     break-inside:avoid;
     page-break-inside:avoid;
   }

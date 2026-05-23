@@ -1532,27 +1532,6 @@
   };
 })();
 
-
-/* RecruitRole : lightweight role helpers for front-end visibility control.
-   RLS本整理の前段として、各画面の表示・操作可否判定を共通化する。 */
-(function(){
-  function role(){
-    return String(window.currentRole || window.RecruitAuth?.currentRole || "viewer").trim().toLowerCase();
-  }
-  function hasRole(allowed){
-    const list = Array.isArray(allowed) ? allowed : String(allowed || "").split(",");
-    return list.map(v => String(v || "").trim().toLowerCase()).filter(Boolean).includes(role());
-  }
-  function isAdmin(){ return hasRole("admin"); }
-  function isEditor(){ return hasRole(["admin","editor"]); }
-  function isViewer(){ return role() === "viewer"; }
-  window.RecruitRole = Object.assign(window.RecruitRole || {}, { role, hasRole, isAdmin, isEditor, isViewer });
-  window.hasRole = window.hasRole || hasRole;
-  window.isAdmin = window.isAdmin || isAdmin;
-  window.isEditor = window.isEditor || isEditor;
-  window.isViewer = window.isViewer || isViewer;
-})();
-
 /* RecruitDashboard : dashboard/list helper functions shared across analysis pages */
 (function(){
   function escape(value){
@@ -1607,33 +1586,72 @@
     if(filters.job && String(row.job_type || "") !== filters.job) return false;
     return true;
   }
-  function stageMetrics(rows){
-    const list = (rows || []).filter(r => r && !r.is_deleted);
-    return {
-      applied: list.filter(r => window.isRecruitStageReached ? window.isRecruitStageReached(r, "応募") : true).length,
-      appointment: list.filter(r => window.isRecruitStageReached && window.isRecruitStageReached(r, "アポ取得")).length,
-      interviewSet: list.filter(r => window.isRecruitStageReached && window.isRecruitStageReached(r, "面接設定")).length,
-      interviewDone: list.filter(r => window.isRecruitStageReached && window.isRecruitStageReached(r, "面接実施")).length,
-      offer: list.filter(r => window.isRecruitStageReached && window.isRecruitStageReached(r, "内定")).length,
-      hired: list.filter(r => window.isRecruitHired && window.isRecruitHired(r)).length,
-      hiringDecision: list.filter(r => window.isRecruitHiringDecision && window.isRecruitHiringDecision(r)).length,
-      pendingJoin: list.filter(r => window.isRecruitPendingJoin && window.isRecruitPendingJoin(r)).length,
-      noContact: list.filter(r => window.isRecruitNoContact && window.isRecruitNoContact(r)).length,
-      declined: list.filter(r => window.isRecruitDeclined && window.isRecruitDeclined(r)).length,
-      rejected: list.filter(r => window.isRecruitRejected && window.isRecruitRejected(r)).length
-    };
-  }
-  function pct(num, den, digits=1){
+  function calcRateNumber(num, den){
     const n = Number(num || 0);
     const d = Number(den || 0);
     if(!d) return 0;
-    return Number(((n / d) * 100).toFixed(digits));
+    return (n / d) * 100;
   }
-  function renderMetricCardHTML({label, value, rate, className="", sub=""}={}){
-    const rateText = rate === undefined || rate === null ? "" : `<span class="metric-rate">${escape(rate)}%</span>`;
-    const subText = sub ? `<div class="metric-sub">${escape(sub)}</div>` : "";
-    return `<div class="metric-card ${escape(className)}"><div class="metric-label">${escape(label || "")}</div><div class="metric-value">${escape(value ?? 0)}</div>${rateText}${subText}</div>`;
+  function calcRateText(num, den){
+    return calcRateNumber(num, den).toFixed(1) + "%";
   }
+  function calcRecruitFlowMetrics(rows){
+    const activeRows = (rows || []).filter(r => r && !r.is_deleted);
+    const applied = activeRows.filter(r => window.isValidDate ? window.isValidDate(r.applied_date) : window.isValidRecruitDate(r.applied_date)).length;
+    const reached = (row, stage) => window.isRecruitStageReached ? window.isRecruitStageReached(row, stage) : false;
+    const metrics = {
+      applied,
+      appointment: activeRows.filter(r => reached(r, "アポ取得")).length,
+      interviewSet: activeRows.filter(r => reached(r, "面接設定")).length,
+      interviewDone: activeRows.filter(r => reached(r, "面接実施")).length,
+      offer: activeRows.filter(r => reached(r, "内定")).length,
+      hired: activeRows.filter(r => window.isRecruitHired ? window.isRecruitHired(r) : reached(r, "採用")).length
+    };
+    metrics.rates = {
+      appointment: calcRateText(metrics.appointment, applied),
+      interviewSet: calcRateText(metrics.interviewSet, applied),
+      interviewDone: calcRateText(metrics.interviewDone, applied),
+      offer: calcRateText(metrics.offer, applied),
+      hired: calcRateText(metrics.hired, applied)
+    };
+    return metrics;
+  }
+  function applyRecruitFlowMetrics(mapOrPrefix, metrics){
+    const m = metrics || {};
+    const r = m.rates || {};
+    const map = typeof mapOrPrefix === "object" && mapOrPrefix
+      ? mapOrPrefix
+      : {
+        flowApplied:"flowApplied", flowAppointment:"flowAppointment", flowInterviewSet:"flowInterviewSet",
+        flowInterviewDone:"flowInterviewDone", flowOffer:"flowOffer", flowHired:"flowJoin",
+        rateAppointment:"rateAppointment", rateInterviewSet:"rateInterviewSet", rateInterviewDone:"rateInterviewDone",
+        rateOffer:"rateOffer", rateHired:"rateJoin"
+      };
+    const set = (id, value) => { const el = document.getElementById(id); if(el) el.textContent = value; };
+    set(map.flowApplied, m.applied || 0);
+    set(map.flowAppointment, m.appointment || 0);
+    set(map.flowInterviewSet, m.interviewSet || 0);
+    set(map.flowInterviewDone, m.interviewDone || 0);
+    set(map.flowOffer, m.offer || 0);
+    set(map.flowHired, m.hired || 0);
+    set(map.rateAppointment, r.appointment || "0.0%");
+    set(map.rateInterviewSet, r.interviewSet || "0.0%");
+    set(map.rateInterviewDone, r.interviewDone || "0.0%");
+    set(map.rateOffer, r.offer || "0.0%");
+    set(map.rateHired, r.hired || "0.0%");
+  }
+  function getRecruitRoleValue(role){
+    if(window.RecruitRole && typeof window.RecruitRole.normalize === "function") return window.RecruitRole.normalize(role);
+    return String(role || window.currentRole || "viewer").toLowerCase();
+  }
+  function hasRecruitRole(role, allowed){
+    const r = getRecruitRoleValue(role);
+    const list = Array.isArray(allowed) ? allowed : String(allowed || "").split(",");
+    return list.map(v => String(v || "").trim().toLowerCase()).includes(r);
+  }
+  function canRecruitEdit(role){ return hasRecruitRole(role, ["admin", "manager", "editor"]); }
+  function canRecruitAdmin(role){ return hasRecruitRole(role, ["admin"]); }
+
   window.RecruitDashboard = Object.assign(window.RecruitDashboard || {}, {
     escape,
     uniqueSorted,
@@ -1641,8 +1659,12 @@
     getFiscalRange,
     readFilterValue,
     matchesBasicCandidateFilters,
-    stageMetrics,
-    pct,
-    renderMetricCardHTML
+    calcRateNumber,
+    calcRateText,
+    calcRecruitFlowMetrics,
+    applyRecruitFlowMetrics
   });
+  window.hasRecruitRole = window.hasRecruitRole || hasRecruitRole;
+  window.canRecruitEdit = window.canRecruitEdit || canRecruitEdit;
+  window.canRecruitAdmin = window.canRecruitAdmin || canRecruitAdmin;
 })();

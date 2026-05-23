@@ -1195,24 +1195,30 @@
   }
 }
 
-/* 2026-05-23 ops_speed2: 印刷プレビュー安定化 */
+/* 2026-05-23 real_speed_role: print stability */
 @media print{
   .report-page,
   .print-page,
-  .paper-page{
-    break-after:page;
-    page-break-after:always;
-    overflow:hidden;
+  .report-section,
+  .report-card,
+  .metric-card,
+  .kpi-card,
+  .paper-mini{
+    break-inside:avoid;
+    page-break-inside:avoid;
   }
-  .report-page:last-child,
-  .print-page:last-child,
-  .paper-page:last-child{
-    break-after:auto;
-    page-break-after:auto;
+  table.report-table,
+  table.print-table{
+    break-inside:auto;
+    page-break-inside:auto;
   }
   table.report-table thead,
   table.print-table thead{
     display:table-header-group;
+  }
+  table.report-table tfoot,
+  table.print-table tfoot{
+    display:table-footer-group;
   }
   table.report-table tr,
   table.print-table tr{
