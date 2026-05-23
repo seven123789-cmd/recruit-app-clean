@@ -194,6 +194,19 @@ const CSV_COLUMNS = [
   ["candidate_id","候補者ID"],["fiscal_year","年度"],["name","氏名"],["age","年齢"],["division","本部"],["center_name","営業所"],["channel","媒体"],["channel_detail","媒体詳細"],["job_type","職種"],["owner_name","担当者"],["status","ステータス"],["hiring_result","選考結果"],["applied_date","応募日"],["appointment_date","アポ日"],["interview1_date","面接予定日"],["interview_done_date","面接実施日"],["offer_date","内定日"],["join_date","入社日"],["last_action_date","最終対応日"],["next_action_date","次回対応日"],["decline_reason","辞退理由"],["reject_reason","不採用理由"],["evaluation","評価"],["evaluation_comment","評価コメント"],["action_memo","対応メモ"],["is_deleted","削除済みデータ"],["created_at","作成日時"],["updated_at","更新日時"]
 ];
 const DATE_KEYS = new Set(["applied_date","appointment_date","interview1_date","interview_done_date","offer_date","join_date","last_action_date","next_action_date"]);
+const STAGE_STATUS_OPTIONS = window.RECRUIT_STAGE_STATUSES || ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
+const HIRING_RESULT_OPTIONS = window.RECRUIT_HIRING_RESULTS || ["進行中","保留","辞退","不採用","不通","採用","入社済"];
+const FINAL_RESULT_OPTIONS = window.RECRUIT_FINAL_RESULTS || ["保留","辞退","不採用","不通","採用","入社済"];
+const LEGACY_STATUS_TO_RESULT = {
+  "未設定":"進行中",
+  "未判定":"進行中",
+  "合格":"採用",
+  "入社":"入社済",
+  "保留":"保留",
+  "辞退":"辞退",
+  "不採用":"不採用",
+  "不通":"不通"
+};
 let selectedCsvText = "";
 let selectedCsvFileName = "";
 let previewRows = [];
@@ -216,10 +229,7 @@ function showIoTab(key){
 }
 function csvEscape(v){ const s=String(v ?? ""); return /[",\n\r]/.test(s) ? '"'+s.replaceAll('"','""')+'"' : s; }
 function downloadText(filename, text){ const blob=new Blob(["\uFEFF"+text],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
-function downloadTemplateCsv(){
-  const header = CSV_COLUMNS.map(c=>csvEscape(c[1])).join(',');
-  downloadText('recruit_import_template.csv', header+'\n');
-}
+function downloadTemplateCsv(){ downloadText('recruit_template.csv', CSV_COLUMNS.map(c=>csvEscape(c[1])).join(',')+'\n'); }
 function parseCsv(text){
   const rows=[]; let row=[], cell='', q=false;
   for(let i=0;i<text.length;i++){
@@ -234,54 +244,69 @@ function parseCsv(text){
   return rows;
 }
 function normalizeHeader(h){ const m=CSV_COLUMNS.find(c=>c[1]===h || c[0]===h); return m ? m[0] : String(h||'').trim(); }
-function toIsoDate(v){ if(!v) return ''; const s=String(v).trim().replaceAll('/','-'); if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)){ const [y,m,d]=s.split('-'); return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`; } return s; }
+function toIsoDate(v){
+  if(v===null || v===undefined) return '';
+  let s=String(v).trim().replace(/^\uFEFF/, '').replace(/^['\"]|['\"]$/g, '');
+  if(!s) return '';
+  s=s.replace(/[年月]/g,'-').replace(/日/g,'').replace(/[./]/g,'-');
+  s=s.split(/[T\s]/)[0];
+  if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)){
+    const [y,m,d]=s.split('-');
+    return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+  if(/^\d{8}$/.test(s)) return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
+  const serial=Number(s);
+  if(Number.isFinite(serial) && serial>20000 && serial<80000){
+    const base=Date.UTC(1899,11,30);
+    const date=new Date(base + serial*86400000);
+    return new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo'}).format(date);
+  }
+  return s;
+}
+function isIsoDate(v){ return !v || /^\d{4}-\d{2}-\d{2}$/.test(String(v)); }
 function normalizePersonName(v){
-  if(window.CandidateUtils && typeof window.CandidateUtils.normalizePersonName === 'function') return window.CandidateUtils.normalizePersonName(v);
+  const fn = window.normalizePersonName;
+  if(typeof fn === 'function' && fn !== normalizePersonName) return fn(v);
   return String(v ?? '').replace(/[\u3000\s]+/g, ' ').trim();
 }
-function fiscalYearFromDateText(v){ const s=toIsoDate(v); if(!s) return ''; const d=new Date(s+'T00:00:00+09:00'); if(Number.isNaN(d.getTime())) return ''; return d.getMonth()+1>=4 ? d.getFullYear() : d.getFullYear()-1; }
-const STAGE_STATUS_OPTIONS = window.RECRUIT_STAGE_STATUSES || ['応募','書類選考','アポ取得','面接設定','面接実施','内定','採用'];
-const HIRING_RESULT_OPTIONS = window.RECRUIT_HIRING_RESULTS || ['進行中','保留','辞退','不採用','不通','採用','入社済'];
-const FINAL_RESULTS = window.RECRUIT_FINAL_RESULTS || ['保留','辞退','不採用','不通','採用','入社済'];
-function inferStageFromDates(row){
+function fiscalYearFromDateText(v){ const s=toIsoDate(v); if(!s || !isIsoDate(s)) return ''; const d=new Date(s+'T00:00:00+09:00'); if(Number.isNaN(d.getTime())) return ''; return d.getMonth()+1>=4 ? d.getFullYear() : d.getFullYear()-1; }
+function inferStageStatus(row){
   if(row.join_date) return '採用';
   if(row.offer_date) return '内定';
   if(row.interview_done_date) return '面接実施';
   if(row.interview1_date) return '面接設定';
   if(row.appointment_date) return 'アポ取得';
-  return row.status && STAGE_STATUS_OPTIONS.includes(row.status) ? row.status : '応募';
+  return '応募';
 }
-function normalizeCandidateImportState(row){
-  const r = {...row};
-  r.status = String(r.status || '').trim();
-  r.hiring_result = String(r.hiring_result || '').trim();
-  if(r.hiring_result === '未判定' || r.hiring_result === '未設定') r.hiring_result = '進行中';
-
-  const legacyStatusToResult = { '保留':'保留', '辞退':'辞退', '不採用':'不採用', '不通':'不通' };
-  if(r.status === '入社'){
-    r.status = '採用';
-    r.hiring_result = '入社済';
-  }else if(r.status === '合格'){
-    r.status = '採用';
-    r.hiring_result = r.hiring_result || '採用';
-  }else if(legacyStatusToResult[r.status]){
-    r.hiring_result = r.hiring_result || legacyStatusToResult[r.status];
-    r.status = inferStageFromDates(r);
-  }else if(!r.status || r.status === '未設定' || r.status === '未判定'){
-    r.status = inferStageFromDates(r);
+function normalizeStatusAndResult(row){
+  const r=row || {};
+  let status=String(r.status || '').trim();
+  let result=String(r.hiring_result || '').trim();
+  if(result==='未判定' || result==='未設定') result='進行中';
+  if(status==='未判定' || status==='未設定' || status==='') status='';
+  if(LEGACY_STATUS_TO_RESULT[status] && !STAGE_STATUS_OPTIONS.includes(status)){
+    result=LEGACY_STATUS_TO_RESULT[status];
+    status=inferStageStatus(r);
   }
-
+  if(status==='合格'){
+    status='採用';
+    result=result || '採用';
+  }
+  if(status==='入社'){
+    status='採用';
+    result='入社済';
+  }
   if(r.join_date){
-    r.status = '採用';
-    r.hiring_result = '入社済';
-  }else if(r.status === '採用' && (!r.hiring_result || r.hiring_result === '進行中')){
-    r.hiring_result = '採用';
+    status='採用';
+    result='入社済';
   }
-  if(!r.hiring_result) r.hiring_result = '進行中';
+  if(status==='採用' && (!result || result==='進行中')) result='採用';
+  if(!status) status=inferStageStatus(r);
+  if(!result) result='進行中';
+  r.status=status;
+  r.hiring_result=result;
   return r;
 }
-function isValidStatusValue(value){ return !value || STAGE_STATUS_OPTIONS.includes(value); }
-function isValidHiringResultValue(value){ return !value || HIRING_RESULT_OPTIONS.includes(value); }
 async function handleCsvFileSelected(ev){
   const f=ev.target.files?.[0];
   selectedCsvFileName=f?f.name:'';
@@ -360,19 +385,13 @@ async function getExistingCandidateIdSet(ids){
 async function previewImportCsv(){
   resetPreview();
   if(!selectedCsvText){ RecruitUI.toast("取り込むCSVを選択してください。", "warning"); return; }
-  const parsed=parseCsv(selectedCsvText);
-  if(parsed.length<2){
-    previewErrors=['データ行がありません。取り込みテンプレートは見出しのみのため、そのままでは取り込めません。'];
-    renderPreview();
-    RecruitUI.toast('データ行がありません。', 'warning');
-    return;
-  }
+  const parsed=parseCsv(selectedCsvText); if(parsed.length<2){ RecruitUI.toast("データ行がありません。", "warning"); return; }
   const headers=parsed[0].map(h=>normalizeHeader(String(h).trim().replace(/^\uFEFF/,'')));
   const required=['name','applied_date','status'];
   const missing=required.filter(k=>!headers.includes(k));
   if(missing.length){ previewErrors=missing.map(k=>`必須列がありません：${CSV_COLUMNS.find(c=>c[0]===k)?.[1]||k}`); renderPreview(); return; }
   const masters=await getMasters();
-  previewRows=parsed.slice(1).map((cells,i)=>{ const r={_row:i+2}; headers.forEach((h,idx)=>{ if(CSV_COLUMNS.some(c=>c[0]===h)) r[h]=String(cells[idx]??'').trim(); }); if(r.name) r.name=normalizePersonName(r.name); DATE_KEYS.forEach(k=>{ if(r[k]) r[k]=toIsoDate(r[k]); }); if(!r.fiscal_year) r.fiscal_year=String(fiscalYearFromDateText(r.applied_date)||''); return normalizeCandidateImportState(r); });
+  previewRows=parsed.slice(1).map((cells,i)=>{ const r={_row:i+2}; headers.forEach((h,idx)=>{ if(CSV_COLUMNS.some(c=>c[0]===h)) r[h]=String(cells[idx]??'').trim(); }); if(r.name) r.name=normalizePersonName(r.name); DATE_KEYS.forEach(k=>{ if(r[k]) r[k]=toIsoDate(r[k]); }); normalizeStatusAndResult(r); if(!r.fiscal_year) r.fiscal_year=String(fiscalYearFromDateText(r.applied_date)||''); return r; });
   const existingIds = await getExistingCandidateIdSet(previewRows.map(r=>r.candidate_id));
   previewDuplicateRows = previewRows.filter(r=>r.candidate_id && existingIds.has(String(r.candidate_id)));
   previewUpdateCount = previewDuplicateRows.length;
@@ -382,15 +401,15 @@ async function previewImportCsv(){
   previewRows.forEach(r=>{
     if(!r.name) previewErrors.push(`${r._row}行目：氏名が未入力です。`);
     if(!r.applied_date) previewErrors.push(`${r._row}行目：応募日が未入力です。`);
-    DATE_KEYS.forEach(k=>{ if(r[k] && !/^\d{4}-\d{2}-\d{2}$/.test(r[k])) previewErrors.push(`${r._row}行目：${CSV_COLUMNS.find(c=>c[0]===k)?.[1]}の日付形式が不正です。`); });
+    DATE_KEYS.forEach(k=>{ if(r[k] && !isIsoDate(r[k])) previewErrors.push(`${r._row}行目：${CSV_COLUMNS.find(c=>c[0]===k)?.[1]}の日付形式が不正です。`); });
     if(!inMaster(masters.divisions,r.division)) previewErrors.push(`${r._row}行目：本部マスタ未登録（${r.division}）`);
     const centers=(masters.centers||[]).map(c=>c.center_name);
     if(!inMaster(centers,r.center_name)) previewErrors.push(`${r._row}行目：営業所マスタ未登録（${r.center_name}）`);
     if(!inMaster(masters.channels,r.channel)) previewErrors.push(`${r._row}行目：媒体マスタ未登録（${r.channel}）`);
     if(!inMaster(masters.channelDetails,r.channel_detail)) previewErrors.push(`${r._row}行目：媒体詳細マスタ未登録（${r.channel_detail}）`);
     if(!inMaster(masters.jobTypes,r.job_type)) previewErrors.push(`${r._row}行目：職種マスタ未登録（${r.job_type}）`);
-    if(!isValidStatusValue(r.status)) previewErrors.push(`${r._row}行目：ステータスが不正です（${r.status}）`);
-    if(!isValidHiringResultValue(r.hiring_result)) previewErrors.push(`${r._row}行目：選考結果が不正です（${r.hiring_result}）`);
+    if(!STAGE_STATUS_OPTIONS.includes(r.status)) previewErrors.push(`${r._row}行目：ステータスが不正です（${r.status}）`);
+    if(!HIRING_RESULT_OPTIONS.includes(r.hiring_result || '進行中')) previewErrors.push(`${r._row}行目：選考結果が不正です（${r.hiring_result}）`);
     if(!inMaster(masters.declineReasons,r.decline_reason)) previewErrors.push(`${r._row}行目：辞退理由マスタ未登録（${r.decline_reason}）`);
     if(!inMaster(masters.rejectReasons,r.reject_reason)) previewErrors.push(`${r._row}行目：不採用理由マスタ未登録（${r.reject_reason}）`);
   });
@@ -410,8 +429,8 @@ function renderPreview(){
     ? `<div class="io-duplicate-head">上書き候補 ${previewDuplicateRows.length}件</div>` + previewDuplicateRows.slice(0,20).map(r=>`<div class="io-duplicate-item">${escapeHtml(r._row)}行目：${escapeHtml(r.name||"")} / 候補者ID ${escapeHtml(r.candidate_id||"")}</div>`).join('')
     : '';
   document.getElementById('importErrors').innerHTML=previewErrors.slice(0,20).map(e=>`<div class="io-error-item">${escapeHtml(e)}</div>`).join('');
-  const cols=['_row','candidate_id','name','applied_date','status','hiring_result','division','center_name','channel'];
-  document.getElementById('importPreviewArea').innerHTML=`<table><thead><tr>${cols.map(c=>`<th>${c==='_row'?'行':(CSV_COLUMNS.find(x=>x[0]===c)?.[1]||c)}</th>`).join('')}</tr></thead><tbody>${previewRows.slice(0,30).map(r=>`<tr>${cols.map(c=>`<td>${escapeHtml(r[c]||'')}</td>`).join('')}</tr>`).join('')||'<tr><td class="empty" colspan="9">プレビュー対象がありません。</td></tr>'}</tbody></table>`;
+  const cols=['_row','candidate_id','name','applied_date','status','division','center_name','channel'];
+  document.getElementById('importPreviewArea').innerHTML=`<table><thead><tr>${cols.map(c=>`<th>${c==='_row'?'行':(CSV_COLUMNS.find(x=>x[0]===c)?.[1]||c)}</th>`).join('')}</tr></thead><tbody>${previewRows.slice(0,30).map(r=>`<tr>${cols.map(c=>`<td>${escapeHtml(r[c]||'')}</td>`).join('')}</tr>`).join('')||'<tr><td class="empty" colspan="7">プレビュー対象がありません。</td></tr>'}</tbody></table>`;
 }
 async function normalizeExistingCandidateNames(){
   if(window.RecruitOpsGuard && !window.RecruitOpsGuard.requireImport()) return;
@@ -672,7 +691,7 @@ async function exportCandidatesCsv(){
   const {data,error}=await q; if(error){ RecruitUI.showError("CSV出力に失敗しました。\n\n"+error.message); return; }
   const filtered=(data||[]).filter(r=>{ const rowFy=fiscalYearFromDateText(r.applied_date); if(fy && fy.startsWith('fy:')) return Number(rowFy)===Number(fy.replace('fy:','')); return true; });
   const header=CSV_COLUMNS.map(c=>csvEscape(c[1])).join(',');
-  const body=filtered.map(r=>CSV_COLUMNS.map(([k])=>{ if(k==='candidate_id') return csvEscape(r.id||''); if(k==='fiscal_year') return csvEscape(fiscalYearFromDateText(r.applied_date)||''); return csvEscape(r[k]??''); }).join(',')).join('\n');
+  const body=filtered.map(raw=>{ const r=normalizeStatusAndResult({...raw}); return CSV_COLUMNS.map(([k])=>{ if(k==='candidate_id') return csvEscape(r.id||''); if(k==='fiscal_year') return csvEscape(fiscalYearFromDateText(r.applied_date)||''); if(DATE_KEYS.has(k)) return csvEscape(toIsoDate(r[k]) || ''); return csvEscape(r[k]??''); }).join(','); }).join('\n');
   downloadText(`recruit_candidates_${window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date())}.csv`, header+'\n'+body+'\n');
 }
 </script>
