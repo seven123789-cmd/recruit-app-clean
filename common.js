@@ -322,52 +322,6 @@
   }
 
 
-  function isRecruitActionRequired(row){
-    // 要対応は「進行中で、次回対応日が未設定・今日以前」の応募者。
-    // 未来日の予定者は要対応には含めない。
-    const r = normalizeRecruitCandidateState(row || {});
-    if(r.is_deleted === true) return false;
-    const result = String(r.hiring_result || "進行中").trim() || "進行中";
-    if(result !== "進行中") return false;
-    const status = String(r.status || "").trim();
-    if(status === "採用") return false;
-    if(isFinal(r)) return false;
-    if(!RECRUIT_STAGE_ORDER.includes(status)) return false;
-    const next = String(r.next_action_date || "").slice(0,10);
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return true;
-    return next <= todayJST();
-  }
-
-  function isRecruitDormant3Days(row){
-    // 放置3日+ は、応募後3日以上、連絡・面接設定に進んでいない進行中応募者。
-    const r = normalizeRecruitCandidateState(row || {});
-    if(r.is_deleted === true) return false;
-    if(isFinal(r)) return false;
-    if(String(r.hiring_result || "進行中").trim() !== "進行中") return false;
-    if(!isValidRecruitDate(r.applied_date)) return false;
-    if(isValidRecruitDate(r.appointment_date) || isValidRecruitDate(r.interview1_date) || isValidRecruitDate(r.interview_date) || isValidRecruitDate(r.interview_done_date)) return false;
-    const diff = daysBetween(String(r.applied_date).slice(0,10), todayJST());
-    return diff !== null && diff >= 3;
-  }
-
-  function recruitMetricCounts(rows){
-    const list = Array.isArray(rows) ? rows : [];
-    return {
-      applied: list.filter(r => isValidRecruitDate((r || {}).applied_date)).length || list.length,
-      appointment: list.filter(r => isRecruitStageReached(r, "アポ取得")).length,
-      interviewSet: list.filter(r => isRecruitStageReached(r, "面接設定")).length,
-      interviewDone: list.filter(r => isRecruitStageReached(r, "面接実施")).length,
-      offer: list.filter(r => isRecruitStageReached(r, "内定")).length,
-      joined: list.filter(isRecruitHired).length,
-      hiringDecision: list.filter(isRecruitHiringDecision).length,
-      decline: list.filter(isRecruitDeclined).length,
-      noContact: list.filter(isRecruitNoContact).length,
-      action: list.filter(isRecruitActionRequired).length,
-      dormant: list.filter(isRecruitDormant3Days).length
-    };
-  }
-
-
   function isRecruitOwnerStagnation(row){
     // 担当停滞は「期限切れ」だけを対象にする。
     // 未設定・今日・未来日は、要対応や予定管理で扱い、停滞には含めない。
@@ -381,6 +335,54 @@
     const next = String(r.next_action_date || "").slice(0,10);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return false;
     return next < todayJST();
+  }
+
+
+  function isRecruitActionRequired(row){
+    // 要対応は「進行中」かつ「次回対応日が未設定または今日以前」。
+    // 担当停滞（期限切れのみ）とは分ける。
+    const r = normalizeRecruitCandidateState(row || {});
+    if(r.is_deleted === true) return false;
+    const result = String(r.hiring_result || "進行中").trim() || "進行中";
+    if(result !== "進行中") return false;
+    const status = String(r.status || "").trim();
+    if(status === "採用") return false;
+    if(isFinal(r)) return false;
+    const next = String(r.next_action_date || "").slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return true;
+    return next <= todayJST();
+  }
+
+  function isRecruitDormant3Days(row){
+    // 応募後3日以上、アポ・面接設定・面接実施に進んでおらず、終了結果でもない候補者。
+    const r = normalizeRecruitCandidateState(row || {});
+    if(r.is_deleted === true) return false;
+    if(!isValidRecruitDate(r.applied_date)) return false;
+    if(isFinal(r)) return false;
+    if(isValidRecruitDate(r.appointment_date) || isValidRecruitDate(r.interview1_date) || isValidRecruitDate(r.interview_date) || isValidRecruitDate(r.interview_done_date)) return false;
+    const days = daysBetween(String(r.applied_date).slice(0,10), todayJST());
+    return days !== null && days >= 3;
+  }
+
+  function isRecruitHeatmapDangerCandidate(row){
+    // ヒートマップの候補者単位の危険者数。
+    // 率が悪い「セル」はグループ指標なので、LISTに出す対象は候補者単位の危険条件に限定する。
+    return isRecruitActionRequired(row) || isRecruitDormant3Days(row) || isRecruitNoContact(row) || isRecruitDeclined(row);
+  }
+
+  function recruitMetricCounts(rows){
+    const list = (rows || []).filter(r => r && r.is_deleted !== true);
+    return {
+      applied: list.filter(r => isValidRecruitDate(r.applied_date)).length,
+      interviewDone: list.filter(r => isRecruitInterviewDone(r)).length,
+      hired: list.filter(r => isRecruitHired(r)).length,
+      hiringDecision: list.filter(r => isRecruitHiringDecision(r)).length,
+      declined: list.filter(r => isRecruitDeclined(r)).length,
+      noContact: list.filter(r => isRecruitNoContact(r)).length,
+      actionRequired: list.filter(r => isRecruitActionRequired(r)).length,
+      dormant3Days: list.filter(r => isRecruitDormant3Days(r)).length,
+      heatmapDangerCandidates: list.filter(r => isRecruitHeatmapDangerCandidate(r)).length
+    };
   }
 
   function isFinal(row){
@@ -464,6 +466,7 @@
   window.isRecruitOwnerStagnation = window.isRecruitOwnerStagnation || isRecruitOwnerStagnation;
   window.isRecruitActionRequired = window.isRecruitActionRequired || isRecruitActionRequired;
   window.isRecruitDormant3Days = window.isRecruitDormant3Days || isRecruitDormant3Days;
+  window.isRecruitHeatmapDangerCandidate = window.isRecruitHeatmapDangerCandidate || isRecruitHeatmapDangerCandidate;
   window.recruitMetricCounts = window.recruitMetricCounts || recruitMetricCounts;
   window.isFinal = window.isFinal || isFinal;
   window.getRecruitCurrentFiscalYear = window.getRecruitCurrentFiscalYear || getRecruitCurrentFiscalYear;

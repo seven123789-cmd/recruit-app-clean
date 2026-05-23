@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>応募者一覧</title>
 
-<link rel="stylesheet" href="./assets/css/common.css?v=20260524_metric_audit">
-<link rel="stylesheet" href="./assets/css/header.css?v=20260524_metric_audit">
-<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260524_metric_audit">
-<link rel="stylesheet" href="./assets/css/list.css?v=20260524_metric_audit">
+<link rel="stylesheet" href="./assets/css/common.css?v=20260523_join_actual_fix">
+<link rel="stylesheet" href="./assets/css/header.css?v=20260523_join_actual_fix">
+<link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_join_actual_fix">
+<link rel="stylesheet" href="./assets/css/list.css?v=20260523_join_actual_fix">
 </head>
 <body class="auth-checking">
 
@@ -214,14 +214,14 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/supabase.js?v=20260524_metric_audit"></script>
-<script src="assets/js/auth.js?v=20260524_metric_audit"></script>
-<script src="./common.js?v=20260524_metric_audit"></script>
-<script src="assets/js/candidate_utils.js?v=20260524_metric_audit"></script>
-<script src="assets/js/ops_guard.js?v=20260524_metric_audit"></script>
-<script src="assets/js/ui_utils.js?v=20260524_metric_audit"></script>
-<script src="assets/js/audit_utils.js?v=20260524_metric_audit"></script>
-<script src="assets/js/safe_utils.js?v=20260524_metric_audit"></script>
+<script src="assets/js/supabase.js?v=20260523_join_actual_fix"></script>
+<script src="assets/js/auth.js?v=20260523_join_actual_fix"></script>
+<script src="./common.js?v=20260523_stagnation_fix"></script>
+<script src="assets/js/candidate_utils.js?v=20260523_join_actual_fix"></script>
+<script src="assets/js/ops_guard.js?v=20260523_join_actual_fix"></script>
+<script src="assets/js/ui_utils.js?v=20260523_join_actual_fix"></script>
+<script src="assets/js/audit_utils.js?v=20260523_join_actual_fix"></script>
+<script src="assets/js/safe_utils.js?v=20260523_join_actual_fix"></script>
 <script>
 const sb=window.getRecruitSupabaseClient();
 
@@ -287,7 +287,15 @@ function normalizeListCandidate(row){
 }
 
 function isActionRequired(r){
-  return window.isRecruitActionRequired ? window.isRecruitActionRequired(r) : false;
+  if(window.isRecruitActionRequired) return window.isRecruitActionRequired(r);
+  r = normalizeListCandidate(r);
+  const st=String(r.status||"").trim();
+  const result=normalizeHiringResult(r);
+  if(st === "採用")return false;
+  if(result !== "進行中")return false;
+  if(!ACTIVE_STATUSES.includes(st))return false;
+  if(!r.next_action_date)return true;
+  return String(r.next_action_date).slice(0,10)<=todayStr();
 }
 function isHired(r){
   return window.isRecruitHired ? window.isRecruitHired(r) : (!!r && (String(r.hiring_result||"").trim()==="入社済" || validDate(r.join_date)));
@@ -772,7 +780,14 @@ function normalizedCandidateForList(r){
   return window.normalizeRecruitCandidateState ? window.normalizeRecruitCandidateState(r || {}) : (r || {});
 }
 function hasInterviewReachedForList(r){
-  return window.isRecruitStageReached ? window.isRecruitStageReached(r,"面接実施") : false;
+  const row=normalizedCandidateForList(r);
+  const st=String(row.status||"").trim();
+  const result=String(row.hiring_result||"").trim();
+  return validDate(row.interview_done_date)
+    || validDate(row.offer_date)
+    || validDate(row.join_date)
+    || ["面接実施","内定","採用"].includes(st)
+    || ["採用","入社済"].includes(result);
 }
 function isHiringDecisionForList(r){
   if(window.isRecruitHiringDecision) return window.isRecruitHiringDecision(r);
@@ -786,7 +801,14 @@ function isStageReachedForList(r, stageName){
   return window.isRecruitStageReached ? window.isRecruitStageReached(r, stageName) : isStageForList(r, stageName);
 }
 function isDormant3Days(r){
-  return window.isRecruitDormant3Days ? window.isRecruitDormant3Days(r) : false;
+  if(window.isRecruitDormant3Days) return window.isRecruitDormant3Days(r);
+  if(!validDate(r.applied_date) || isFinal(r))return false;
+  if(validDate(r.appointment_date) || validDate(r.interview1_date) || validDate(r.interview_date) || validDate(r.interview_done_date))return false;
+  const days=daysBetween(r.applied_date,todayStr());
+  return days!==null && days>=3;
+}
+function isHeatmapDangerCandidate(r){
+  return window.isRecruitHeatmapDangerCandidate ? window.isRecruitHeatmapDangerCandidate(r) : (isActionRequired(r)||isDormant3Days(r)||isNoContact(r)||isDecline(r));
 }
 function isNoContact(r){
   return window.isRecruitNoContact ? window.isRecruitNoContact(r) : (String(r.hiring_result||"").trim()==="不通");
@@ -800,10 +822,10 @@ function isInterviewNotSet(r){
   return validDate(r.appointment_date) && !validDate(r.interview1_date) && !isFinal(r);
 }
 function isHeatInterviewGap(r){
-  return validDate(r.applied_date) && !(window.isRecruitStageReached ? window.isRecruitStageReached(r,"面接実施") : hasInterviewReachedForList(r)) && !isFinal(r);
+  return validDate(r.applied_date) && !validDate(r.interview_done_date) && !isFinal(r);
 }
 function isHeatHireGap(r){
-  return validDate(r.applied_date) && !(window.isRecruitHired ? window.isRecruitHired(r) : isHired(r)) && !isFinal(r);
+  return validDate(r.applied_date) && !isHired(r) && !isFinal(r);
 }
 function applyListFilterRows(rows){
   switch(currentListFilter){
@@ -833,6 +855,8 @@ function applyListFilterRows(rows){
       return rows.filter(r=>isStageReachedForList(r,"採用"));
     case "action":
     case "today":
+    case "heat_action":
+      return rows.filter(isActionRequired);
     case "owner_stagnation":
       return rows.filter(r => window.isRecruitOwnerStagnation ? window.isRecruitOwnerStagnation(r) : (isActionRequired(r) && r.next_action_date && r.next_action_date < todayStr()));
     case "not_done":
@@ -845,6 +869,8 @@ function applyListFilterRows(rows){
       return rows.filter(isDecline);
     case "interview_not_set":
       return rows.filter(isInterviewNotSet);
+    case "heat_danger":
+      return rows.filter(isHeatmapDangerCandidate);
     case "heat_interview_gap":
       return rows.filter(isHeatInterviewGap);
     case "heat_hire_gap":
@@ -874,6 +900,8 @@ function getListFilterLabel(){
     no_contact:"連絡不通",
     decline:"辞退",
     interview_not_set:"面接未設定",
+    heat_action:"要対応",
+    heat_danger:"危険対象",
     heat_interview_gap:"面接未到達",
     heat_hire_gap:"採用未到達",
     owner_stagnation:"担当停滞（期限切れ）"
@@ -1447,6 +1475,6 @@ async function initPageAfterLogin(){
 });
 authInit();
 </script>
-<script src="./sidebar.js?v=20260524_metric_audit"></script>
+<script src="./sidebar.js?v=20260523_join_actual_fix"></script>
 </body>
 </html>
