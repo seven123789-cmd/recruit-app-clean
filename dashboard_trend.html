@@ -4,17 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>推移分析</title>
-<link href="./assets/css/common.css?v=20260523_phase3de" rel="stylesheet">
-<link href="./assets/css/header.css?v=20260523_phase3de" rel="stylesheet">
-<link href="./assets/css/sidebar.css?v=20260523_phase3de" rel="stylesheet">
-<link href="./assets/css/dashboard_ui.css?v=20260523_phase3de" rel="stylesheet">
-<link href="./assets/css/dashboard_trend.css?v=20260523_phase3de" rel="stylesheet">
-<script src="./common.js?v=20260523_phase3de"></script>
-<script src="assets/js/supabase.js?v=20260523_phase3de"></script>
-<script src="assets/js/auth.js?v=20260523_phase3de"></script>
-<script src="assets/js/ui_utils.js?v=20260523_phase3de"></script>
-<script src="assets/js/safe_utils.js?v=20260523_phase3de"></script>
-<script src="./sidebar.js?v=20260523_phase3de"></script>
+<link href="./assets/css/common.css?v=20260523_phase5_cleanup" rel="stylesheet">
+<link href="./assets/css/header.css?v=20260523_phase5_cleanup" rel="stylesheet">
+<link href="./assets/css/sidebar.css?v=20260523_phase5_cleanup" rel="stylesheet">
+<link href="./assets/css/dashboard_ui.css?v=20260523_phase5_cleanup" rel="stylesheet">
+<link href="./assets/css/dashboard_trend.css?v=20260523_phase5_cleanup" rel="stylesheet">
+<script src="./common.js?v=20260523_phase5_cleanup"></script>
+<script src="assets/js/supabase.js?v=20260523_phase5_cleanup"></script>
+<script src="assets/js/auth.js?v=20260523_phase5_cleanup"></script>
+<script src="assets/js/ui_utils.js?v=20260523_phase5_cleanup"></script>
+<script src="assets/js/safe_utils.js?v=20260523_phase5_cleanup"></script>
+<script src="./sidebar.js?v=20260523_phase5_cleanup"></script>
 </head>
 <body class="auth-checking">
 <div class="container hidden" id="authScreen">
@@ -179,7 +179,19 @@ function monthKey(s){return validDate(s)?String(s).slice(0,7):""}
 function fiscalRange(type){const fy=fiscalYear();if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};if(type==="all")return {fy:null,label:"全期間",from:"",to:""};return {fy,label:fy+"年度",from:fy+"-04-01",to:(fy+1)+"-03-31"}}
 function monthList(){const range=fiscalRange($("fy").value);if(!range.from||!range.to){const keys=[...new Set(rows.map(r=>monthKey(r.applied_date)).filter(Boolean))].sort();return keys.length?keys:[]}const start=Number(range.from.slice(0,4));return [4,5,6,7,8,9,10,11,12,1,2,3].map(m=>`${m>=4?start:start+1}-${String(m).padStart(2,"0")}`)}
 function applyFy(){const range=fiscalRange($("fy").value);const period=range.from&&range.to?`${range.from} ～ ${range.to}`:"全期間";setText("periodText","対象期間："+period);setText("headYear",range.label);setText("headPeriod",period);return range}
-function setSelectOptions(id,values,blank="すべて"){const el=$(id);if(!el)return;const current=el.value;const list=[...new Set((values||[]).map(v=>String(v||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ja"));el.innerHTML=`<option value="">${blank}</option>`+list.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");if(list.includes(current))el.value=current}
+function setSelectOptions(id, values, blank="すべて"){
+  if(window.RecruitDashboard && typeof window.RecruitDashboard.setSelectOptions === "function"){
+    return window.RecruitDashboard.setSelectOptions(id, values, { blankLabel: blank });
+  }
+  const el=$(id);
+  if(!el)return [];
+  const current=el.value;
+  const list=[...new Set((values||[]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));
+  el.innerHTML=`<option value="">${blank}</option>`;
+  list.forEach(v=>{el.innerHTML+=`<option value="${esc(v)}">${esc(v)}</option>`});
+  if(list.includes(current))el.value=current;
+  return list;
+}
 async function loadCenterMaster(){
   if(window.RecruitMaster && typeof window.RecruitMaster.loadCenterMaster === "function"){
     return await window.RecruitMaster.loadCenterMaster({

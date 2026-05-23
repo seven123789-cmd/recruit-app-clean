@@ -136,13 +136,18 @@ function referenceBadge(item){
   return item.applied>0&&item.applied<=5 ? '<span class="reference-badge">参考</span>' : '';
 }
 
-function setSelectOptions(id,values,blank="すべて"){
-  const el=$(id);if(!el)return;
+function setSelectOptions(id, values, blank="すべて"){
+  if(window.RecruitDashboard && typeof window.RecruitDashboard.setSelectOptions === "function"){
+    return window.RecruitDashboard.setSelectOptions(id, values, { blankLabel: blank });
+  }
+  const el=$(id);
+  if(!el)return [];
   const current=el.value;
   const list=[...new Set((values||[]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));
   el.innerHTML=`<option value="">${blank}</option>`;
   list.forEach(v=>{el.innerHTML+=`<option value="${esc(v)}">${esc(v)}</option>`});
   if(list.includes(current))el.value=current;
+  return list;
 }
 async function loadOwnerPageMasters(){
   try{

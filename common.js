@@ -1447,3 +1447,67 @@
     close: removeModal
   };
 })();
+
+/* RecruitDashboard : dashboard/list helper functions shared across analysis pages */
+(function(){
+  function escape(value){
+    if(window.escapeHtml) return window.escapeHtml(value);
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+  function uniqueSorted(values){
+    return [...new Set((values || [])
+      .map(v => String(v ?? "").trim())
+      .filter(Boolean))]
+      .sort((a,b) => a.localeCompare(b, "ja"));
+  }
+  function setSelectOptions(idOrEl, values, options={}){
+    const el = typeof idOrEl === "string" ? document.getElementById(idOrEl) : idOrEl;
+    if(!el) return [];
+    const blankLabel = options.blankLabel ?? "すべて";
+    const keepValue = options.keepValue ?? el.value;
+    const list = uniqueSorted(values);
+    el.innerHTML = `<option value="">${escape(blankLabel)}</option>` +
+      list.map(v => `<option value="${escape(v)}">${escape(v)}</option>`).join("");
+    if(list.includes(keepValue)) el.value = keepValue;
+    return list;
+  }
+  function getFiscalRange(mode){
+    if(typeof window.fiscalYear !== "function"){
+      return { fy:null, label:"全期間", from:"", to:"" };
+    }
+    const fy = window.fiscalYear();
+    if(mode === "previous") return { fy:fy - 1, label:(fy - 1) + "年度", from:(fy - 1) + "-04-01", to:fy + "-03-31" };
+    if(mode === "all") return { fy:null, label:"全期間", from:"", to:"" };
+    return { fy, label:fy + "年度", from:fy + "-04-01", to:(fy + 1) + "-03-31" };
+  }
+  function readFilterValue(id){
+    const el = document.getElementById(id);
+    return el ? String(el.value || "") : "";
+  }
+  function matchesBasicCandidateFilters(row, filters={}){
+    if(!row || row.is_deleted) return false;
+    const applied = String(row.applied_date || "").slice(0,10);
+    if(filters.requireAppliedDate !== false && !/^\d{4}-\d{2}-\d{2}$/.test(applied)) return false;
+    if(filters.from && applied < filters.from) return false;
+    if(filters.to && applied > filters.to) return false;
+    if(filters.division && String(row.division || "") !== filters.division) return false;
+    if(filters.center && String(row.center_name || "") !== filters.center) return false;
+    if(filters.owner && String(row.owner_name || "未設定") !== filters.owner) return false;
+    if(filters.channel && String(row.channel || "未設定") !== filters.channel) return false;
+    if(filters.job && String(row.job_type || "") !== filters.job) return false;
+    return true;
+  }
+  window.RecruitDashboard = Object.assign(window.RecruitDashboard || {}, {
+    escape,
+    uniqueSorted,
+    setSelectOptions,
+    getFiscalRange,
+    readFilterValue,
+    matchesBasicCandidateFilters
+  });
+})();

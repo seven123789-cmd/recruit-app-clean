@@ -75,7 +75,19 @@ async function authInit(){
     afterAuth: async function(){ await initPageAfterLogin(); }
   });
 }
-function setSelectOptions(id,values,blank="すべて"){const el=$(id);if(!el)return;const current=el.value;const list=[...new Set((values||[]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));el.innerHTML=`<option value="">${blank}</option>`;list.forEach(v=>{el.innerHTML+=`<option value="${esc(v)}">${esc(v)}</option>`});if(list.includes(current))el.value=current}
+function setSelectOptions(id, values, blank="すべて"){
+  if(window.RecruitDashboard && typeof window.RecruitDashboard.setSelectOptions === "function"){
+    return window.RecruitDashboard.setSelectOptions(id, values, { blankLabel: blank });
+  }
+  const el=$(id);
+  if(!el)return [];
+  const current=el.value;
+  const list=[...new Set((values||[]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));
+  el.innerHTML=`<option value="">${blank}</option>`;
+  list.forEach(v=>{el.innerHTML+=`<option value="${esc(v)}">${esc(v)}</option>`});
+  if(list.includes(current))el.value=current;
+  return list;
+}
 function filtered(data){const f=$("from").value;const t=$("to").value;const d=$("divisionFilter").value;return (data||[]).filter(r=>!r.is_deleted).filter(r=>{if(!validDate(r.applied_date))return false;if(!hasDivision(r))return false;if(f&&r.applied_date<f)return false;if(t&&r.applied_date>t)return false;if(d&&r.division!==d)return false;return true})}
 
 function currentFiscalYearValue(){

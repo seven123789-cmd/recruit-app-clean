@@ -5,19 +5,19 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>採用単価</title>
-<link href="./assets/css/common.css?v=20260523_phase3de" rel="stylesheet"/>
-<link href="./assets/css/header.css?v=20260523_phase3de" rel="stylesheet"/>
-<link href="./assets/css/sidebar.css?v=20260523_phase3de" rel="stylesheet"/>
-<link href="./assets/css/dashboard_cost.css?v=20260523_phase3de" rel="stylesheet"/>
-<script src="./common.js?v=20260523_phase3de"></script>
-<script src="assets/js/supabase.js?v=20260523_phase3de"></script>
-<script src="assets/js/auth.js?v=20260523_phase3de"></script>
-<script src="assets/js/ui_utils.js?v=20260523_phase3de"></script>
-<script src="assets/js/audit_utils.js?v=20260523_phase3de"></script>
-<script src="assets/js/ops_guard.js?v=20260523_phase3de"></script>
-<script src="assets/js/safe_utils.js?v=20260523_phase3de"></script>
-<script src="./sidebar.js?v=20260523_phase3de"></script>
-<link href="./assets/css/dashboard_ui.css?v=20260523_phase3de" rel="stylesheet"/>
+<link href="./assets/css/common.css?v=20260523_phase5_cleanup" rel="stylesheet"/>
+<link href="./assets/css/header.css?v=20260523_phase5_cleanup" rel="stylesheet"/>
+<link href="./assets/css/sidebar.css?v=20260523_phase5_cleanup" rel="stylesheet"/>
+<link href="./assets/css/dashboard_cost.css?v=20260523_phase5_cleanup" rel="stylesheet"/>
+<script src="./common.js?v=20260523_phase5_cleanup"></script>
+<script src="assets/js/supabase.js?v=20260523_phase5_cleanup"></script>
+<script src="assets/js/auth.js?v=20260523_phase5_cleanup"></script>
+<script src="assets/js/ui_utils.js?v=20260523_phase5_cleanup"></script>
+<script src="assets/js/audit_utils.js?v=20260523_phase5_cleanup"></script>
+<script src="assets/js/ops_guard.js?v=20260523_phase5_cleanup"></script>
+<script src="assets/js/safe_utils.js?v=20260523_phase5_cleanup"></script>
+<script src="./sidebar.js?v=20260523_phase5_cleanup"></script>
+<link href="./assets/css/dashboard_ui.css?v=20260523_phase5_cleanup" rel="stylesheet"/>
 </head>
 <body class="auth-checking">
 <div class="container hidden" id="authScreen">
@@ -316,13 +316,17 @@ async function authInit(){
 }
 
 function setSelectOptions(id,values,blank="すべて"){
+  if(window.RecruitDashboard && typeof window.RecruitDashboard.setSelectOptions === "function"){
+    return window.RecruitDashboard.setSelectOptions(id, values, { blankLabel: blank });
+  }
   const el=$(id);
-  if(!el)return;
+  if(!el)return [];
   const current=el.value;
   const list=[...new Set((values||[]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),"ja"));
   el.innerHTML=`<option value="">${blank}</option>`;
   list.forEach(v=>{el.innerHTML+=`<option value="${esc(v)}">${esc(v)}</option>`});
   if(list.includes(current))el.value=current;
+  return list;
 }
 async function loadMasterChannels(){
 
@@ -725,6 +729,6 @@ async function initPageAfterLogin(){
 }
 authInit();
 </script>
-<script src="dashboard_summary_links.js?v=20260523_phase3de"></script>
+<script src="dashboard_summary_links.js?v=20260523_phase5_cleanup"></script>
 </body>
 </html>
