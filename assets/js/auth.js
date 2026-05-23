@@ -87,6 +87,19 @@
     }
   }
 
+
+  function normalizeRole(role){
+    return String(role || window.currentRole || "viewer").toLowerCase();
+  }
+  function hasRole(role, allowed){
+    const r = normalizeRole(role);
+    const list = Array.isArray(allowed) ? allowed : String(allowed || "").split(",");
+    return list.map(v => normalizeRole(v)).includes(r);
+  }
+  function isAdmin(role){ return normalizeRole(role) === "admin"; }
+  function isEditor(role){ return ["admin","editor"].includes(normalizeRole(role)); }
+  function isViewer(role){ return normalizeRole(role) === "viewer"; }
+
   async function logoutToIndex(client){
     if(window.RecruitAuth && typeof window.RecruitAuth.logoutToIndex === "function"){
       await window.RecruitAuth.logoutToIndex();
@@ -120,27 +133,7 @@
     }
   }
 
-  function normalizeRole(role){
-    return String(role || "viewer").trim().toLowerCase();
-  }
-
-  function hasRole(role, allowed){
-    const current = normalizeRole(role);
-    const list = Array.isArray(allowed) ? allowed : [allowed];
-    return list.map(normalizeRole).includes(current);
-  }
-
-  function isAdmin(role){ return hasRole(role, "admin"); }
-  function isEditor(role){ return hasRole(role, ["admin", "editor"]); }
-  function isViewer(role){ return hasRole(role, ["admin", "editor", "viewer"]); }
-
   window.RecruitPageAuth = Object.assign(window.RecruitPageAuth || {}, {
-    getUser, getRole, showAuth, showApp, login, logoutToIndex, authInit,
-    normalizeRole, hasRole, isAdmin, isEditor, isViewer
+    getUser, getRole, normalizeRole, hasRole, isAdmin, isEditor, isViewer, showAuth, showApp, login, logoutToIndex, authInit
   });
-
-  window.hasRecruitRole = window.hasRecruitRole || hasRole;
-  window.isRecruitAdmin = window.isRecruitAdmin || isAdmin;
-  window.isRecruitEditor = window.isRecruitEditor || isEditor;
-  window.isRecruitViewer = window.isRecruitViewer || isViewer;
 })();

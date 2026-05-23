@@ -1031,3 +1031,29 @@ tbody tr:last-child td{
     font-size:7.8px;
   }
 }
+
+/* 2026-05-23 shared print stability utilities */
+@media print{
+  .print-page,
+  .report-page{
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-no-break,
+  .kpi-grid,
+  .summary-grid,
+  .report-kpis{
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  table{
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+  thead{
+    display: table-header-group;
+  }
+  tfoot{
+    display: table-footer-group;
+  }
+}
