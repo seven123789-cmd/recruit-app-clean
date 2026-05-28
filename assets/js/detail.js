@@ -674,108 +674,53 @@ function setFieldValue(id, value) {
   el.value = valueOrBlank(value);
 }
 
-function parseDetailDate(value) {
-  const text = String(value || "").slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
-  const date = new Date(text + "T00:00:00+09:00");
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function detailTodayDate() {
-  const todayText = window.todayJST ? window.todayJST() : new Date().toLocaleDateString("ja-JP", { timeZone:"Asia/Tokyo", year:"numeric", month:"2-digit", day:"2-digit" }).replaceAll("/", "-");
-  return parseDetailDate(todayText) || new Date();
-}
-
-function createActionAdviceItem(key, level, reason, action) {
-  return { key, level, reason, action };
-}
-
 function getActionAdvice(row) {
-  const normalized = window.normalizeRecruitCandidateState ? window.normalizeRecruitCandidateState(row || {}) : (row || {});
-  const status = String(normalized.status || "").trim();
-  const hiringResult = String(normalized.hiring_result || "進行中").trim() || "進行中";
-  const items = [];
-  const today = detailTodayDate();
-  const nextDate = parseDetailDate(normalized.next_action_date);
-  const appliedDate = parseDetailDate(normalized.applied_date);
-  const interviewDate = parseDetailDate(normalized.interview1_date || normalized.interview_date);
-
-  const isHired = window.isRecruitHired ? window.isRecruitHired(normalized) : hiringResult === "入社済" || !!normalized.join_date;
-  const isFinal = ["入社済", "不採用", "辞退", "不通"].includes(hiringResult);
-  const isPendingJoin = (window.isRecruitPendingJoinFollowRequired ? window.isRecruitPendingJoinFollowRequired(normalized) : (status === "採用" && hiringResult === "採用" && !isHired));
-
-  if (isPendingJoin && !nextDate) {
-    items.push(createActionAdviceItem(
-      "pending_join_missing",
-      "caution",
-      "ステータスが「採用」、選考結果が「採用」のため、入社前の内定状態です。次回対応日が未設定です。",
-      "入社済みなら選考結果を「入社済」に変更してください。辞退なら「辞退」に変更してください。入社前なら次回対応日を登録してください。"
-    ));
-  } else if (isPendingJoin && nextDate && nextDate <= today) {
-    items.push(createActionAdviceItem(
-      "pending_join_due",
-      nextDate < today ? "danger" : "warning",
-      nextDate < today ? "入社前の内定状態で、次回対応日が期限切れです。" : "入社前の内定状態で、次回対応日が今日です。",
-      "入社状況を確認し、入社済みなら選考結果を「入社済」に変更してください。入社前なら次回対応日を更新してください。"
-    ));
+  // 応募者詳細の要対応表示も common.js の正式ルールを使う。
+  // ここで独自判定を持つと、ダッシュボード・LISTと件数や理由がズレる。
+  if (window.getRecruitActionAdvice) {
+    return window.getRecruitActionAdvice(row);
   }
 
-  if (!isFinal && !isPendingJoin) {
-    if (!nextDate) {
-      items.push(createActionAdviceItem(
-        "next_missing",
-        "caution",
-        "次回対応日が未設定です。",
-        "応募者詳細で次回対応日を登録してください。対応が完了している場合は、ステータスまたは選考結果も更新してください。"
-      ));
-    } else if (nextDate < today) {
-      items.push(createActionAdviceItem(
-        "next_overdue",
-        "danger",
-        "次回対応日が期限切れです。",
-        "応募者詳細で次回対応日を今日以降に更新してください。対応済みならステータス・選考結果・対応メモを更新してください。"
-      ));
-    } else if (nextDate.getTime() === today.getTime()) {
-      items.push(createActionAdviceItem(
-        "next_today",
-        "warning",
-        "次回対応日が今日です。",
-        "本日中に対応し、対応後は次回対応日・ステータス・選考結果・対応メモを更新してください。"
-      ));
-    }
+  const status = String(row.status || "").trim();
+  const hiringResult = String(row.hiring_result || "進行中").trim() || "進行中";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const nextDate = row.next_action_date ? new Date(row.next_action_date + "T00:00:00+09:00") : null;
+
+  if (row.is_deleted === true) return null;
+  if (!(status === "採用" && hiringResult === "採用")) {
+    if (status === "採用" || hiringResult !== "進行中") return null;
   }
 
-  if (!isFinal && status === "面接設定" && interviewDate && interviewDate <= today && hiringResult === "進行中") {
-    items.push(createActionAdviceItem(
-      "interview_result_missing",
-      interviewDate < today ? "danger" : "warning",
-      interviewDate < today ? "面接予定日を過ぎていますが、面接結果が未登録です。" : "本日が面接予定日ですが、面接結果が未登録です。",
-      "面接済みなら、面接実施日と選考結果（採用・不採用・辞退など）を登録してください。未実施なら次回対応日を更新してください。"
-    ));
+  if (!nextDate) {
+    return {
+      level: "caution",
+      reason: status === "採用" && hiringResult === "採用"
+        ? "採用ステータスですが、選考結果が「採用」のままです。入社前の内定状態として扱うため、フォロー予定が必要です。"
+        : "次回対応日が未設定です。",
+      action: status === "採用" && hiringResult === "採用"
+        ? "入社済みなら選考結果を「入社済」に変更してください。辞退なら選考結果を「辞退」に変更してください。入社前なら次回対応日と対応メモを更新してください。"
+        : "応募者詳細で次回対応日を設定してください。"
+    };
   }
 
-  if (!isFinal && status === "応募" && hiringResult === "進行中" && appliedDate) {
-    const days = Math.floor((today - appliedDate) / (1000 * 60 * 60 * 24));
-    if (days >= 3 && !normalized.appointment_date && !normalized.interview1_date && !normalized.interview_date && !normalized.interview_done_date) {
-      items.push(createActionAdviceItem(
-        "dormant",
-        "caution",
-        "応募後3日以上、アポ取得または面接設定に進んでいません。",
-        "応募者へ連絡し、アポ取得・面接設定・辞退・不通など実態に合わせて更新してください。"
-      ));
-    }
+  if (nextDate < today) {
+    return {
+      level: "danger",
+      reason: "次回対応日が期限切れです。",
+      action: "応募者詳細で対応状況を確認し、次回対応日・選考結果・対応メモを更新してください。"
+    };
   }
 
-  if (!items.length) return null;
+  if (nextDate.getTime() === today.getTime()) {
+    return {
+      level: "warning",
+      reason: "次回対応日が今日です。",
+      action: "応募者詳細で本日の対応結果を登録し、必要に応じて次回対応日を更新してください。"
+    };
+  }
 
-  const levelRank = { danger:3, warning:2, caution:1 };
-  const level = items.reduce((max, item) => levelRank[item.level] > levelRank[max] ? item.level : max, "caution");
-  return {
-    level,
-    items,
-    reason: items.map(item => item.reason).join(" "),
-    action: items.map(item => item.action).join(" ")
-  };
+  return null;
 }
 
 function updateActionPriority(level) {
@@ -856,14 +801,11 @@ function renderActionAdvice(row) {
     card.classList.add("action-caution");
   }
 
-  const safeText = window.escapeHtml || (value => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch] || ch)));
-  const reasonList = advice.items.map(item => `<li>${safeText(item.reason)}</li>`).join("");
-  const actionList = advice.items.map(item => `<li>${safeText(item.action)}</li>`).join("");
-  reasonEl.innerHTML = `<ul class="action-advice-list">${reasonList}</ul>`;
-  actionEl.innerHTML = `<ul class="action-advice-list">${actionList}</ul>`;
-  if (inlineSummaryEl) inlineSummaryEl.textContent = advice.items[0].reason;
+  reasonEl.textContent = advice.reason;
+  actionEl.textContent = advice.action;
+  if (inlineSummaryEl) inlineSummaryEl.textContent = advice.reason + " ・ " + advice.action;
   card.classList.remove("hidden");
-  card.classList.remove("action-collapsed");
+  applyActionAdviceDefaultState();
 }
 
 function fillCandidate(row) {
@@ -999,7 +941,7 @@ async function moveActionCandidate(step) {
 
     const { data, error } = await sb
       .from("candidates")
-      .select("id,status,next_action_date,hiring_result,is_deleted")
+      .select("id,status,next_action_date,hiring_result,is_deleted,join_date,offer_date,decline_reason,reject_reason,action_memo")
       .eq("is_deleted", false);
 
     if (error) throw error;
@@ -1007,28 +949,21 @@ async function moveActionCandidate(step) {
     const rows = data || [];
     const rowMap = new Map(rows.map(row => [String(row.id), row]));
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const activeStatuses = ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
-
-   function isActionRow(row) {
+    function isActionRow(row) {
       if (!row) return false;
+      if (window.isRecruitActionRequired) return window.isRecruitActionRequired(row);
 
       const status = String(row.status || "").trim();
-      const hiringResult = String(row.hiring_result || "").trim();
-
+      const hiringResult = String(row.hiring_result || "進行中").trim() || "進行中";
+      if (row.is_deleted === true) return false;
+      if (status === "採用" && hiringResult === "採用") {
+        if (!row.next_action_date) return true;
+        return String(row.next_action_date).slice(0,10) <= todayStr();
+      }
       if (status === "採用") return false;
-      if (["採用","入社済","不採用","辞退","不通","保留"].includes(hiringResult)) return false;
-
-      if (!activeStatuses.includes(status)) return false;
-
+      if (hiringResult !== "進行中") return false;
       if (!row.next_action_date) return true;
-
-      const nextDate = new Date(row.next_action_date + "T00:00:00+09:00");
-      const diff = (nextDate - today) / (1000 * 60 * 60 * 24);
-
-      return diff <= 1;
+      return String(row.next_action_date).slice(0,10) <= todayStr();
     }
 
     const currentIdText = String(candidateId);
