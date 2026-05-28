@@ -274,28 +274,27 @@
 .dashboard-link-card::after{
   content:"一覧へ";
   position:absolute;
-  top:12px;
-  right:12px;
+  top:14px;
+  right:14px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  min-height:22px;
-  padding:0 8px;
-  border:1px solid #dbeafe;
+  min-height:26px;
+  padding:0 10px;
+  border:1px solid #bfdbfe;
   border-radius:999px;
-  background:#f8fbff;
+  background:#eff6ff;
   color:#2563eb;
-  font-size:10px;
-  font-weight:900;
-  letter-spacing:-.02em;
-  opacity:.78;
-  visibility:visible;
-  transform:none;
-  transition:opacity .16s ease, border-color .16s ease, background-color .16s ease;
+  font-size:11px;
+  font-weight:950;
+  opacity:0;
+  visibility:hidden;
+  transform:translateY(-2px);
+  transition:opacity .16s ease, visibility .16s ease, transform .16s ease;
   pointer-events:none;
 }
 .dashboard-link-card:hover::after,
-.dashboard-link-card:focus-visible::after{opacity:.95;border-color:#bfdbfe;background:#eff6ff;}
+.dashboard-link-card:focus-visible::after{opacity:1;visibility:visible;transform:translateY(0);}
 .priority-card,
 .flow-card,
 .reason-card{
@@ -634,4 +633,40 @@ table td,table th{vertical-align:middle;}
 .data-table th:nth-child(n+2),
 .data-table td:nth-child(n+2){
   text-align:center;
+}
+
+/* KPI action button restore: keep original card layout and tone down only the pseudo action */
+.main-content .dashboard-link-card::after{
+  content:"一覧へ";
+  position:absolute;
+  top:12px;
+  right:12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:20px;
+  padding:0 7px;
+  border:1px solid #bfdbfe;
+  border-radius:999px;
+  background:rgba(239,246,255,.86);
+  color:#2563eb;
+  font-size:10px;
+  font-weight:900;
+  line-height:1;
+  letter-spacing:-.02em;
+  opacity:0;
+  visibility:hidden;
+  transform:translateY(-2px) scale(.96);
+  transition:opacity .16s ease, visibility .16s ease, transform .16s ease, background-color .16s ease;
+  pointer-events:none;
+  box-shadow:none;
+}
+.main-content .dashboard-link-card:hover::after,
+.main-content .dashboard-link-card:focus-visible::after{
+  opacity:.74;
+  visibility:visible;
+  transform:translateY(0) scale(1);
+}
+.main-content .dashboard-link-card:hover::after{
+  background:#eff6ff;
 }
