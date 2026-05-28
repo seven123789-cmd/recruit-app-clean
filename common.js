@@ -324,12 +324,13 @@
 
   function isRecruitOwnerStagnation(row){
     // 担当停滞は「期限切れ」だけを対象にする。
-    // 採用決定（status=採用 / hiring_result=採用）は入社前の内定扱いなので、
-    // 入社済・辞退・不採用などの終了結果でない限り、期限切れ判定の対象にする。
+    // 未設定・今日・未来日は、要対応や予定管理で扱い、停滞には含めない。
     const r = normalizeRecruitCandidateState(row || {});
     if(r.is_deleted === true) return false;
     const result = String(r.hiring_result || "進行中").trim() || "進行中";
-    if(!["進行中","採用"].includes(result)) return false;
+    if(result !== "進行中") return false;
+    const status = String(r.status || "").trim();
+    if(status === "採用") return false;
     if(isFinal(r)) return false;
     const next = String(r.next_action_date || "").slice(0,10);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return false;
@@ -337,14 +338,32 @@
   }
 
 
+  function isRecruitPendingJoinFollowRequired(row){
+    // status=採用 / hiring_result=採用 は、実入社ではなく入社前の内定状態。
+    // 入社済・辞退・不採用などへ結果更新されるまで、次回対応日の未設定・期限切れを要対応として扱う。
+    const r = normalizeRecruitCandidateState(row || {});
+    if(r.is_deleted === true) return false;
+    const status = String(r.status || "").trim();
+    const result = String(r.hiring_result || "").trim();
+    return status === "採用" && result === "採用" && !isRecruitHired(r) && !isRecruitDeclined(r) && !isRecruitRejected(r);
+  }
+
+
   function isRecruitActionRequired(row){
-    // 要対応は「進行中」または入社前の採用決定で、次回対応日が未設定または今日以前。
-    // 採用決定（status=採用 / hiring_result=採用）は内定扱いのため、入社済になるまで要対応対象に残す。
+    // 要対応は、未完了候補者の次回対応日が未設定または今日以前の場合。
+    // status=採用 / hiring_result=採用 は入社前の内定状態として、フォロー未設定・期限切れを対象に含める。
     const r = normalizeRecruitCandidateState(row || {});
     if(r.is_deleted === true) return false;
     const result = String(r.hiring_result || "進行中").trim() || "進行中";
-    if(!["進行中","採用"].includes(result)) return false;
-    if(isFinal(r)) return false;
+    const status = String(r.status || "").trim();
+    const pendingJoinFollow = isRecruitPendingJoinFollowRequired(r);
+
+    if(!pendingJoinFollow){
+      if(result !== "進行中") return false;
+      if(status === "採用") return false;
+      if(isFinal(r)) return false;
+    }
+
     const next = String(r.next_action_date || "").slice(0,10);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return true;
     return next <= todayJST();
@@ -385,8 +404,7 @@
   function isFinal(row){
     const r = normalizeRecruitCandidateState(row || {});
     const status = String(r.status || "").trim();
-    // hiring_result=採用 は「入社前の採用決定」であり、終了扱いにしない。
-    return isRecruitHired(r) || ["不採用","辞退","不通","保留","入社済"].includes(String(r.hiring_result || "").trim()) || ["不採用","辞退","不通","保留","入社"].includes(status);
+    return isRecruitHired(r) || ["不採用","辞退","不通","保留","採用","入社済"].includes(String(r.hiring_result || "").trim()) || ["不採用","辞退","不通","保留","入社"].includes(status);
   }
 
 
@@ -462,6 +480,7 @@
   window.isRecruitNoContact = window.isRecruitNoContact || isRecruitNoContact;
   window.isRecruitDropped = window.isRecruitDropped || isRecruitDropped;
   window.isRecruitOwnerStagnation = window.isRecruitOwnerStagnation || isRecruitOwnerStagnation;
+  window.isRecruitPendingJoinFollowRequired = window.isRecruitPendingJoinFollowRequired || isRecruitPendingJoinFollowRequired;
   window.isRecruitActionRequired = window.isRecruitActionRequired || isRecruitActionRequired;
   window.isRecruitDormant3Days = window.isRecruitDormant3Days || isRecruitDormant3Days;
   window.isRecruitHeatmapDangerCandidate = window.isRecruitHeatmapDangerCandidate || isRecruitHeatmapDangerCandidate;
