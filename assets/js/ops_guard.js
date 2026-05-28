@@ -2,8 +2,8 @@
 (function(){
 
 function normalize(role){
-  const r = String(role || window.currentRole || "viewer").toLowerCase().trim();
-  return ["admin", "editor", "viewer"].includes(r) ? r : "viewer";
+  const value = String(role || window.currentRole || "viewer").toLowerCase();
+  return ["admin", "editor", "viewer"].includes(value) ? value : "viewer";
 }
 
 function currentRole(){
@@ -144,6 +144,7 @@ function applyToPage(role = currentRole()){
   clearViewerDisabledControls();
   document.body.classList.toggle("role-viewer", r === "viewer");
   document.body.classList.toggle("role-editor", r === "editor");
+  document.body.classList.toggle("role-manager", false);
   document.body.classList.toggle("role-admin", r === "admin");
 
   const page = currentRecruitPage();
@@ -187,17 +188,13 @@ window.RecruitOpsGuard = {
   requireExport,
   requireDelete,
   requireMaster,
-  applyToPage,
-  isViewer: role => normalize(role) === "viewer",
-  isEditor: role => normalize(role) === "editor",
-  isAdmin: role => normalize(role) === "admin"
+  applyToPage
 };
 
 // Compatibility alias. RecruitOpsGuard is the formal permission object;
 // RecruitRole remains for existing pages that still call RecruitRole.apply()/isViewer().
 window.RecruitRole = Object.assign(window.RecruitOpsGuard, {
   isViewer: role => normalize(role) === "viewer",
-  isEditor: role => normalize(role) === "editor",
   isAdmin: role => normalize(role) === "admin",
   isManager: role => false,
   canExport,

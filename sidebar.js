@@ -3,12 +3,12 @@
   "use strict";
 
   const mainItems = [
-    { href:"./index.html", label:"登録画面" },
-    { href:"./list.html", label:"応募者一覧" },
-    { href:"./detail.html", label:"応募者詳細" },
-    { href:"./dashboard.html", label:"ダッシュボード" },
-    { href:"./data_io.html", label:"データ連携" },
-    { href:"./print_center.html", label:"帳票出力" }
+    { href:"./index.html", label:"登録画面", roles:["admin","editor"] },
+    { href:"./list.html", label:"応募者一覧", roles:["admin","editor","viewer"] },
+    { href:"./detail.html", label:"応募者詳細", roles:["admin","editor","viewer"] },
+    { href:"./dashboard.html", label:"ダッシュボード", roles:["admin","editor","viewer"] },
+    { href:"./data_io.html", label:"データ連携", roles:["admin"] },
+    { href:"./print_center.html", label:"帳票出力", roles:["admin"] }
   ];
 
   const analysisGroups = [
@@ -116,8 +116,22 @@
     });
   }
 
+  function normalizeRole(role){
+    const value = String(role || "viewer").toLowerCase();
+    return ["admin", "editor", "viewer"].includes(value) ? value : "viewer";
+  }
+
   function getResolvedRole(){
-    return String(window.currentRole || "").toLowerCase();
+    return normalizeRole(window.currentRole || "viewer");
+  }
+
+  function isAllowedForRole(item, role){
+    const allowed = Array.isArray(item.roles) && item.roles.length ? item.roles : ["admin", "editor", "viewer"];
+    return allowed.includes(normalizeRole(role));
+  }
+
+  function filterItemsByRole(items, role){
+    return items.filter(item => isAllowedForRole(item, role));
   }
 
   function isAdminRole(){
@@ -138,7 +152,7 @@
         const user = session && session.user ? session.user : null;
         if(user){
           const { data } = await client.from("profiles").select("role,is_active").eq("user_id", user.id).maybeSingle();
-          window.currentRole = data && data.is_active !== false && data.role ? String(data.role).toLowerCase() : "viewer";
+          window.currentRole = data && data.is_active !== false && data.role ? normalizeRole(data.role) : "viewer";
         }
       }catch(e){
         console.warn("sidebar fallback role fetch failed", e);
@@ -157,7 +171,10 @@
     sidebar.className = "sidebar";
     sidebar.setAttribute("aria-label", "採用管理メニュー");
 
-    const systemGroup = isAdminRole() ? groupHtml("システム管理", "system", systemItems) : "";
+    const role = getResolvedRole();
+    const visibleMainItems = filterItemsByRole(mainItems, role);
+    const visibleSystemItems = filterItemsByRole(systemItems.map(item => Object.assign({ roles:["admin"] }, item)), role);
+    const systemGroup = visibleSystemItems.length ? groupHtml("システム管理", "system", visibleSystemItems) : "";
 
     sidebar.innerHTML = `
       <div class="sidebar-inner">
@@ -166,7 +183,7 @@
         </div>
 
         <nav class="sidebar-nav" aria-label="主要メニュー">
-          ${mainItems.map(item => linkHtml(item, "sidebar-link")).join("")}
+          ${visibleMainItems.map(item => linkHtml(item, "sidebar-link")).join("")}
         </nav>
 
         <div class="sidebar-section-title">分析メニュー</div>

@@ -123,7 +123,8 @@
   function normalizeRole(role){
     if(window.RecruitRole && typeof window.RecruitRole.normalize === "function") return window.RecruitRole.normalize(role);
     if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.normalize === "function") return window.RecruitOpsGuard.normalize(role);
-    return String(role || window.currentRole || "viewer").toLowerCase();
+    const value = String(role || window.currentRole || "viewer").toLowerCase();
+    return ["admin", "editor", "viewer"].includes(value) ? value : "viewer";
   }
   function hasRole(role, allowed){
     const r = normalizeRole(role);

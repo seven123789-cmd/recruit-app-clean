@@ -1209,7 +1209,8 @@
     if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.normalize === "function"){
       return window.RecruitOpsGuard.normalize(role);
     }
-    return String(role || window.currentRole || "viewer").toLowerCase();
+    const value = String(role || window.currentRole || "viewer").toLowerCase();
+    return ["admin", "editor", "viewer"].includes(value) ? value : "viewer";
   }
 
   function isRecruitViewer(role){
@@ -1240,7 +1241,7 @@
     const r = normalizeRecruitRole(role);
     document.body.classList.toggle("role-viewer", r === "viewer");
     document.body.classList.toggle("role-editor", r === "editor");
-    document.body.classList.toggle("role-manager", r === "manager");
+    document.body.classList.toggle("role-manager", false);
     document.body.classList.toggle("role-admin", r === "admin");
   }
 
@@ -1711,7 +1712,8 @@
   }
   function getRecruitRoleValue(role){
     if(window.RecruitRole && typeof window.RecruitRole.normalize === "function") return window.RecruitRole.normalize(role);
-    return String(role || window.currentRole || "viewer").toLowerCase();
+    const value = String(role || window.currentRole || "viewer").toLowerCase();
+    return ["admin", "editor", "viewer"].includes(value) ? value : "viewer";
   }
   function hasRecruitRole(role, allowed){
     const r = getRecruitRoleValue(role);
