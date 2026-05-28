@@ -18,6 +18,7 @@ let DECLINE_REASON_OPTIONS = [];
 let REJECT_REASON_OPTIONS = [];
 
 let isDirty = false;
+let isSaving = false;
 
 function setSaveStatus(state, message) {
   const el = document.getElementById("saveStatus");
@@ -42,6 +43,14 @@ function markSaved(message = "保存済み") {
   setSaveStatus("saved", message);
 }
 
+
+function setSaveBusy(busy) {
+  isSaving = !!busy;
+  const btn = document.getElementById("detailSaveButton");
+  if (!btn) return;
+  btn.disabled = !!busy;
+  btn.textContent = busy ? "保存中..." : "保存";
+}
 
 function showErrorModal(message, title = "保存できません") {
   return new Promise((resolve) => {
@@ -1466,6 +1475,7 @@ async function deleteCandidate() {
 }
 
 async function saveCandidate() {
+  if (isSaving) return;
   if(window.RecruitOpsGuard && !window.RecruitOpsGuard.requireWrite(currentRole)) return;
   if(window.RecruitRole && window.RecruitRole.isViewer(currentRole)){
     await showErrorModal("viewer権限のため、保存はできません。", "保存できません");
@@ -1499,6 +1509,7 @@ async function saveCandidate() {
 
     payload.updated_by = user.id;
 
+    setSaveBusy(true);
     setPageMessage("保存中です", "info");
 
     const beforeCandidate = currentCandidate ? {...currentCandidate} : null;
@@ -1526,6 +1537,8 @@ setPageMessage("保存しました", "success");
 showSuccessModal("保存しました");
   } catch (e) {
     setPageMessage("保存失敗: " + (e.message || e), "error");
+  } finally {
+    setSaveBusy(false);
   }
 }
 

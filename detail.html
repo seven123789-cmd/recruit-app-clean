@@ -258,14 +258,14 @@
       <div class="col-12">
         <div class="detail-action-area">
           <div class="primary-save-area">
-            <button class="btn-primary" type="button" onclick="saveCandidate()">保存</button>
+            <button id="detailSaveButton" class="btn-primary" type="button" onclick="saveCandidate()">保存</button>
             <div id="saveStatus" class="save-status-bar saved">
               <span>✓ 保存済み</span>
               <span class="save-status-sub">変更すると未保存表示に変わります</span>
             </div>
           </div>
           <div class="detail-sub-actions">
-            <a class="link-btn" href="./list.html" onclick="markReturnToList()">一覧へ戻る</a>
+            <a class="link-btn" href="./list.html" onclick="return handleReturnToList(event)">一覧へ戻る</a>
             <button class="btn-danger-soft" type="button" onclick="deleteCandidate()" data-requires-role="admin">削除</button>
           </div>
         </div>

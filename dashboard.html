@@ -124,17 +124,17 @@
       <section class="card">
         <h2>優先対応</h2>
         <div class="priority-grid">
-          <div class="priority-card danger dashboard-link-card" onclick="goListFilter('today')" onkeydown="activateDashboardLink(event,'today')" role="button" tabindex="0" aria-label="要対応（今日）の応募者一覧を開く" title="要対応（今日）の応募者一覧を開く">
+          <div class="priority-card danger dashboard-link-card" data-list-filter="today" role="button" tabindex="0" aria-label="要対応（今日）の応募者一覧を開く" title="要対応（今日）の応募者一覧を開く">
             <div class="priority-label">要対応（今日）</div>
             <div class="priority-value" id="priorityToday">0</div>
             <div class="priority-sub">期限切れ・今日・未設定</div>
           </div>
-          <div class="priority-card warning dashboard-link-card" onclick="goListFilter('not_done')" onkeydown="activateDashboardLink(event,'not_done')" role="button" tabindex="0" aria-label="未実施の応募者一覧を開く" title="未実施の応募者一覧を開く">
+          <div class="priority-card warning dashboard-link-card" data-list-filter="not_done" role="button" tabindex="0" aria-label="未実施の応募者一覧を開く" title="未実施の応募者一覧を開く">
             <div class="priority-label">未実施</div>
             <div class="priority-value" id="priorityNotDone">0</div>
             <div class="priority-sub">面接設定済み・未実施</div>
           </div>
-          <div class="priority-card purple dashboard-link-card" onclick="goListFilter('dormant')" onkeydown="activateDashboardLink(event,'dormant')" role="button" tabindex="0" aria-label="放置3日以上の応募者一覧を開く" title="放置3日以上の応募者一覧を開く">
+          <div class="priority-card purple dashboard-link-card" data-list-filter="dormant" role="button" tabindex="0" aria-label="放置3日以上の応募者一覧を開く" title="放置3日以上の応募者一覧を開く">
             <div class="priority-label">放置（3日+）</div>
             <div class="priority-value" id="priorityDormant">0</div>
             <div class="priority-sub">応募後3日以上未接触</div>
@@ -145,32 +145,32 @@
       <section class="card">
         <h2>採用進行フロー</h2>
         <div class="flow-grid">
-          <div class="flow-card flow-applied dashboard-link-card" onclick="goListFilter('applied')" onkeydown="activateDashboardLink(event,'applied')" role="button" tabindex="0" aria-label="応募者一覧を開く" title="応募者一覧を開く">
+          <div class="flow-card flow-applied dashboard-link-card" data-list-filter="applied" role="button" tabindex="0" aria-label="応募者一覧を開く" title="応募者一覧を開く">
             <div class="flow-label">応募</div>
             <div class="flow-value" id="flowApplied">0</div>
             <div class="flow-rate">&nbsp;</div>
           </div>
-          <div class="flow-card flow-appointment dashboard-link-card" onclick="goListFilter('appointment')" onkeydown="activateDashboardLink(event,'appointment')" role="button" tabindex="0" aria-label="アポ取得者の一覧を開く" title="アポ取得者の一覧を開く">
+          <div class="flow-card flow-appointment dashboard-link-card" data-list-filter="appointment" role="button" tabindex="0" aria-label="アポ取得者の一覧を開く" title="アポ取得者の一覧を開く">
             <div class="flow-label">アポ取得</div>
             <div class="flow-value" id="flowAppointment">0</div>
             <div class="flow-rate" id="rateAppointment">0.0%</div>
           </div>
-          <div class="flow-card flow-interview-set dashboard-link-card" onclick="goListFilter('interview_set')" onkeydown="activateDashboardLink(event,'interview_set')" role="button" tabindex="0" aria-label="面接設定者の一覧を開く" title="面接設定者の一覧を開く">
+          <div class="flow-card flow-interview-set dashboard-link-card" data-list-filter="interview_set" role="button" tabindex="0" aria-label="面接設定者の一覧を開く" title="面接設定者の一覧を開く">
             <div class="flow-label">面接設定</div>
             <div class="flow-value" id="flowInterviewSet">0</div>
             <div class="flow-rate" id="rateInterviewSet">0.0%</div>
           </div>
-          <div class="flow-card flow-interview-done dashboard-link-card" onclick="goListFilter('interview_done')" onkeydown="activateDashboardLink(event,'interview_done')" role="button" tabindex="0" aria-label="面接実施者の一覧を開く" title="面接実施者の一覧を開く">
+          <div class="flow-card flow-interview-done dashboard-link-card" data-list-filter="interview_done" role="button" tabindex="0" aria-label="面接実施者の一覧を開く" title="面接実施者の一覧を開く">
             <div class="flow-label">面接実施</div>
             <div class="flow-value" id="flowInterviewDone">0</div>
             <div class="flow-rate" id="rateInterviewDone">0.0%</div>
           </div>
-          <div class="flow-card flow-offer dashboard-link-card" onclick="goListFilter('offer')" onkeydown="activateDashboardLink(event,'offer')" role="button" tabindex="0" aria-label="内定者の一覧を開く" title="内定者の一覧を開く">
+          <div class="flow-card flow-offer dashboard-link-card" data-list-filter="offer" role="button" tabindex="0" aria-label="内定者の一覧を開く" title="内定者の一覧を開く">
             <div class="flow-label">内定</div>
             <div class="flow-value" id="flowOffer">0</div>
             <div class="flow-rate" id="rateOffer">0.0%</div>
           </div>
-          <div class="flow-card flow-hired final dashboard-link-card" onclick="goListFilter('hired')" onkeydown="activateDashboardLink(event,'hired')" role="button" tabindex="0" aria-label="採用者の一覧を開く" title="採用者の一覧を開く">
+          <div class="flow-card flow-hired final dashboard-link-card" data-list-filter="hired" role="button" tabindex="0" aria-label="採用者の一覧を開く" title="採用者の一覧を開く">
             <div class="flow-label">採用</div>
             <div class="flow-value" id="flowJoin">0</div>
             <div class="flow-rate" id="rateJoin">0.0%</div>
@@ -183,22 +183,22 @@
           <div>
             <h2>原因別対応</h2>
 </div>
-          <button class="btn-primary" type="button" onclick="goListFilter('action')">要対応を確認</button>
+          <button class="btn-primary dashboard-link-button" type="button" data-list-filter="action">要対応を確認</button>
         </div>
         <div class="reason-grid">
-          <div class="reason-card danger dashboard-link-card" onclick="goListFilter('no_contact')" onkeydown="activateDashboardLink(event,'no_contact')" role="button" tabindex="0" aria-label="連絡不通の応募者一覧を開く" title="連絡不通の応募者一覧を開く">
+          <div class="reason-card danger dashboard-link-card" data-list-filter="no_contact" role="button" tabindex="0" aria-label="連絡不通の応募者一覧を開く" title="連絡不通の応募者一覧を開く">
             <div class="reason-title">連絡不通 → 再連絡</div>
             <div class="reason-value" id="reasonNoContact">0</div>
           </div>
-          <div class="reason-card warning dashboard-link-card" onclick="goListFilter('decline')" onkeydown="activateDashboardLink(event,'decline')" role="button" tabindex="0" aria-label="辞退者一覧を開く" title="辞退者一覧を開く">
+          <div class="reason-card warning dashboard-link-card" data-list-filter="decline" role="button" tabindex="0" aria-label="辞退者一覧を開く" title="辞退者一覧を開く">
             <div class="reason-title">辞退 → 原因確認</div>
             <div class="reason-value" id="reasonDecline">0</div>
           </div>
-          <div class="reason-card warning dashboard-link-card" onclick="goListFilter('interview_not_set')" onkeydown="activateDashboardLink(event,'interview_not_set')" role="button" tabindex="0" aria-label="面接未設定の応募者一覧を開く" title="面接未設定の応募者一覧を開く">
+          <div class="reason-card warning dashboard-link-card" data-list-filter="interview_not_set" role="button" tabindex="0" aria-label="面接未設定の応募者一覧を開く" title="面接未設定の応募者一覧を開く">
             <div class="reason-title">面接未設定 → 日程設定</div>
             <div class="reason-value" id="reasonInterviewNotSet">0</div>
           </div>
-          <div class="reason-card warning dashboard-link-card" onclick="goListFilter('owner_stagnation')" onkeydown="activateDashboardLink(event,'owner_stagnation')" role="button" tabindex="0" aria-label="担当停滞の応募者一覧を開く" title="担当停滞の応募者一覧を開く">
+          <div class="reason-card warning dashboard-link-card" data-list-filter="owner_stagnation" role="button" tabindex="0" aria-label="担当停滞の応募者一覧を開く" title="担当停滞の応募者一覧を開く">
             <div class="reason-title">担当停滞 → 期限切れ確認</div>
             <div class="reason-value" id="reasonOwnerStagnation">0</div>
           </div>
@@ -600,13 +600,22 @@ async function loadDashboard(){
   }
 }
 
-function activateDashboardLink(event, filterType){
-  if (!event) return;
-  const key = event.key || "";
-  if (key === "Enter" || key === " ") {
+function setupDashboardLinkEvents(){
+  document.addEventListener("click", function(event){
+    const target = event.target.closest("[data-list-filter]");
+    if(!target) return;
     event.preventDefault();
-    goListFilter(filterType);
-  }
+    goListFilter(target.dataset.listFilter || "action");
+  });
+  document.addEventListener("keydown", function(event){
+    const target = event.target.closest("[data-list-filter]");
+    if(!target) return;
+    const key = event.key || "";
+    if(key === "Enter" || key === " "){
+      event.preventDefault();
+      goListFilter(target.dataset.listFilter || "action");
+    }
+  });
 }
 
 function goListFilter(filterType){
@@ -644,6 +653,7 @@ function goListFilter(filterType){
   if (payload.owner) params.set("owner", payload.owner);
   window.location.href = "./list.html?" + params.toString();
 }
+setupDashboardLinkEvents();
 sb.auth.onAuthStateChange((event) => {
   if (event === "SIGNED_OUT") {
     currentUser = null;
