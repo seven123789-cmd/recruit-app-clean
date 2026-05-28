@@ -182,8 +182,7 @@
         <div class="topbar-row" style="align-items:center;margin-bottom:6px">
           <div>
             <h2>原因別対応</h2>
-</div>
-          <button class="btn-primary" type="button" onclick="goListFilter('action')">要対応を確認</button>
+          </div>
         </div>
         <div class="reason-grid">
           <div class="reason-card danger dashboard-link-card" onclick="goListFilter('no_contact')" onkeydown="activateDashboardLink(event,'no_contact')" role="button" tabindex="0" aria-label="連絡不通の応募者一覧を開く" title="連絡不通の応募者一覧を開く">
@@ -205,7 +204,6 @@
         </div>
       </section>
 
-      <div class="log-box" id="logBox">待機中</div>
     </main>
   </div>
 </div>
@@ -227,10 +225,7 @@ let dashboardMasterChannels = [];
 
 
 function setLog(message){
-  const el = document.getElementById("logBox");
-  if (!el) return;
-  const now = new Date();
-  el.textContent = "[" + now.toLocaleTimeString("ja-JP") + "] " + message;
+  if (message) console.log(message);
 }
 
 
@@ -590,7 +585,6 @@ async function loadDashboard(){
 
     updateDashboardUi(rows);
     updateConnectionUi(true);
-    setLog("ダッシュボード更新成功: " + rows.length + "件");
   } catch (e) {
     console.error(e);
     setPageMessage("ダッシュボード更新失敗: " + (e.message || e), "error");
