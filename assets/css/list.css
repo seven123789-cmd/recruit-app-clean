@@ -490,3 +490,117 @@ tbody tr.action-missing td:first-child{
     min-height:360px;
   }
 }
+
+
+/* ===== LIST action guide ===== */
+.list-action-guide{
+  margin-top:18px;
+  padding:20px 22px;
+  border:1px solid #dbeafe;
+  border-top:5px solid #2563eb;
+  background:linear-gradient(180deg,#ffffff,#f8fbff);
+  box-shadow:0 16px 34px rgba(15,23,42,.08);
+}
+.list-action-guide.hidden{
+  display:none;
+}
+.list-action-guide-danger{
+  border-top-color:#dc2626;
+}
+.list-action-guide-warning{
+  border-top-color:#f59e0b;
+}
+.list-action-guide-purple{
+  border-top-color:#7c3aed;
+}
+.list-action-guide-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:10px;
+}
+.list-action-guide-kicker{
+  color:#64748b;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.02em;
+}
+.list-action-guide h2{
+  margin:4px 0 0;
+  color:#0f172a;
+  font-size:20px;
+  font-weight:950;
+}
+.list-action-guide-count{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:86px;
+  padding:8px 12px;
+  border-radius:999px;
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-size:13px;
+  font-weight:950;
+  white-space:nowrap;
+}
+.list-action-guide-danger .list-action-guide-count{
+  background:#fff1f2;
+  color:#be123c;
+}
+.list-action-guide-warning .list-action-guide-count{
+  background:#fff7ed;
+  color:#c2410c;
+}
+.list-action-guide-purple .list-action-guide-count{
+  background:#f5f3ff;
+  color:#6d28d9;
+}
+.list-action-guide-lead{
+  margin:0 0 16px;
+  color:#334155;
+  font-size:14px;
+  font-weight:800;
+  line-height:1.7;
+}
+.list-action-guide-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1.2fr;
+  gap:12px;
+}
+.list-action-guide-box{
+  border:1px solid #e2e8f0;
+  border-radius:16px;
+  background:#ffffff;
+  padding:14px 16px;
+}
+.list-action-guide-box h3{
+  margin:0 0 10px;
+  color:#0f172a;
+  font-size:13px;
+  font-weight:950;
+}
+.list-action-guide-box ul{
+  margin:0;
+  padding-left:18px;
+  color:#475569;
+  font-size:13px;
+  font-weight:750;
+  line-height:1.75;
+}
+.list-action-guide-box p{
+  margin:0;
+  color:#475569;
+  font-size:13px;
+  font-weight:750;
+  line-height:1.75;
+}
+@media(max-width:1100px){
+  .list-action-guide-grid{
+    grid-template-columns:1fr;
+  }
+  .list-action-guide-head{
+    flex-direction:column;
+  }
+}
