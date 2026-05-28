@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="./assets/css/common.css?v=20260524_metric_audit">
 <link rel="stylesheet" href="./assets/css/header.css?v=20260524_metric_audit">
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260524_metric_audit">
-<link rel="stylesheet" href="./assets/css/data_io.css?v=20260528_csvnowrap_rls2">
+<link rel="stylesheet" href="./assets/css/data_io.css?v=20260528_csvpreview_nowrap_fix">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260524_metric_audit"></script>
 <script src="assets/js/auth.js?v=20260524_metric_audit"></script>
@@ -431,7 +431,14 @@ function renderPreview(){
     : '';
   document.getElementById('importErrors').innerHTML=previewErrors.slice(0,20).map(e=>`<div class="io-error-item">${escapeHtml(e)}</div>`).join('');
   const cols=['_row','candidate_id','name','applied_date','status','division','center_name','channel'];
-  document.getElementById('importPreviewArea').innerHTML=`<table><thead><tr>${cols.map(c=>`<th>${c==='_row'?'行':(CSV_COLUMNS.find(x=>x[0]===c)?.[1]||c)}</th>`).join('')}</tr></thead><tbody>${previewRows.slice(0,30).map(r=>`<tr>${cols.map(c=>`<td>${escapeHtml(r[c]||'')}</td>`).join('')}</tr>`).join('')||'<tr><td class="empty" colspan="7">プレビュー対象がありません。</td></tr>'}</tbody></table>`;
+  const labelOf = c => c === '_row' ? '行' : (CSV_COLUMNS.find(x => x[0] === c)?.[1] || c);
+  const safeCol = c => String(c).replace(/[^a-zA-Z0-9_-]/g, '');
+  const previewHead = cols.map(c => `<th class="csv-col csv-col-${safeCol(c)}" title="${escapeHtml(labelOf(c))}">${escapeHtml(labelOf(c))}</th>`).join('');
+  const previewBody = previewRows.slice(0,30).map(r => `<tr>${cols.map(c => {
+    const value = r[c] ?? '';
+    return `<td class="csv-col csv-col-${safeCol(c)}" title="${escapeHtml(value)}">${escapeHtml(value)}</td>`;
+  }).join('')}</tr>`).join('') || `<tr><td class="empty" colspan="${cols.length}">プレビュー対象がありません。</td></tr>`;
+  document.getElementById('importPreviewArea').innerHTML=`<table class="csv-preview-table"><thead><tr>${previewHead}</tr></thead><tbody>${previewBody}</tbody></table>`;
 }
 async function normalizeExistingCandidateNames(){
   if(window.RecruitOpsGuard && !window.RecruitOpsGuard.requireImport()) return;
