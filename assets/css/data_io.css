@@ -437,7 +437,30 @@
   background:#fff;
 }
 .io-preview-table table{
+  width:max-content;
   min-width:1100px;
+  border-collapse:separate;
+  border-spacing:0;
+  table-layout:auto;
+}
+.io-preview-table th,
+.io-preview-table td{
+  max-width:220px;
+  min-width:96px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  vertical-align:middle;
+}
+.io-preview-table th{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:#eff6ff;
+}
+.io-preview-table td.empty{
+  max-width:none;
+  white-space:normal;
 }
 .io-history-block{
   margin-top:16px;
