@@ -127,15 +127,6 @@
   const RECRUIT_DEPRECATED_STATUS_NAMES = ["入社","辞退","不採用","不通","保留"];
   const RECRUIT_HIRING_RESULT_DEFAULTS = ["進行中","保留","辞退","不採用","不通","採用","入社済"];
   const RECRUIT_LEGACY_RESULT_MAP = { "合格":"採用", "進行中":"進行中", "未設定":"進行中", "":"進行中" };
-  const RECRUIT_ALLOWED_RESULTS_BY_STATUS = {
-    "応募": ["進行中","保留","不通","辞退"],
-    "書類選考": ["進行中","保留","不採用","不通","辞退"],
-    "アポ取得": ["進行中","保留","不通","辞退"],
-    "面接設定": ["進行中","保留","不通","辞退"],
-    "面接実施": ["進行中","保留","不採用","辞退","採用"],
-    "内定": ["進行中","保留","辞退","採用"],
-    "採用": ["採用","入社済","辞退"]
-  };
 
   function recruitStatusDefaultNames(){
     return RECRUIT_STATUS_MASTER_DEFAULTS.map(row => row.name);
@@ -161,25 +152,6 @@
     if(raw === "入社") return "採用";
     if(["辞退","不採用","不通","保留"].includes(raw)) return "";
     return raw;
-  }
-
-  function recruitAllowedHiringResults(statusName){
-    const status = normalizeRecruitStageStatus(statusName) || String(statusName || "").trim();
-    const list = RECRUIT_ALLOWED_RESULTS_BY_STATUS[status];
-    return (list && list.length ? list : RECRUIT_HIRING_RESULT_DEFAULTS).slice();
-  }
-
-  function isRecruitResultAllowedForStatus(statusName, resultName){
-    const result = normalizeRecruitHiringResult(resultName);
-    return recruitAllowedHiringResults(statusName).includes(result);
-  }
-
-  function normalizeRecruitResultForStatus(statusName, resultName){
-    const status = normalizeRecruitStageStatus(statusName) || String(statusName || "").trim();
-    let result = normalizeRecruitHiringResult(resultName);
-    if(isRecruitResultAllowedForStatus(status, result)) return result;
-    if(status === "採用") return "採用";
-    return "進行中";
   }
 
   function inferRecruitStageFromDates(row){
@@ -217,14 +189,8 @@
       result = "採用";
     }
 
-    status = status || rawStatus || null;
-    result = result || "進行中";
-    if(status && !isRecruitResultAllowedForStatus(status, result)){
-      result = normalizeRecruitResultForStatus(status, result);
-    }
-
-    out.status = status;
-    out.hiring_result = result;
+    out.status = status || rawStatus || null;
+    out.hiring_result = result || "進行中";
     return out;
   }
 
@@ -358,12 +324,12 @@
 
   function isRecruitOwnerStagnation(row){
     // 担当停滞は「期限切れ」だけを対象にする。
-    // 未設定・今日・未来日は、要対応や予定管理で扱い、停滞には含めない。
+    // 採用＋採用は入社前の採用決定なので、入社済になるまでは次回対応・期限切れ管理の対象にする。
     const r = normalizeRecruitCandidateState(row || {});
     if(r.is_deleted === true) return false;
     const result = String(r.hiring_result || "進行中").trim() || "進行中";
-    const pendingJoin = String(r.status || "").trim() === "採用" && result === "採用" && !isRecruitHired(r);
-    if(result !== "進行中" && !pendingJoin) return false;
+    if(["辞退","不採用","不通","保留","入社済"].includes(result)) return false;
+    if(isRecruitHired(r)) return false;
     if(isFinal(r)) return false;
     const next = String(r.next_action_date || "").slice(0,10);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return false;
@@ -372,13 +338,13 @@
 
 
   function isRecruitActionRequired(row){
-    // 要対応は「進行中」かつ「次回対応日が未設定または今日以前」。
-    // 担当停滞（期限切れのみ）とは分ける。
+    // 要対応は、まだ終了していない候補者の「次回対応日未設定または今日以前」。
+    // 採用＋採用は入社前の採用決定なので、入社済になるまでは要対応対象にする。
     const r = normalizeRecruitCandidateState(row || {});
     if(r.is_deleted === true) return false;
     const result = String(r.hiring_result || "進行中").trim() || "進行中";
-    const pendingJoin = String(r.status || "").trim() === "採用" && result === "採用" && !isRecruitHired(r);
-    if(result !== "進行中" && !pendingJoin) return false;
+    if(["辞退","不採用","不通","保留","入社済"].includes(result)) return false;
+    if(isRecruitHired(r)) return false;
     if(isFinal(r)) return false;
     const next = String(r.next_action_date || "").slice(0,10);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return true;
@@ -417,10 +383,80 @@
     };
   }
 
+
+  function isRecruitPendingJoinActionRequired(row){
+    // 入社待ち（採用決定済・未入社）の対応漏れ。
+    // 採用＋採用は内定扱いなので、入社済になるまでは次回対応日の管理対象。
+    const r = normalizeRecruitCandidateState(row || {});
+    if(r.is_deleted === true) return false;
+    if(!isRecruitPendingJoin(r)) return false;
+    const result = String(r.hiring_result || "").trim();
+    if(["辞退","不採用","不通","保留","入社済"].includes(result)) return false;
+    const next = String(r.next_action_date || "").slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return true;
+    return next <= todayJST();
+  }
+
+  function isRecruitPendingJoinStagnation(row){
+    const r = normalizeRecruitCandidateState(row || {});
+    if(r.is_deleted === true) return false;
+    if(!isRecruitPendingJoin(r)) return false;
+    const result = String(r.hiring_result || "").trim();
+    if(["辞退","不採用","不通","保留","入社済"].includes(result)) return false;
+    const next = String(r.next_action_date || "").slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return false;
+    return next < todayJST();
+  }
+
+  function recruitWeekKey(dateText){
+    const text = String(dateText || "").slice(0,10);
+    if(!isValidRecruitDate(text)) return "";
+    const d = new Date(text + "T00:00:00+09:00");
+    const day = d.getDay();
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - ((day + 6) % 7));
+    return monday.toISOString().slice(0,10);
+  }
+
+  function aggregateRecruitByDate(rows, options={}){
+    const dateField = options.dateField || "applied_date";
+    const granularity = options.granularity || "day";
+    const map = new Map();
+    (rows || []).filter(r => r && r.is_deleted !== true).forEach(row => {
+      const raw = String(row[dateField] || row.applied_date || "").slice(0,10);
+      if(!isValidRecruitDate(raw)) return;
+      const key = granularity === "week" ? recruitWeekKey(raw) : raw;
+      if(!key) return;
+      if(!map.has(key)) map.set(key, []);
+      map.get(key).push(row);
+    });
+    return [...map.entries()].sort((a,b) => String(a[0]).localeCompare(String(b[0]))).map(([key, list]) => ({ key, ...recruitMetricCounts(list) }));
+  }
+
+  function detectRecruitChannelAnomaly(item){
+    const applied = Number(item?.applied || 0);
+    const interview = Number(item?.interview || item?.interviewDone || 0);
+    const hired = Number(item?.join || item?.hired || 0);
+    const declined = Number(item?.decline || item?.declined || 0);
+    const noContact = Number(item?.lost || item?.noContact || 0);
+    const interviewRate = applied ? (interview / applied) * 100 : 0;
+    const hiredRate = applied ? (hired / applied) * 100 : 0;
+    const declineRate = applied ? (declined / applied) * 100 : 0;
+    const noContactRate = applied ? (noContact / applied) * 100 : 0;
+    if(applied < 6) return { level:"参考", label:"参考値", cls:"neutral", detail:`応募 ${applied}件のため率評価は保留`, action:"件数が増えてから判断" };
+    if(applied >= 10 && hiredRate < 8) return { level:"重点", label:"採用転換が弱い", cls:"danger", detail:`応募→採用 ${hiredRate.toFixed(1)}%`, action:"求人内容・条件説明・面接後フォローを確認" };
+    if(applied >= 10 && interviewRate < 35) return { level:"重点", label:"面接化が弱い", cls:"danger", detail:`応募→面接 ${interviewRate.toFixed(1)}%`, action:"応募後の初動速度・日程提示を確認" };
+    if(noContact >= 5 || noContactRate >= 25) return { level:"注意", label:"不通が多い", cls:"warning", detail:`不通 ${noContact}件 / ${noContactRate.toFixed(1)}%`, action:"連絡方法・時間帯を確認" };
+    if(declined >= 5 || declineRate >= 25) return { level:"注意", label:"辞退が多い", cls:"warning", detail:`辞退 ${declined}件 / ${declineRate.toFixed(1)}%`, action:"辞退理由と求人訴求を確認" };
+    return { level:"良好", label:"流れ良好", cls:"success", detail:`応募→採用 ${hiredRate.toFixed(1)}%`, action:"現行運用を維持" };
+  }
+
   function isFinal(row){
     const r = normalizeRecruitCandidateState(row || {});
     const status = String(r.status || "").trim();
-    return isRecruitHired(r) || ["不採用","辞退","不通","保留","入社済"].includes(String(r.hiring_result || "").trim()) || ["不採用","辞退","不通","保留","入社"].includes(status);
+    const result = String(r.hiring_result || "").trim();
+    // 採用＋採用は「入社前の採用決定」であり、実入社でも終了でもない。
+    return isRecruitHired(r) || ["不採用","辞退","不通","保留","入社済"].includes(result) || ["不採用","辞退","不通","保留","入社"].includes(status);
   }
 
 
@@ -466,8 +502,7 @@
   window.getFiscalYearFromDate = window.getFiscalYearFromDate || getFiscalYearFromDate;
   window.RECRUIT_STAGE_STATUSES = window.RECRUIT_STAGE_STATUSES || recruitStatusDefaultNames();
   window.RECRUIT_HIRING_RESULTS = window.RECRUIT_HIRING_RESULTS || recruitHiringResultNames();
-  window.RECRUIT_ALLOWED_RESULTS_BY_STATUS = window.RECRUIT_ALLOWED_RESULTS_BY_STATUS || RECRUIT_ALLOWED_RESULTS_BY_STATUS;
-  window.RECRUIT_FINAL_RESULTS = window.RECRUIT_FINAL_RESULTS || ["保留","辞退","不採用","不通","入社済"];
+  window.RECRUIT_FINAL_RESULTS = window.RECRUIT_FINAL_RESULTS || ["保留","辞退","不採用","不通","採用","入社済"];
   window.RECRUIT_STATUS_MASTER_DEFAULTS = window.RECRUIT_STATUS_MASTER_DEFAULTS || RECRUIT_STATUS_MASTER_DEFAULTS;
   window.recruitStatusDefaultNames = window.recruitStatusDefaultNames || recruitStatusDefaultNames;
   window.mergeRecruitStatusNames = window.mergeRecruitStatusNames || mergeRecruitStatusNames;
@@ -475,9 +510,6 @@
   window.RECRUIT_DEPRECATED_STATUS_NAMES = window.RECRUIT_DEPRECATED_STATUS_NAMES || RECRUIT_DEPRECATED_STATUS_NAMES;
   window.isDeprecatedRecruitStatus = window.isDeprecatedRecruitStatus || isDeprecatedRecruitStatus;
   window.recruitHiringResultNames = window.recruitHiringResultNames || recruitHiringResultNames;
-  window.recruitAllowedHiringResults = window.recruitAllowedHiringResults || recruitAllowedHiringResults;
-  window.isRecruitResultAllowedForStatus = window.isRecruitResultAllowedForStatus || isRecruitResultAllowedForStatus;
-  window.normalizeRecruitResultForStatus = window.normalizeRecruitResultForStatus || normalizeRecruitResultForStatus;
   window.normalizeRecruitHiringResult = window.normalizeRecruitHiringResult || normalizeRecruitHiringResult;
   window.normalizeRecruitStageStatus = window.normalizeRecruitStageStatus || normalizeRecruitStageStatus;
   window.inferRecruitStageFromDates = window.inferRecruitStageFromDates || inferRecruitStageFromDates;
@@ -503,6 +535,10 @@
   window.isRecruitActionRequired = window.isRecruitActionRequired || isRecruitActionRequired;
   window.isRecruitDormant3Days = window.isRecruitDormant3Days || isRecruitDormant3Days;
   window.isRecruitHeatmapDangerCandidate = window.isRecruitHeatmapDangerCandidate || isRecruitHeatmapDangerCandidate;
+  window.isRecruitPendingJoinActionRequired = window.isRecruitPendingJoinActionRequired || isRecruitPendingJoinActionRequired;
+  window.isRecruitPendingJoinStagnation = window.isRecruitPendingJoinStagnation || isRecruitPendingJoinStagnation;
+  window.aggregateRecruitByDate = window.aggregateRecruitByDate || aggregateRecruitByDate;
+  window.detectRecruitChannelAnomaly = window.detectRecruitChannelAnomaly || detectRecruitChannelAnomaly;
   window.recruitMetricCounts = window.recruitMetricCounts || recruitMetricCounts;
   window.isFinal = window.isFinal || isFinal;
   window.getRecruitCurrentFiscalYear = window.getRecruitCurrentFiscalYear || getRecruitCurrentFiscalYear;
@@ -1456,9 +1492,8 @@
     if(r.is_deleted === true) return false;
     if(!r.next_action_date) return false;
     if(String(r.next_action_date).slice(0,10) >= today) return false;
-    const result = String(r.hiring_result || "進行中").trim();
-    const pendingJoin = String(r.status || "").trim() === "採用" && result === "採用" && !isRecruitHired(r);
-    return result === "進行中" || pendingJoin;
+    if(String(r.status || "").trim() === "採用") return false;
+    return String(r.hiring_result || "進行中").trim() === "進行中";
   }
 
   async function fetchOverdueRows(client){

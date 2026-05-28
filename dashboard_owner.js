@@ -28,13 +28,12 @@ function daysBetween(a,b){if(!validDate(a)||!validDate(b))return null;return Mat
 function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (String(r?.hiring_result||"").trim()==="入社済"||validDate(r?.join_date))}
 function isFinal(r){return window.isFinal ? window.isFinal(r) : (["不採用","辞退","不通","保留","入社済"].includes(String(r.hiring_result||"").trim())||isHired(r))}
 function isActionRequired(r){
-  const st=String(r.status||"").trim();
-  const result=String(r.hiring_result||"").trim();
-  if(st === "採用")return false;
-  if(["採用","入社済","不採用","辞退","不通","保留"].includes(result))return false;
-  if(!ACTIVE_STATUSES.includes(st))return false;
+  if(window.isRecruitActionRequired) return window.isRecruitActionRequired(r);
+  const result=String(r.hiring_result||"進行中").trim()||"進行中";
+  if(["入社済","不採用","辞退","不通","保留"].includes(result))return false;
+  if(isHired(r) || isFinal(r))return false;
   if(!r.next_action_date)return true;
-  return daysBetween(todayStr(),r.next_action_date)<=1;
+  return daysBetween(todayStr(),r.next_action_date)<=0;
 }
 
 function fiscalRange(type){const fy=fiscalYear();if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};if(type==="all")return {fy:null,label:"全期間",from:"",to:""};return {fy,label:fy+"年度",from:fy+"-04-01",to:(fy+1)+"-03-31"}}
@@ -174,7 +173,7 @@ function groupByOwner(data){
   const m=new Map();
   data.forEach(r=>{
     const key=String(r.owner_name||"未設定").trim()||"未設定";
-    if(!m.has(key))m.set(key,{key,divisionSet:new Set(),centerSet:new Set(),applied:0,appointment:0,set:0,interview:0,offer:0,join:0,todo:0,overdue:0,nextUnset:0,notDone:0,dormant:0,initialCount:0,initialDaysTotal:0,initialLate24:0,initialLate3:0,uncontacted:0});
+    if(!m.has(key))m.set(key,{key,divisionSet:new Set(),centerSet:new Set(),applied:0,appointment:0,set:0,interview:0,offer:0,join:0,pendingJoin:0,pendingJoinOverdue:0,todo:0,overdue:0,nextUnset:0,notDone:0,dormant:0,initialCount:0,initialDaysTotal:0,initialLate24:0,initialLate3:0,uncontacted:0});
     const x=m.get(key);
     if(r.division)x.divisionSet.add(r.division);
     if(r.center_name)x.centerSet.add(r.center_name);
@@ -184,10 +183,12 @@ function groupByOwner(data){
     if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"面接実施") : validDate(r.interview_done_date))x.interview++;
     if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"内定") : validDate(r.offer_date))x.offer++;
     if(window.isRecruitHired ? window.isRecruitHired(r) : isHired(r))x.join++;
+    if(window.isRecruitPendingJoin ? window.isRecruitPendingJoin(r) : (String(r.status||"").trim()==="採用"&&!isHired(r)))x.pendingJoin++;
+    if(window.isRecruitPendingJoinStagnation ? window.isRecruitPendingJoinStagnation(r) : false)x.pendingJoinOverdue++;
     if(isActionRequired(r))x.todo++;
-    if(ACTIVE_STATUSES.includes(String(r.status||""))&&!isFinal(r)){
+    if(!isFinal(r) && !(window.isRecruitHired ? window.isRecruitHired(r) : isHired(r))){
       if(!validDate(r.next_action_date))x.nextUnset++;
-      if(validDate(r.next_action_date)&&r.next_action_date<todayStr())x.overdue++;
+      if(window.isRecruitOwnerStagnation ? window.isRecruitOwnerStagnation(r) : (validDate(r.next_action_date)&&r.next_action_date<todayStr()))x.overdue++;
     }
     if(validDate(r.interview1_date)&&!validDate(r.interview_done_date)&&!isFinal(r))x.notDone++;
     const contact=firstContactDate(r);
@@ -214,8 +215,8 @@ function groupByOwner(data){
 function updateSummary(data){const applied=data.filter(r=>validDate(r.applied_date)).length;const interview=data.filter(r=>window.isRecruitInterviewDone ? window.isRecruitInterviewDone(r) : validDate(r.interview_done_date)).length;const join=data.filter(isHired).length;const interviewRate=rate(interview,applied);const joinRate=rate(join,applied);setText("sumApplied",applied);setText("sumInterview",interview);setText("sumJoin",join);setText("sumInterviewRate",interviewRate);setText("sumJoinRate",joinRate);setText("sideRows",data.length);setText("sideDivision",$("divisionFilter").value||"すべて");setText("sideOwner",$("ownerFilter").value||"すべて");setText("sideInterviewRate",interviewRate);setText("sideJoinRate",joinRate)}
 function ownerLevel(item){
   if(item.applied<=5)return {label:"参考値",cls:"neutral",action:"母数が少ないため判断保留"};
-  if(item.initialLate3>=10||item.overdue>=3||item.todo>=25||item.avgInitial>=3)return {label:"危険",cls:"danger",action:"初動遅れ・期限超過を優先確認"};
-  if(item.initialLate3>=3||item.todo>=10||item.nextUnset>=5||rateNum(item.join,item.applied)<10)return {label:"注意",cls:"warning",action:"未対応・次回対応日の整理が必要"};
+  if(item.initialLate3>=10||item.overdue>=3||item.pendingJoinOverdue>=1||item.todo>=25||item.avgInitial>=3)return {label:"危険",cls:"danger",action:"初動遅れ・期限超過を優先確認"};
+  if(item.initialLate3>=3||item.todo>=10||item.pendingJoinOverdue>=1||item.nextUnset>=5||rateNum(item.join,item.applied)<10)return {label:"注意",cls:"warning",action:"未対応・次回対応日の整理が必要"};
   return {label:"良好",cls:"success",action:"現行運用を維持"};
 }
 function calcOwnerScore(item){
@@ -247,7 +248,7 @@ function renderPerformanceCards(items){
       <div class="performance-head"><span class="rank-no">${i+1}</span><div><h3>${ownerLink(x.key)}</h3><p>${divisionTags(x.divisionText)}</p></div><strong>${score}<small>pt</small></strong></div>
       <div class="performance-metrics"><div><span>応募</span><b>${x.applied}</b></div><div><span>面接</span><b>${x.interview}</b></div><div><span>採用</span><b>${x.join}</b></div></div>
       <div class="performance-rates"><div><span>応募→面接</span><b>${rate(x.interview,x.applied)}</b></div><div><span>応募→採用</span><b>${rate(x.join,x.applied)}</b></div></div>
-      <div class="owner-extra-line"><span>平均初動 ${x.avgInitial===null?"-":x.avgInitial.toFixed(1)+"日"}</span><span>初動3日超 ${x.initialLate3}</span><span>要対応 ${x.todo}</span></div>
+      <div class="owner-extra-line"><span>平均初動 ${x.avgInitial===null?"-":x.avgInitial.toFixed(1)+"日"}</span><span>初動3日超 ${x.initialLate3}</span><span>要対応 ${x.todo}</span><span>入社待ち ${x.pendingJoin}</span></div>
       <div class="performance-foot">${pill(lv.label,lv.cls)}<em>${esc(lv.action)}</em></div>
     </article>`;
   }).join("");
@@ -255,10 +256,10 @@ function renderPerformanceCards(items){
 function renderCheckTables(items){
   const normal=[...items].filter(x=>x.applied>=6);
   const initialList=[...normal].sort((a,b)=>b.initialLate3-a.initialLate3||b.initialLate24-a.initialLate24||b.applied-a.applied).slice(0,4);
-  const stagnationList=[...normal].sort((a,b)=>b.todo-a.todo||b.nextUnset-a.nextUnset||b.overdue-a.overdue||b.applied-a.applied).slice(0,4);
+  const stagnationList=[...normal].sort((a,b)=>b.pendingJoinOverdue-a.pendingJoinOverdue||b.overdue-a.overdue||b.todo-a.todo||b.nextUnset-a.nextUnset||b.applied-a.applied).slice(0,4);
   const renderName=x=>`<strong>${ownerLink(x.key)}</strong><small>${divisionTags(x.divisionText)}</small>`;
   $("initialTableBody").innerHTML=initialList.length?initialList.map(x=>{const lv=ownerLevel(x);return `<tr><td>${renderName(x)}</td><td>${x.avgInitial===null?"-":x.avgInitial.toFixed(1)+"日"}</td><td>${x.initialLate24}</td><td>${x.initialLate3?pill(String(x.initialLate3),x.initialLate3>=10?"danger":"warning"):"0"}</td><td>${x.uncontacted}</td><td>${pill(lv.label,lv.cls)}</td></tr>`}).join(""):'<tr><td colspan="6" class="empty">対象データがありません</td></tr>';
-  $("stagnationTableBody").innerHTML=stagnationList.length?stagnationList.map(x=>{const lv=ownerLevel(x);const stCls=(x.todo>=20||x.overdue>=3)?"danger":(x.todo>=8||x.nextUnset>=5?"warning":"success");return `<tr><td>${renderName(x)}</td><td>${pill(String(x.todo),stCls)}</td><td>${x.overdue}</td><td>${x.nextUnset}</td><td>${x.notDone}</td><td>${pill(lv.label,lv.cls)}</td></tr>`}).join(""):'<tr><td colspan="6" class="empty">対象データがありません</td></tr>';
+  $("stagnationTableBody").innerHTML=stagnationList.length?stagnationList.map(x=>{const lv=ownerLevel(x);const stCls=(x.todo>=20||x.overdue>=3||x.pendingJoinOverdue>=1)?"danger":(x.todo>=8||x.nextUnset>=5?"warning":"success");const joinCls=x.pendingJoinOverdue>=1?"danger":"neutral";return `<tr><td>${renderName(x)}</td><td>${pill(String(x.todo),stCls)}</td><td>${x.overdue}</td><td>${pill(String(x.pendingJoinOverdue),joinCls)}</td><td>${x.nextUnset}</td><td>${x.notDone}</td><td>${pill(lv.label,lv.cls)}</td></tr>`}).join(""):'<tr><td colspan="7" class="empty">対象データがありません</td></tr>';
 }
 function renderReferenceTable(items){
   const count=[...items].filter(x=>x.applied>0&&x.applied<=5).length;
@@ -269,6 +270,7 @@ function getBottleneck(item){
   if(item.applied<=5)return {level:"参考",label:"参考値",detail:`応募 ${item.applied}件のため率評価は保留`,action:"件数が増えてから判断",cls:"neutral"};
   if(item.initialLate3>=10)return {level:"重点",label:"初動3日超",detail:`初動3日超 ${item.initialLate3}件 / 応募 ${item.applied}・面接 ${item.interview}・採用 ${item.join}`,action:"応募後の初回連絡速度を確認",cls:"danger"};
   if(item.initialLate3>=3)return {level:"注意",label:"初動3日超",detail:`初動3日超 ${item.initialLate3}件 / 応募 ${item.applied}・面接 ${item.interview}・採用 ${item.join}`,action:"応募後の初回連絡速度を確認",cls:"warning"};
+  if(item.pendingJoinOverdue>=1)return {level:"重点",label:"入社待ち期限切れ",detail:`入社待ち期限切れ ${item.pendingJoinOverdue}件 / 入社待ち ${item.pendingJoin}件`,action:"採用決定後の入社日・書類・初出勤確認を優先",cls:"danger"};
   if(item.todo>=10)return {level:"注意",label:"要対応滞留",detail:`要対応 ${item.todo}件 / 応募 ${item.applied}・面接 ${item.interview}・採用 ${item.join}`,action:"LISTで対象者を確認",cls:"warning"};
   if(rateNum(item.join,item.applied)<10&&item.applied>=10)return {level:"注意",label:"採用転換弱い",detail:`応募→採用 ${rate(item.join,item.applied)} / 応募 ${item.applied}・面接 ${item.interview}・採用 ${item.join}`,action:"面接後フォローを確認",cls:"warning"};
   return {level:"良好",label:"流れ良好",detail:`応募→採用 ${rate(item.join,item.applied)} / 応募 ${item.applied}・面接 ${item.interview}・採用 ${item.join}`,action:"現行運用を維持",cls:"success"};
