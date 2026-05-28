@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260524_metric_audit">
 <link rel="stylesheet" href="./assets/css/dashboard.css?v=20260528_batch_finish1">
 <link rel="icon" href="data:,">
-<script src="./common.js?v=20260529_step1"></script>
+<script src="./common.js?v=20260529_action_sync"></script>
 <script src="assets/js/overdue_popup.js?v=20260529_step1"></script>
 <script src="assets/js/dashboard_utils.js?v=20260529_step1"></script>
 <script src="assets/js/supabase.js?v=20260524_metric_audit"></script>
@@ -348,18 +348,17 @@ function isValidDate(dateStr){
 }
 
 function isActionRequired(row){
+  if (window.isRecruitActionRequired) return window.isRecruitActionRequired(row);
+
   const status = String(row.status || "").trim();
-  const hiringResult = String(row.hiring_result || "").trim();
-  if (status === "採用") return false;
-  if (["採用","入社済","不採用","辞退","不通","保留"].includes(hiringResult)) return false;
+  const hiringResult = String(row.hiring_result || "進行中").trim() || "進行中";
+  if (!["進行中","採用"].includes(hiringResult)) return false;
   const activeStatuses = ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
   if (!activeStatuses.includes(status)) return false;
   if (!row.next_action_date) return true;
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  const nextDate = new Date(row.next_action_date + "T00:00:00+09:00");
-  const diff = (nextDate - today) / (1000 * 60 * 60 * 24);
-  return diff <= 1;
+  const today = getSessionToday();
+  const next = String(row.next_action_date || "").slice(0,10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(next) && next <= today;
 }
 
 

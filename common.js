@@ -324,13 +324,12 @@
 
   function isRecruitOwnerStagnation(row){
     // 担当停滞は「期限切れ」だけを対象にする。
-    // 未設定・今日・未来日は、要対応や予定管理で扱い、停滞には含めない。
+    // 採用決定（status=採用 / hiring_result=採用）は入社前の内定扱いなので、
+    // 入社済・辞退・不採用などの終了結果でない限り、期限切れ判定の対象にする。
     const r = normalizeRecruitCandidateState(row || {});
     if(r.is_deleted === true) return false;
     const result = String(r.hiring_result || "進行中").trim() || "進行中";
-    if(result !== "進行中") return false;
-    const status = String(r.status || "").trim();
-    if(status === "採用") return false;
+    if(!["進行中","採用"].includes(result)) return false;
     if(isFinal(r)) return false;
     const next = String(r.next_action_date || "").slice(0,10);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return false;
@@ -339,14 +338,12 @@
 
 
   function isRecruitActionRequired(row){
-    // 要対応は「進行中」かつ「次回対応日が未設定または今日以前」。
-    // 担当停滞（期限切れのみ）とは分ける。
+    // 要対応は「進行中」または入社前の採用決定で、次回対応日が未設定または今日以前。
+    // 採用決定（status=採用 / hiring_result=採用）は内定扱いのため、入社済になるまで要対応対象に残す。
     const r = normalizeRecruitCandidateState(row || {});
     if(r.is_deleted === true) return false;
     const result = String(r.hiring_result || "進行中").trim() || "進行中";
-    if(result !== "進行中") return false;
-    const status = String(r.status || "").trim();
-    if(status === "採用") return false;
+    if(!["進行中","採用"].includes(result)) return false;
     if(isFinal(r)) return false;
     const next = String(r.next_action_date || "").slice(0,10);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return true;
@@ -388,7 +385,8 @@
   function isFinal(row){
     const r = normalizeRecruitCandidateState(row || {});
     const status = String(r.status || "").trim();
-    return isRecruitHired(r) || ["不採用","辞退","不通","保留","採用","入社済"].includes(String(r.hiring_result || "").trim()) || ["不採用","辞退","不通","保留","入社"].includes(status);
+    // hiring_result=採用 は「入社前の採用決定」であり、終了扱いにしない。
+    return isRecruitHired(r) || ["不採用","辞退","不通","保留","入社済"].includes(String(r.hiring_result || "").trim()) || ["不採用","辞退","不通","保留","入社"].includes(status);
   }
 
 
