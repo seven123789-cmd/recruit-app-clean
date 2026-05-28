@@ -604,3 +604,47 @@ tbody tr.action-missing td:first-child{
     flex-direction:column;
   }
 }
+
+/* ===== LIST action reason tags ===== */
+.action-reason-tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+  margin-top:2px;
+}
+.action-reason-tag{
+  display:inline-flex;
+  align-items:center;
+  min-height:20px;
+  padding:0 7px;
+  border-radius:999px;
+  border:1px solid #dbeafe;
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-size:10px;
+  font-weight:950;
+  line-height:1;
+  white-space:nowrap;
+}
+.action-reason-danger{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+.action-reason-warning,
+.action-reason-missing,
+.action-reason-today{
+  background:#fff7ed;
+  border-color:#fed7aa;
+  color:#c2410c;
+}
+.action-reason-offer{
+  background:#f5f3ff;
+  border-color:#ddd6fe;
+  color:#6d28d9;
+}
+.action-reason-muted{
+  background:#f8fafc;
+  border-color:#e2e8f0;
+  color:#475569;
+}

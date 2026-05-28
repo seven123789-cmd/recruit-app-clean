@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="./assets/css/common.css?v=20260528">
 <link rel="stylesheet" href="./assets/css/header.css?v=20260528">
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260528">
-<link rel="stylesheet" href="./assets/css/list.css?v=20260529_action_guide">
+<link rel="stylesheet" href="./assets/css/list.css?v=20260529_reason_tags">
 </head>
 <body class="auth-checking">
 
@@ -217,7 +217,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260528"></script>
 <script src="assets/js/auth.js?v=20260528"></script>
-<script src="assets/js/version.js?v=20260529_action_guide"></script>
+<script src="assets/js/version.js?v=20260529_reason_tags"></script>
 <script src="./common.js?v=20260529_step1"></script>
 <script src="assets/js/overdue_popup.js?v=20260529_step1"></script>
 <script src="assets/js/candidate_utils.js?v=20260528"></script>
@@ -340,9 +340,50 @@ function resultBadge(row){
   const cls=result==="入社済"?"result-joined":result==="採用"?"result-hired":result==="不採用"?"result-rejected":result==="辞退"?"result-declined":result==="不通"?"result-no-contact":result==="保留"?"result-hold":"result-pending";
   return `<span class="result-badge ${cls}">${esc(result)}</span>`;
 }
+function getListActionReasonTags(row){
+  const tags=[];
+  const today=todayStr();
+  const normalized=normalizeListCandidate(row);
+  const status=String(normalized.status||"").trim();
+  const result=normalizeHiringResult(normalized);
+  const next=String(normalized.next_action_date||"").slice(0,10);
+
+  if(status==="採用" && result==="採用" && !isHired(normalized)){
+    tags.push({label:"内定フォロー", tone:"offer"});
+  }
+
+  if(isActionRequired(normalized)){
+    if(!next) tags.push({label:"次回未設定", tone:"missing"});
+    else if(next<today) tags.push({label:"期限切れ", tone:"danger"});
+    else if(next===today) tags.push({label:"今日対応", tone:"today"});
+  }
+
+  if(isInterviewNotDone(normalized)) tags.push({label:"結果未登録", tone:"warning"});
+  if(isInterviewNotSet(normalized)) tags.push({label:"面接未設定", tone:"warning"});
+  if(isDormant3Days(normalized)) tags.push({label:"未接触3日+", tone:"muted"});
+  if(isNoContact(normalized)) tags.push({label:"連絡不通", tone:"danger"});
+  if(isDecline(normalized)) tags.push({label:"辞退確認", tone:"warning"});
+  if(window.isRecruitOwnerStagnation && window.isRecruitOwnerStagnation(normalized)) tags.push({label:"担当停滞", tone:"warning"});
+
+  const seen=new Set();
+  return tags.filter(tag=>{
+    if(seen.has(tag.label)) return false;
+    seen.add(tag.label);
+    return true;
+  });
+}
+
+function actionReasonTagsHtml(row){
+  const tags=getListActionReasonTags(row);
+  if(!tags.length) return "";
+  return '<div class="action-reason-tags" aria-label="要対応理由">'+
+    tags.map(tag=>'<span class="action-reason-tag action-reason-'+esc(tag.tone||"info")+'">'+esc(tag.label)+'</span>').join('')+
+    '</div>';
+}
+
 function statusResultCell(row){
   const normalized = normalizeListCandidate(row);
-  return `<div class="status-result-cell"><div class="status-line">${badge(normalized.status)}</div><div class="result-line"><span>選考結果</span>${resultBadge(normalized)}</div></div>`;
+  return `<div class="status-result-cell"><div class="status-line">${badge(normalized.status)}</div><div class="result-line"><span>選考結果</span>${resultBadge(normalized)}</div>${actionReasonTagsHtml(normalized)}</div>`;
 }
 
 function getFiscalYearFromAppliedDate(dateStr){
@@ -914,7 +955,7 @@ function getListFilterLabel(){
     stage_hired:"採用決定",
     action:"要対応",
     today:"要対応",
-    not_done:"未実施",
+    not_done:"面接結果未登録",
     dormant:"放置",
     no_contact:"連絡不通",
     decline:"辞退",
@@ -935,16 +976,16 @@ const LIST_ACTION_GUIDES={
     lead:"期限切れ・今日対応・未設定の候補者です。採用＋採用は入社前の内定状態として扱うため、フォロー未設定の場合も確認対象です。",
     conditions:["次回対応日が未設定", "次回対応日が今日以前", "採用＋採用で入社前フォローが未設定"],
     checks:["次回対応日を設定", "入社済みなら選考結果を入社済へ変更", "辞退なら選考結果を辞退へ変更", "対応メモを残す"],
-    action:"DETAIL画面で次回対応日、選考結果、対応メモを更新してください。"
+    action:"応募者詳細で次回対応日、選考結果、対応メモを更新してください。"
   },
   today:null,
   not_done:{
     tone:"warning",
-    title:"未実施",
-    lead:"面接設定済みですが、面接実施日または結果が未登録の候補者です。",
-    conditions:["面接日を設定済み", "面接実施日が未登録", "最終結果が未確定"],
-    checks:["面接実施済みか確認", "不採用・辞退・採用の結果を登録", "未実施なら次回対応日を設定"],
-    action:"DETAIL画面で面接実施日、ステータス、選考結果を更新してください。"
+    title:"面接結果未登録",
+    lead:"面接日が設定済みで、面接後の結果更新が必要な候補者です。面接日が決まっている前提で、実施結果を確認してください。",
+    conditions:["面接日設定済み", "選考結果が未登録", "面接後の更新待ち"],
+    checks:["採用・不採用・辞退の結果を登録", "面接実施日を登録", "次回対応日を設定"],
+    action:"応募者詳細で面接実施日、ステータス、選考結果を更新してください。"
   },
   dormant:{
     tone:"purple",
@@ -952,7 +993,7 @@ const LIST_ACTION_GUIDES={
     lead:"応募から3日以上経過し、アポ取得や面接設定に進んでいない候補者です。",
     conditions:["応募後3日以上経過", "アポ日が未登録", "面接設定日が未登録"],
     checks:["電話済", "SMS済", "メール済", "日程提示済"],
-    action:"DETAIL画面で接触結果、次回対応日、ステータスを更新してください。"
+    action:"応募者詳細で接触結果、次回対応日、ステータスを更新してください。"
   },
   no_contact:{
     tone:"danger",
@@ -960,7 +1001,7 @@ const LIST_ACTION_GUIDES={
     lead:"連絡不通・折返し待ちなど、再接触が必要な候補者です。",
     conditions:["選考結果が不通", "連絡不通の履歴あり", "再架電または別手段での接触が必要"],
     checks:["電話済", "SMS済", "メール済", "時間帯を変えて再連絡"],
-    action:"DETAIL画面で次回対応日と対応メモを更新してください。"
+    action:"応募者詳細で次回対応日と対応メモを更新してください。"
   },
   decline:{
     tone:"warning",
@@ -968,7 +1009,7 @@ const LIST_ACTION_GUIDES={
     lead:"辞退登録済み、または辞退理由の整理が必要な候補者です。理由の精度が媒体・担当分析に影響します。",
     conditions:["選考結果が辞退", "辞退理由が未整理", "辞退理由がその他のまま"],
     checks:["給与・条件", "勤務地", "日程不一致", "他社決定", "連絡遅れ"],
-    action:"DETAIL画面で辞退理由と対応メモを更新してください。"
+    action:"応募者詳細で辞退理由と対応メモを更新してください。"
   },
   interview_not_set:{
     tone:"warning",
@@ -976,7 +1017,7 @@ const LIST_ACTION_GUIDES={
     lead:"アポ取得済みですが、面接日がまだ決まっていない候補者です。",
     conditions:["アポ日が登録済み", "面接設定日が未登録", "候補日調整が未完了"],
     checks:["候補日提示済", "応募者返信待ち", "担当者確認待ち", "次回対応日を設定"],
-    action:"DETAIL画面で面接設定日、次回対応日、対応メモを更新してください。"
+    action:"応募者詳細で面接設定日、次回対応日、対応メモを更新してください。"
   },
   owner_stagnation:{
     tone:"warning",
@@ -984,7 +1025,7 @@ const LIST_ACTION_GUIDES={
     lead:"担当者の対応期限が過ぎている候補者です。担当変更や進行停止も含めて確認してください。",
     conditions:["次回対応日が期限切れ", "更新が止まっている", "担当者確認が必要"],
     checks:["担当変更が必要か", "再連絡済", "辞退見込みか", "次回対応日を再設定"],
-    action:"DETAIL画面で次回対応日、担当者、ステータスを更新してください。"
+    action:"応募者詳細で次回対応日、担当者、ステータスを更新してください。"
   }
 };
 LIST_ACTION_GUIDES.today=LIST_ACTION_GUIDES.action;
