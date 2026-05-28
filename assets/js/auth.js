@@ -44,9 +44,20 @@
         if(byEmail.data) res = byEmail;
       }
       const row = res.data;
-      return row && row.is_active !== false && row.role ? String(row.role).toLowerCase() : "viewer";
+      const role = row && row.is_active !== false && row.role ? String(row.role).toLowerCase() : "viewer";
+      window.currentUser = user;
+      window.currentRole = role;
+      window.currentProfile = row || window.currentProfile || null;
+      window.__recruitRoleResolved = true;
+      try{
+        window.dispatchEvent(new CustomEvent("recruit:role-ready", { detail:{ role, profile:window.currentProfile, user } }));
+      }catch(_e){}
+      return role;
     }catch(e){
       console.warn("role fetch failed", e);
+      window.currentRole = "viewer";
+      window.__recruitRoleResolved = true;
+      try{ window.dispatchEvent(new CustomEvent("recruit:role-ready", { detail:{ role:"viewer", profile:null } })); }catch(_e){}
       return "viewer";
     }
   }
@@ -106,6 +117,10 @@
         return false;
       }
       const role = await getRole(Object.assign({}, opt, { user }));
+      window.currentUser = user;
+      window.currentRole = role;
+      window.__recruitRoleResolved = true;
+      try{ window.dispatchEvent(new CustomEvent("recruit:role-ready", { detail:{ role, profile:window.currentProfile || null, user } })); }catch(_e){}
       if(typeof opt.onRole === "function") opt.onRole(role, user);
       showApp(opt);
       if(typeof opt.afterAuth === "function") await opt.afterAuth(user, role);

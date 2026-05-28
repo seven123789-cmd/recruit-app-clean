@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="./assets/css/data_io.css?v=20260528_csvnowrap_rls2">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260524_metric_audit"></script>
-<script src="assets/js/auth.js?v=20260524_metric_audit"></script>
+<script src="assets/js/auth.js?v=20260528_sidebar_role_racefix"></script>
 <script src="assets/js/ui_utils.js?v=20260524_metric_audit"></script>
 <script src="assets/js/audit_utils.js?v=20260524_metric_audit"></script>
 <script src="assets/js/ops_guard.js?v=20260524_metric_audit"></script>
@@ -702,7 +702,7 @@ async function exportCandidatesCsv(){
   downloadText(`recruit_candidates_${window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date())}.csv`, header+'\n'+body+'\n');
 }
 </script>
-<script src="./sidebar.js?v=20260524_metric_audit"></script>
+<script src="./sidebar.js?v=20260528_sidebar_role_racefix"></script>
 <script>
 (function(){
   function showDataIoPage(){

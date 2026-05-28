@@ -11,7 +11,7 @@
 <link href="./assets/css/dashboard_progress.css?v=20260524_metric_audit" rel="stylesheet">
 <script src="./common.js?v=20260528_rolemenu"></script>
 <script src="assets/js/supabase.js?v=20260524_metric_audit"></script>
-<script src="assets/js/auth.js?v=20260528_rolemenu"></script>
+<script src="assets/js/auth.js?v=20260528_sidebar_role_racefix"></script>
 <script src="assets/js/ui_utils.js?v=20260524_metric_audit"></script>
 <script src="assets/js/audit_utils.js?v=20260524_metric_audit"></script>
 <script src="assets/js/ops_guard.js?v=20260528_rolemenu"></script>
@@ -231,6 +231,6 @@ async function initData(){
 }
 (async function init(){try{const ok=await refreshAuth();if(ok)await initData()}catch(e){console.error(e);showAuth("初期化に失敗しました: "+(e.message||e),"error");log("初期化に失敗しました","error")}finally{document.body.classList.remove("auth-checking")}})();
 </script>
-<script src="./sidebar.js?v=20260528_rolemenu"></script>
+<script src="./sidebar.js?v=20260528_sidebar_role_racefix"></script>
 </body>
 </html>

@@ -140,24 +140,36 @@
 
   async function resolveRoleBeforeRender(){
     const client = window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : null;
+
+    if(window.currentRole){
+      return normalizeRole(window.currentRole);
+    }
+
     if(window.RecruitAuth && typeof window.RecruitAuth.getCurrentRole === "function"){
       try{
-        await window.RecruitAuth.getCurrentRole();
+        const role = await window.RecruitAuth.getCurrentRole();
+        window.currentRole = normalizeRole(role);
+        return window.currentRole;
       }catch(e){
         console.warn("sidebar role fetch failed", e);
       }
-    }else if(client && client.auth){
+    }
+
+    if(client && client.auth){
       try{
         const { data:{ session } = {} } = await client.auth.getSession();
         const user = session && session.user ? session.user : null;
         if(user){
           const { data } = await client.from("profiles").select("role,is_active").eq("user_id", user.id).maybeSingle();
           window.currentRole = data && data.is_active !== false && data.role ? normalizeRole(data.role) : "viewer";
+          return window.currentRole;
         }
       }catch(e){
         console.warn("sidebar fallback role fetch failed", e);
       }
     }
+
+    return normalizeRole(window.currentRole || "viewer");
   }
 
   function renderSidebar(){
@@ -205,13 +217,31 @@
     renderSidebar();
   }
 
+
+  function bindAuthStateRerender(){
+    const client = window.getRecruitSupabaseClient ? window.getRecruitSupabaseClient() : null;
+    if(!client || !client.auth || client.__sidebarRoleRerenderBound) return;
+    client.__sidebarRoleRerenderBound = true;
+    client.auth.onAuthStateChange(function(event){
+      if(event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED"){
+        window.currentRole = null;
+        window.setTimeout(renderSidebarWithRole, 80);
+      }
+      if(event === "SIGNED_OUT"){
+        window.currentRole = null;
+        window.setTimeout(renderSidebarWithRole, 80);
+      }
+    });
+  }
+
   if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", renderSidebarWithRole);
+    document.addEventListener("DOMContentLoaded", function(){ bindAuthStateRerender(); renderSidebarWithRole(); });
   }else{
+    bindAuthStateRerender();
     renderSidebarWithRole();
   }
 
-  window.addEventListener("recruit:role-ready", renderSidebar);
+  window.addEventListener("recruit:role-ready", renderSidebarWithRole);
 
   window.renderDashboardSidebar = renderSidebarWithRole;
 })();
