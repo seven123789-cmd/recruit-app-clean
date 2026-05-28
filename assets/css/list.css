@@ -463,3 +463,30 @@ tbody tr.action-missing td:first-child{
   display:inline-block;
   max-width:100%;
 }
+
+/* ===== LIST virtual scroll ===== */
+.table-card .table-wrap{
+  height:calc(100vh - 280px);
+  min-height:420px;
+  max-height:none;
+  overflow:auto;
+  position:relative;
+}
+#candidateTable tbody tr{
+  height:72px;
+}
+#candidateTable tbody tr.vscroll-spacer-top,
+#candidateTable tbody tr.vscroll-spacer-bottom{
+  height:auto;
+  background:transparent;
+}
+#candidateTable tbody tr.vscroll-spacer-top td,
+#candidateTable tbody tr.vscroll-spacer-bottom td{
+  box-shadow:none;
+}
+@media(max-width:900px){
+  .table-card .table-wrap{
+    height:calc(100vh - 220px);
+    min-height:360px;
+  }
+}

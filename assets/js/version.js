@@ -1,2 +1,2 @@
 // assets/js/version.js
-window.RECRUIT_APP_VERSION = "20260529_step1";
+window.RECRUIT_APP_VERSION = "20260529_list_virtual";

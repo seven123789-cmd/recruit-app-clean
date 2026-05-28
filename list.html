@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="./assets/css/common.css?v=20260528">
 <link rel="stylesheet" href="./assets/css/header.css?v=20260528">
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260528">
-<link rel="stylesheet" href="./assets/css/list.css?v=20260528">
+<link rel="stylesheet" href="./assets/css/list.css?v=20260529_list_virtual">
 </head>
 <body class="auth-checking">
 
@@ -216,7 +216,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260528"></script>
 <script src="assets/js/auth.js?v=20260528"></script>
-<script src="assets/js/version.js?v=20260529_step1"></script>
+<script src="assets/js/version.js?v=20260529_list_virtual"></script>
 <script src="./common.js?v=20260529_step1"></script>
 <script src="assets/js/overdue_popup.js?v=20260529_step1"></script>
 <script src="assets/js/candidate_utils.js?v=20260528"></script>
@@ -246,6 +246,10 @@ let dashboardJob="";
 const selectedIds = new Set();
 let currentVisibleRows=[];
 let renderCandidatesTimer=null;
+const LIST_VIRTUAL_ROW_HEIGHT = 72;
+const LIST_VIRTUAL_BUFFER = 6;
+let listShouldResetScroll = false;
+const listVirtualState = { rows:[], start:-1, end:-1, today:"" };
 
 const ACTIVE_STATUSES=window.RECRUIT_STAGE_STATUSES || ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
 const HIRING_RESULT_OPTIONS=window.RECRUIT_HIRING_RESULTS || ["進行中","保留","辞退","不採用","不通","採用","入社済"];
@@ -648,6 +652,7 @@ async function loadListMasterStatuses(rows=[]){
   statusColorMap=Object.fromEntries(listMasterStatuses.map(row=>[row.name,normalizeStatusColor(row.color)]));
 }
 function requestRenderCandidates(){
+  listShouldResetScroll = true;
   if(renderCandidatesTimer) clearTimeout(renderCandidatesTimer);
   renderCandidatesTimer = setTimeout(()=>{
     renderCandidatesTimer = null;
@@ -1207,6 +1212,171 @@ async function bulkDeleteCandidates(){
 }
 
 
+function createCandidateRow(r, today){
+  const tr=document.createElement("tr");
+  tr.dataset.id=String(r.id);
+
+  if(isActionRequired(r)){
+    if(!r.next_action_date)tr.classList.add("action-missing");
+    else if(r.next_action_date<today)tr.classList.add("action-over");
+    else if(r.next_action_date===today)tr.classList.add("action-today");
+    else tr.classList.add("action-soon");
+  }
+
+  tr.onclick=()=>{
+    saveNav(r.id);
+    location.href="./detail.html?id="+encodeURIComponent(r.id);
+  };
+
+  const dateClass=r.next_action_date<today?"date-over":r.next_action_date===today?"date-today":"";
+  const checked = selectedIds.has(String(r.id)) ? " checked" : "";
+
+  tr.innerHTML=
+    '<td class="list-check-cell"><input type="checkbox" class="bulk-row-check" data-id="'+esc(r.id)+'" aria-label="選択"'+checked+'></td>'+
+    "<td><strong>"+esc(r.name||"")+"</strong></td>"+
+    "<td>"+formatDate(r.applied_date)+"</td>"+
+    "<td>"+statusResultCell(r)+"</td>"+
+    "<td>"+esc(r.division||"")+"</td>"+
+    "<td>"+esc(r.center_name||"")+"</td>"+
+    "<td>"+esc(r.channel||"")+"</td>"+
+    "<td>"+esc(r.channel_detail||"")+"</td>"+
+    "<td>"+esc(r.owner_name||"")+"</td>"+
+    '<td><span class="'+dateClass+'">'+formatDate(r.next_action_date)+"</span></td>"+
+    '<td class="list-action-cell"><button class="btn-danger list-delete-btn" type="button" data-requires-role="admin" data-id="'+esc(r.id)+'">削除</button></td>';
+
+  const checkCell = tr.querySelector(".list-check-cell");
+  const checkBox = tr.querySelector(".bulk-row-check");
+  if(checkCell && checkBox){
+    checkCell.addEventListener("click", e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if(e.target !== checkBox) checkBox.checked = !checkBox.checked;
+      toggleBulkSelection(r.id, checkBox.checked);
+    });
+    checkBox.addEventListener("click", e => {
+      e.stopPropagation();
+    });
+    checkBox.addEventListener("change", e => {
+      e.stopPropagation();
+      toggleBulkSelection(r.id, e.target.checked);
+    });
+  }
+
+  const deleteBtn = tr.querySelector(".list-delete-btn");
+  if(deleteBtn){
+    deleteBtn.addEventListener("click", async (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+
+      if(!isAdminRole()){
+        if(window.RecruitUI) window.RecruitUI.showError("削除できる権限がありません。");
+        return;
+      }
+
+      const ok = window.RecruitUI
+        ? await window.RecruitUI.confirmAction(
+            "この応募者を削除しますか？\n\n※完全削除ではなく一覧から非表示にします。",
+            {
+              title:"削除確認",
+              okText:"削除する",
+              cancelText:"キャンセル",
+              type:"warning"
+            }
+          )
+        : confirm("この応募者を削除しますか？");
+
+      if(!ok) return;
+
+      try{
+        const { error } = await sb
+          .from("candidates")
+          .update({ is_deleted:true })
+          .eq("id", r.id);
+
+        if(error) throw error;
+
+        if(window.RecruitAudit && window.RecruitAudit.candidateDelete){
+          await window.RecruitAudit.candidateDelete(r.id, r);
+        }else if(window.writeRecruitAuditLog){
+          await window.writeRecruitAuditLog("candidate_delete", "candidates", r.id, {
+            name:r.name || null,
+            status:r.status || null
+          });
+        }
+
+        allCandidateRows = allCandidateRows.filter(x => String(x.id) !== String(r.id));
+
+        if(window.RecruitUI){
+          window.RecruitUI.toast("削除しました", "success");
+        }
+
+        renderCandidates();
+
+      }catch(err){
+        if(window.RecruitUI){
+          window.RecruitUI.showError("削除に失敗しました。\n\n" + (err.message || err));
+        }else{
+          if(window.RecruitUI){ window.RecruitUI.showError("削除に失敗しました。\n\n" + (err.message || err)); }
+        }
+      }
+    });
+  }
+
+  return tr;
+}
+
+function createVirtualSpacerRow(height, className){
+  const tr=document.createElement("tr");
+  tr.className=className;
+  const td=document.createElement("td");
+  td.colSpan=11;
+  td.style.height=Math.max(0,height)+"px";
+  td.style.padding="0";
+  td.style.border="none";
+  tr.appendChild(td);
+  return tr;
+}
+
+function renderVirtualCandidateRows(force=false){
+  const tbody=document.querySelector("#candidateTable tbody");
+  const wrap=document.querySelector(".table-card .table-wrap");
+  const rows=listVirtualState.rows;
+  if(!tbody || !wrap || !rows.length)return;
+
+  const scrollTop=wrap.scrollTop || 0;
+  const visibleHeight=wrap.clientHeight || 560;
+  const rawStart=Math.floor(scrollTop / LIST_VIRTUAL_ROW_HEIGHT) - LIST_VIRTUAL_BUFFER;
+  const rawEnd=Math.ceil((scrollTop + visibleHeight) / LIST_VIRTUAL_ROW_HEIGHT) + LIST_VIRTUAL_BUFFER;
+  const startIndex=Math.max(0, rawStart);
+  const endIndex=Math.min(rows.length, rawEnd);
+
+  if(!force && startIndex===listVirtualState.start && endIndex===listVirtualState.end)return;
+
+  listVirtualState.start=startIndex;
+  listVirtualState.end=endIndex;
+
+  const fragment=document.createDocumentFragment();
+  const topHeight=startIndex * LIST_VIRTUAL_ROW_HEIGHT;
+  const bottomHeight=Math.max(0, (rows.length - endIndex) * LIST_VIRTUAL_ROW_HEIGHT);
+
+  fragment.appendChild(createVirtualSpacerRow(topHeight, "vscroll-spacer-top"));
+  rows.slice(startIndex,endIndex).forEach(r=>{
+    fragment.appendChild(createCandidateRow(r, listVirtualState.today));
+  });
+  fragment.appendChild(createVirtualSpacerRow(bottomHeight, "vscroll-spacer-bottom"));
+
+  tbody.innerHTML="";
+  tbody.appendChild(fragment);
+  updateBulkSelectCount();
+}
+
+function setupListVirtualScroll(){
+  const wrap=document.querySelector(".table-card .table-wrap");
+  if(!wrap || wrap.dataset.virtualScrollReady==="1")return;
+  wrap.dataset.virtualScrollReady="1";
+  wrap.addEventListener("scroll",()=>renderVirtualCandidateRows(false),{passive:true});
+}
+
 function renderCandidates(){
   saveState();
   $("filterAllBtn").className=currentListFilter==="all"?"btn-primary":"btn-secondary";
@@ -1221,6 +1391,7 @@ function renderCandidates(){
   saveListOrder(rows);
 
   const tbody=document.querySelector("#candidateTable tbody");
+  const wrap=document.querySelector(".table-card .table-wrap");
   const today=todayStr();
   const actionInRows=rows.filter(isActionRequired).length;
   $("listCount").textContent="表示 "+rows.length+"件 / 条件 "+getListFilterLabel()+" / 要対応 "+actionInRows+"件";
@@ -1232,128 +1403,24 @@ function renderCandidates(){
   if($("sideKpiOver"))$("sideKpiOver").textContent=overInRows;
   if($("sideKpiToday"))$("sideKpiToday").textContent=todayInRows;
 
+  setupListVirtualScroll();
+  listVirtualState.rows=rows;
+  listVirtualState.today=today;
+  listVirtualState.start=-1;
+  listVirtualState.end=-1;
+
   if(!rows.length){
     tbody.innerHTML='<tr><td class="empty" colspan="11">表示対象のデータがありません</td></tr>';
     updateBulkSelectCount();
     return;
   }
 
-  tbody.innerHTML="";
-  const fragment=document.createDocumentFragment();
-  rows.forEach(r=>{
-    const tr=document.createElement("tr");
-    tr.dataset.id=String(r.id);
+  if(listShouldResetScroll && wrap){
+    wrap.scrollTop=0;
+  }
+  listShouldResetScroll=false;
 
-    if(isActionRequired(r)){
-      if(!r.next_action_date)tr.classList.add("action-missing");
-      else if(r.next_action_date<today)tr.classList.add("action-over");
-      else if(r.next_action_date===today)tr.classList.add("action-today");
-      else tr.classList.add("action-soon");
-    }
-
-    tr.onclick=()=>{
-      saveNav(r.id);
-      location.href="./detail.html?id="+encodeURIComponent(r.id);
-    };
-
-    const dateClass=r.next_action_date<today?"date-over":r.next_action_date===today?"date-today":"";
-    const checked = selectedIds.has(String(r.id)) ? " checked" : "";
-
-    tr.innerHTML=
-      '<td class="list-check-cell"><input type="checkbox" class="bulk-row-check" data-id="'+esc(r.id)+'" aria-label="選択"'+checked+'></td>'+
-      "<td><strong>"+esc(r.name||"")+"</strong></td>"+
-      "<td>"+formatDate(r.applied_date)+"</td>"+
-      "<td>"+statusResultCell(r)+"</td>"+
-      "<td>"+esc(r.division||"")+"</td>"+
-      "<td>"+esc(r.center_name||"")+"</td>"+
-      "<td>"+esc(r.channel||"")+"</td>"+
-      "<td>"+esc(r.channel_detail||"")+"</td>"+
-      "<td>"+esc(r.owner_name||"")+"</td>"+
-      '<td><span class="'+dateClass+'">'+formatDate(r.next_action_date)+"</span></td>"+
-      '<td class="list-action-cell"><button class="btn-danger list-delete-btn" type="button" data-requires-role="admin" data-id="'+esc(r.id)+'">削除</button></td>';
-
-    const checkCell = tr.querySelector(".list-check-cell");
-    const checkBox = tr.querySelector(".bulk-row-check");
-    if(checkCell && checkBox){
-      checkCell.addEventListener("click", e => {
-        e.preventDefault();
-        e.stopPropagation();
-        if(e.target !== checkBox) checkBox.checked = !checkBox.checked;
-        toggleBulkSelection(r.id, checkBox.checked);
-      });
-      checkBox.addEventListener("click", e => {
-        e.stopPropagation();
-      });
-      checkBox.addEventListener("change", e => {
-        e.stopPropagation();
-        toggleBulkSelection(r.id, e.target.checked);
-      });
-    }
-
-    const deleteBtn = tr.querySelector(".list-delete-btn");
-    if(deleteBtn){
-      deleteBtn.addEventListener("click", async (e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-
-        if(!isAdminRole()){
-          if(window.RecruitUI) window.RecruitUI.showError("削除できる権限がありません。");
-          return;
-        }
-
-        const ok = window.RecruitUI
-          ? await window.RecruitUI.confirmAction(
-              "この応募者を削除しますか？\n\n※完全削除ではなく一覧から非表示にします。",
-              {
-                title:"削除確認",
-                okText:"削除する",
-                cancelText:"キャンセル",
-                type:"warning"
-              }
-            )
-          : confirm("この応募者を削除しますか？");
-
-        if(!ok) return;
-
-        try{
-          const { error } = await sb
-            .from("candidates")
-            .update({ is_deleted:true })
-            .eq("id", r.id);
-
-          if(error) throw error;
-
-          if(window.RecruitAudit && window.RecruitAudit.candidateDelete){
-            await window.RecruitAudit.candidateDelete(r.id, r);
-          }else if(window.writeRecruitAuditLog){
-            await window.writeRecruitAuditLog("candidate_delete", "candidates", r.id, {
-              name:r.name || null,
-              status:r.status || null
-            });
-          }
-
-          allCandidateRows = allCandidateRows.filter(x => String(x.id) !== String(r.id));
-
-          if(window.RecruitUI){
-            window.RecruitUI.toast("削除しました", "success");
-          }
-
-          renderCandidates();
-
-        }catch(err){
-          if(window.RecruitUI){
-            window.RecruitUI.showError("削除に失敗しました。\n\n" + (err.message || err));
-          }else{
-            if(window.RecruitUI){ window.RecruitUI.showError("削除に失敗しました。\n\n" + (err.message || err)); }
-          }
-        }
-      });
-    }
-
-    fragment.appendChild(tr);
-  });
-  tbody.appendChild(fragment);
-  updateBulkSelectCount();
+  renderVirtualCandidateRows(true);
   restoreNav();
 }
 function saveNav(id){
