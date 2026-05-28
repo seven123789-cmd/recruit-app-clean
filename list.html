@@ -215,7 +215,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260523_join_actual_fix"></script>
-<script src="assets/js/auth.js?v=20260528_sidebar_role_racefix"></script>
+<script src="assets/js/auth.js?v=20260528_rolemenu"></script>
 <script src="./common.js?v=20260528_rolemenu"></script>
 <script src="assets/js/candidate_utils.js?v=20260523_join_actual_fix"></script>
 <script src="assets/js/ops_guard.js?v=20260528_rolemenu"></script>
@@ -247,8 +247,16 @@ const ACTIVE_STATUSES=window.RECRUIT_STAGE_STATUSES || ["応募","書類選考",
 const HIRING_RESULT_OPTIONS=window.RECRUIT_HIRING_RESULTS || ["進行中","保留","辞退","不採用","不通","採用","入社済"];
 const STATE="recruit_list_filter_state";
 const NAV="recruit_list_navigation_state";
+let listRenderTimer=null;
 
 function $(id){return document.getElementById(id)}
+function scheduleRenderCandidates(delay=120){
+  if(listRenderTimer) clearTimeout(listRenderTimer);
+  listRenderTimer=setTimeout(()=>{
+    listRenderTimer=null;
+    renderCandidates();
+  }, delay);
+}
 
 function setMsg(id,msg,type="info"){
   const el=$(id);
@@ -992,15 +1000,15 @@ function getSelectedRows(){
   return allCandidateRows.filter(r => selectedIds.has(String(r.id)));
 }
 
-function updateBulkSelectCount(){
+function updateBulkSelectCount(visibleRows){
   const count = selectedIds.size;
   const el = $("bulkSelectCount");
   if(el) el.textContent = "選択 " + count + "件";
 
   const all = $("bulkSelectAll");
   if(all){
-    const visibleRows = filteredRows();
-    const visibleIds = visibleRows.map(r => String(r.id));
+    const rowsForSelection = Array.isArray(visibleRows) ? visibleRows : filteredRows();
+    const visibleIds = rowsForSelection.map(r => String(r.id));
     const selectedVisible = visibleIds.filter(id => selectedIds.has(id)).length;
     all.checked = visibleIds.length > 0 && selectedVisible === visibleIds.length;
     all.indeterminate = selectedVisible > 0 && selectedVisible < visibleIds.length;
@@ -1033,7 +1041,7 @@ function clearBulkSelection(){
   renderCandidates();
 }
 
-function setupBulkOptions(){
+function setupBulkOptions(visibleRows){
   setupBulkStatusOptions();
   const ownerSelect = $("bulkOwner");
   if(ownerSelect){
@@ -1069,7 +1077,7 @@ function setupBulkOptions(){
     all.addEventListener("change", e => toggleBulkSelectAll(e.target.checked));
   }
 
-  updateBulkSelectCount();
+  updateBulkSelectCount(visibleRows);
 }
 
 function buildBulkUpdatePayload(){
@@ -1203,7 +1211,7 @@ function renderCandidates(){
   renderResultFilterChips();
 
   const rows=filteredRows();
-  setupBulkOptions();
+  setupBulkOptions(rows);
   saveListOrder(rows);
 
   const tbody=document.querySelector("#candidateTable tbody");
@@ -1337,7 +1345,7 @@ function renderCandidates(){
 
     tbody.appendChild(tr);
   });
-  updateBulkSelectCount();
+  updateBulkSelectCount(rows);
   restoreNav();
 }
 function saveNav(id){
@@ -1470,12 +1478,12 @@ async function initPageAfterLogin(){
         dashboardContextActive=false;
       }
       saveState();
-      renderCandidates();
+      scheduleRenderCandidates();
     }
   });
 });
 authInit();
 </script>
-<script src="./sidebar.js?v=20260528_sidebar_role_racefix"></script>
+<script src="./sidebar.js?v=20260528_rolemenu"></script>
 </body>
 </html>
