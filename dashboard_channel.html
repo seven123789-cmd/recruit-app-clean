@@ -17,7 +17,7 @@
 <script src="assets/js/ops_guard.js?v=20260528_rolemenu"></script>
 <script src="assets/js/safe_utils.js?v=20260524_metric_audit"></script>
 <script src="./sidebar.js?v=20260528_rolemenu"></script>
-<link href="./assets/css/dashboard_ui.css?v=20260524_metric_audit" rel="stylesheet"/>
+<link href="./assets/css/dashboard_ui.css?v=20260528_kpi_action_space" rel="stylesheet"/>
 </head>
 <body class="auth-checking">
 <div class="container hidden" id="authScreen">
@@ -163,7 +163,7 @@ function setMsg(id,msg,type="info"){const el=$(id);if(!el)return;if(!msg){el.tex
 function rate(n,d){return !d ? "0.0%" : ((n/d)*100).toFixed(1)+"%"}
 function rateNum(n,d){return !d ? 0 : Number(((n/d)*100).toFixed(1))}
 function validDate(s){if(!s)return false;const y=Number(String(s).slice(0,4));return y>=2000}
-function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (String(r?.hiring_result||"").trim()==="入社済"||validDate(r?.join_date))}
+function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="入社")}
 
 function fiscalRange(type){const fy=fiscalYear();if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};if(type==="all")return {fy:null,label:"全期間",from:"",to:""};return {fy,label:fy+"年度",from:fy+"-04-01",to:(fy+1)+"-03-31"}}
 function applyFy(){const range=fiscalRange($("fy").value);$("from").value=range.from;$("to").value=range.to;const period=range.from&&range.to ? `${range.from} ～ ${range.to}` : "全期間";setText("periodText","対象期間："+period);setText("sideFiscalYear",range.label);setText("sidePeriod",period)}
@@ -326,7 +326,7 @@ function groupByChannel(data){
 }
 function updateSummary(data,items){
   const applied=data.filter(r=>validDate(r.applied_date)).length;
-  const interview=data.filter(r=>window.isRecruitInterviewDone ? window.isRecruitInterviewDone(r) : validDate(r.interview_done_date)).length;
+  const interview=data.filter(r=>window.isRecruitStageReached ? window.isRecruitStageReached(r,"面接実施") : validDate(r.interview_done_date)).length;
   const join=data.filter(r=>window.isRecruitHired ? window.isRecruitHired(r) : isHired(r)).length;
   const interviewRate=rate(interview,applied);
   const joinRate=rate(join,applied);

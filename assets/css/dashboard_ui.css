@@ -270,16 +270,24 @@
 /* =========================================================
    3. ダッシュボード内カード
    ========================================================= */
-.dashboard-link-card{position:relative;cursor:pointer;}
+.dashboard-link-card{
+  position:relative;
+  cursor:pointer;
+  --dash-action-top:14px;
+  --dash-action-right:16px;
+  --dash-action-height:28px;
+  --dash-action-space:78px;
+}
 .dashboard-link-card::after{
   content:"一覧へ";
   position:absolute;
-  top:14px;
-  right:14px;
+  top:var(--dash-action-top);
+  right:var(--dash-action-right);
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  min-height:26px;
+  min-width:52px;
+  min-height:var(--dash-action-height);
   padding:0 10px;
   border:1px solid #bfdbfe;
   border-radius:999px;
@@ -287,14 +295,33 @@
   color:#2563eb;
   font-size:11px;
   font-weight:950;
+  line-height:1;
+  white-space:nowrap;
   opacity:0;
   visibility:hidden;
   transform:translateY(-2px);
-  transition:opacity .16s ease, visibility .16s ease, transform .16s ease;
+  transition:opacity .16s ease, visibility .16s ease, transform .16s ease, background-color .16s ease, border-color .16s ease;
   pointer-events:none;
+  z-index:2;
 }
 .dashboard-link-card:hover::after,
 .dashboard-link-card:focus-visible::after{opacity:1;visibility:visible;transform:translateY(0);}
+.dashboard-link-card:hover::after{background:#dbeafe;border-color:#93c5fd;}
+.main-content .metric-card.dashboard-link-card,
+.main-content .summary-grid .metric-card[role="button"]{
+  padding-right:calc(18px + var(--dash-action-space));
+}
+.priority-card.dashboard-link-card,
+.flow-card.dashboard-link-card,
+.reason-card.dashboard-link-card{
+  padding-top:44px;
+}
+.reason-card.dashboard-link-card{
+  align-items:flex-end;
+}
+.reason-card.dashboard-link-card .reason-title{
+  padding-right:12px;
+}
 .priority-card,
 .flow-card,
 .reason-card{
@@ -307,6 +334,17 @@
   background:linear-gradient(180deg,#fff 0%,#fbfdff 100%);
   box-shadow:0 8px 20px rgba(15,23,42,.05);
   transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.priority-card.dashboard-link-card,
+.flow-card.dashboard-link-card,
+.reason-card.dashboard-link-card{
+  padding-top:44px;
+}
+.reason-card.dashboard-link-card{
+  align-items:flex-end;
+}
+.reason-card.dashboard-link-card .reason-title{
+  padding-right:12px;
 }
 .priority-card:hover,
 .flow-card:hover,

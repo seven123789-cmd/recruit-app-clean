@@ -17,7 +17,7 @@
 <script src="assets/js/ops_guard.js?v=20260528_rolemenu"></script>
 <script src="assets/js/safe_utils.js?v=20260524_metric_audit"></script>
 <script src="./sidebar.js?v=20260528_rolemenu"></script>
-<link href="./assets/css/dashboard_ui.css?v=20260524_metric_audit" rel="stylesheet"/>
+<link href="./assets/css/dashboard_ui.css?v=20260528_kpi_action_space" rel="stylesheet"/>
 </head>
 <body class="auth-checking">
 <div class="container hidden" id="authScreen">
@@ -149,7 +149,7 @@ function todayStr(){return window.RecruitDate?.todayJST ? window.RecruitDate.tod
 function validDate(s){if(!s)return false;const y=Number(String(s).slice(0,4));return y>=2000}
 
 
-function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (String(r?.hiring_result||"").trim()==="入社済"||validDate(r?.join_date))}
+function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="入社")}
 
 function isActionRequired(r){
   const st=String(r.status||"").trim();
@@ -365,7 +365,7 @@ function groupByJob(data){
 }
 function updateSummary(data,items){
   const applied=data.filter(r=>validDate(r.applied_date)).length;
-  const interview=data.filter(r=>window.isRecruitInterviewDone ? window.isRecruitInterviewDone(r) : validDate(r.interview_done_date)).length;
+  const interview=data.filter(r=>validDate(r.interview_done_date)).length;
   const join=data.filter(isHired).length;
   const interviewRate=rate(interview,applied);
   const joinRate=rate(join,applied);
