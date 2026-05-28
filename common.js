@@ -324,12 +324,13 @@
 
   function isRecruitOwnerStagnation(row){
     // 担当停滞は「期限切れ」だけを対象にする。
-    // 採用＋採用は入社前の採用決定なので、入社済になるまでは次回対応・期限切れ管理の対象にする。
+    // 未設定・今日・未来日は、要対応や予定管理で扱い、停滞には含めない。
     const r = normalizeRecruitCandidateState(row || {});
     if(r.is_deleted === true) return false;
     const result = String(r.hiring_result || "進行中").trim() || "進行中";
-    if(["辞退","不採用","不通","保留","入社済"].includes(result)) return false;
-    if(isRecruitHired(r)) return false;
+    if(result !== "進行中") return false;
+    const status = String(r.status || "").trim();
+    if(status === "採用") return false;
     if(isFinal(r)) return false;
     const next = String(r.next_action_date || "").slice(0,10);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return false;
@@ -338,13 +339,14 @@
 
 
   function isRecruitActionRequired(row){
-    // 要対応は、まだ終了していない候補者の「次回対応日未設定または今日以前」。
-    // 採用＋採用は入社前の採用決定なので、入社済になるまでは要対応対象にする。
+    // 要対応は「進行中」かつ「次回対応日が未設定または今日以前」。
+    // 担当停滞（期限切れのみ）とは分ける。
     const r = normalizeRecruitCandidateState(row || {});
     if(r.is_deleted === true) return false;
     const result = String(r.hiring_result || "進行中").trim() || "進行中";
-    if(["辞退","不採用","不通","保留","入社済"].includes(result)) return false;
-    if(isRecruitHired(r)) return false;
+    if(result !== "進行中") return false;
+    const status = String(r.status || "").trim();
+    if(status === "採用") return false;
     if(isFinal(r)) return false;
     const next = String(r.next_action_date || "").slice(0,10);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return true;
@@ -383,80 +385,10 @@
     };
   }
 
-
-  function isRecruitPendingJoinActionRequired(row){
-    // 入社待ち（採用決定済・未入社）の対応漏れ。
-    // 採用＋採用は内定扱いなので、入社済になるまでは次回対応日の管理対象。
-    const r = normalizeRecruitCandidateState(row || {});
-    if(r.is_deleted === true) return false;
-    if(!isRecruitPendingJoin(r)) return false;
-    const result = String(r.hiring_result || "").trim();
-    if(["辞退","不採用","不通","保留","入社済"].includes(result)) return false;
-    const next = String(r.next_action_date || "").slice(0,10);
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return true;
-    return next <= todayJST();
-  }
-
-  function isRecruitPendingJoinStagnation(row){
-    const r = normalizeRecruitCandidateState(row || {});
-    if(r.is_deleted === true) return false;
-    if(!isRecruitPendingJoin(r)) return false;
-    const result = String(r.hiring_result || "").trim();
-    if(["辞退","不採用","不通","保留","入社済"].includes(result)) return false;
-    const next = String(r.next_action_date || "").slice(0,10);
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(next)) return false;
-    return next < todayJST();
-  }
-
-  function recruitWeekKey(dateText){
-    const text = String(dateText || "").slice(0,10);
-    if(!isValidRecruitDate(text)) return "";
-    const d = new Date(text + "T00:00:00+09:00");
-    const day = d.getDay();
-    const monday = new Date(d);
-    monday.setDate(d.getDate() - ((day + 6) % 7));
-    return monday.toISOString().slice(0,10);
-  }
-
-  function aggregateRecruitByDate(rows, options={}){
-    const dateField = options.dateField || "applied_date";
-    const granularity = options.granularity || "day";
-    const map = new Map();
-    (rows || []).filter(r => r && r.is_deleted !== true).forEach(row => {
-      const raw = String(row[dateField] || row.applied_date || "").slice(0,10);
-      if(!isValidRecruitDate(raw)) return;
-      const key = granularity === "week" ? recruitWeekKey(raw) : raw;
-      if(!key) return;
-      if(!map.has(key)) map.set(key, []);
-      map.get(key).push(row);
-    });
-    return [...map.entries()].sort((a,b) => String(a[0]).localeCompare(String(b[0]))).map(([key, list]) => ({ key, ...recruitMetricCounts(list) }));
-  }
-
-  function detectRecruitChannelAnomaly(item){
-    const applied = Number(item?.applied || 0);
-    const interview = Number(item?.interview || item?.interviewDone || 0);
-    const hired = Number(item?.join || item?.hired || 0);
-    const declined = Number(item?.decline || item?.declined || 0);
-    const noContact = Number(item?.lost || item?.noContact || 0);
-    const interviewRate = applied ? (interview / applied) * 100 : 0;
-    const hiredRate = applied ? (hired / applied) * 100 : 0;
-    const declineRate = applied ? (declined / applied) * 100 : 0;
-    const noContactRate = applied ? (noContact / applied) * 100 : 0;
-    if(applied < 6) return { level:"参考", label:"参考値", cls:"neutral", detail:`応募 ${applied}件のため率評価は保留`, action:"件数が増えてから判断" };
-    if(applied >= 10 && hiredRate < 8) return { level:"重点", label:"採用転換が弱い", cls:"danger", detail:`応募→採用 ${hiredRate.toFixed(1)}%`, action:"求人内容・条件説明・面接後フォローを確認" };
-    if(applied >= 10 && interviewRate < 35) return { level:"重点", label:"面接化が弱い", cls:"danger", detail:`応募→面接 ${interviewRate.toFixed(1)}%`, action:"応募後の初動速度・日程提示を確認" };
-    if(noContact >= 5 || noContactRate >= 25) return { level:"注意", label:"不通が多い", cls:"warning", detail:`不通 ${noContact}件 / ${noContactRate.toFixed(1)}%`, action:"連絡方法・時間帯を確認" };
-    if(declined >= 5 || declineRate >= 25) return { level:"注意", label:"辞退が多い", cls:"warning", detail:`辞退 ${declined}件 / ${declineRate.toFixed(1)}%`, action:"辞退理由と求人訴求を確認" };
-    return { level:"良好", label:"流れ良好", cls:"success", detail:`応募→採用 ${hiredRate.toFixed(1)}%`, action:"現行運用を維持" };
-  }
-
   function isFinal(row){
     const r = normalizeRecruitCandidateState(row || {});
     const status = String(r.status || "").trim();
-    const result = String(r.hiring_result || "").trim();
-    // 採用＋採用は「入社前の採用決定」であり、実入社でも終了でもない。
-    return isRecruitHired(r) || ["不採用","辞退","不通","保留","入社済"].includes(result) || ["不採用","辞退","不通","保留","入社"].includes(status);
+    return isRecruitHired(r) || ["不採用","辞退","不通","保留","採用","入社済"].includes(String(r.hiring_result || "").trim()) || ["不採用","辞退","不通","保留","入社"].includes(status);
   }
 
 
@@ -535,10 +467,6 @@
   window.isRecruitActionRequired = window.isRecruitActionRequired || isRecruitActionRequired;
   window.isRecruitDormant3Days = window.isRecruitDormant3Days || isRecruitDormant3Days;
   window.isRecruitHeatmapDangerCandidate = window.isRecruitHeatmapDangerCandidate || isRecruitHeatmapDangerCandidate;
-  window.isRecruitPendingJoinActionRequired = window.isRecruitPendingJoinActionRequired || isRecruitPendingJoinActionRequired;
-  window.isRecruitPendingJoinStagnation = window.isRecruitPendingJoinStagnation || isRecruitPendingJoinStagnation;
-  window.aggregateRecruitByDate = window.aggregateRecruitByDate || aggregateRecruitByDate;
-  window.detectRecruitChannelAnomaly = window.detectRecruitChannelAnomaly || detectRecruitChannelAnomaly;
   window.recruitMetricCounts = window.recruitMetricCounts || recruitMetricCounts;
   window.isFinal = window.isFinal || isFinal;
   window.getRecruitCurrentFiscalYear = window.getRecruitCurrentFiscalYear || getRecruitCurrentFiscalYear;
@@ -1782,19 +1710,6 @@
     set(map.rateOffer, r.offer || "0.0%");
     set(map.rateHired, r.hired || "0.0%");
   }
-  function getRecruitRoleValue(role){
-    if(window.RecruitRole && typeof window.RecruitRole.normalize === "function") return window.RecruitRole.normalize(role);
-    const value = String(role || window.currentRole || "viewer").toLowerCase();
-    return ["admin", "editor", "viewer"].includes(value) ? value : "viewer";
-  }
-  function hasRecruitRole(role, allowed){
-    const r = getRecruitRoleValue(role);
-    const list = Array.isArray(allowed) ? allowed : String(allowed || "").split(",");
-    return list.map(v => String(v || "").trim().toLowerCase()).includes(r);
-  }
-  function canRecruitEdit(role){ return hasRecruitRole(role, ["admin", "editor"]); }
-  function canRecruitAdmin(role){ return hasRecruitRole(role, ["admin"]); }
-
   window.RecruitDashboard = Object.assign(window.RecruitDashboard || {}, {
     escape,
     uniqueSorted,
@@ -1807,7 +1722,4 @@
     calcRecruitFlowMetrics,
     applyRecruitFlowMetrics
   });
-  window.hasRecruitRole = window.hasRecruitRole || hasRecruitRole;
-  window.canRecruitEdit = window.canRecruitEdit || canRecruitEdit;
-  window.canRecruitAdmin = window.canRecruitAdmin || canRecruitAdmin;
 })();

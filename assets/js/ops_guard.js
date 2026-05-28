@@ -20,16 +20,20 @@ function isAdmin(role = currentRole()){
   return normalize(role) === "admin";
 }
 
+function isViewer(role = currentRole()){
+  return normalize(role) === "viewer";
+}
+
+function canEdit(role = currentRole()){
+  return canWrite(role);
+}
+
 function canRead(role = currentRole()){
   return ["admin","editor","viewer"].includes(normalize(role));
 }
 
 function canWrite(role = currentRole()){
   return ["admin","editor"].includes(normalize(role));
-}
-
-function canEdit(role = currentRole()){
-  return canWrite(role);
 }
 
 function canImport(role = currentRole()){
@@ -189,11 +193,11 @@ function applyToPage(role = currentRole()){
 
 window.RecruitOpsGuard = {
   normalize,
-  normalizeRole: normalize,
   currentRole,
-  setRole,
   hasRole,
   isAdmin,
+  isViewer,
+  setRole,
   canRead,
   canWrite,
   canEdit,
@@ -212,11 +216,9 @@ window.RecruitOpsGuard = {
 // Compatibility alias. RecruitOpsGuard is the formal permission object;
 // RecruitRole remains for existing pages that still call RecruitRole.apply()/isViewer().
 window.RecruitRole = Object.assign(window.RecruitOpsGuard, {
-  isViewer: role => normalize(role) === "viewer",
+  isViewer,
   isAdmin,
   isManager: role => false,
-  hasRole,
-  canEdit,
   canExport,
   requireExport,
   apply: applyToPage
@@ -236,11 +238,13 @@ async function resolveAndApply(){
   applyToPage(window.currentRole || "viewer");
 }
 
+document.addEventListener("DOMContentLoaded", () => {
+  window.setTimeout(resolveAndApply, 100);
+  window.setTimeout(resolveAndApply, 800);
+});
+
 window.addEventListener("recruit:role-ready", ev => {
-  const role = ev.detail && ev.detail.role ? ev.detail.role : window.currentRole;
-  window.__recruitRoleResolved = true;
-  applyToPage(role);
-  document.body.classList.remove("auth-checking");
+  applyToPage(ev.detail && ev.detail.role ? ev.detail.role : window.currentRole);
 });
 
 })();

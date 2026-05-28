@@ -86,14 +86,6 @@
   }
 
   function roleCan(role, action){
-    const guard = window.RecruitOpsGuard;
-    if(guard){
-      if(action === "admin" && typeof guard.isAdmin === "function") return guard.isAdmin(role);
-      if(action === "edit" && typeof guard.canEdit === "function") return guard.canEdit(role);
-      if(action === "export" && typeof guard.canExport === "function") return guard.canExport(role);
-      if(action === "delete" && typeof guard.canDelete === "function") return guard.canDelete(role);
-      if(typeof guard.canRead === "function") return guard.canRead(role);
-    }
     const r = String(role || window.currentRole || "viewer").toLowerCase();
     if(action === "admin") return r === "admin";
     if(action === "edit") return r === "admin" || r === "editor";
@@ -183,18 +175,6 @@
     window.RecruitAuth.getCurrentRole = async function(){
       const profile = await fetchRecruitProfile(client);
       return profile && profile.role ? String(profile.role).toLowerCase() : (window.currentRole || "viewer");
-    };
-    window.RecruitAuth.can = function(action, role){
-      return roleCan(role, action);
-    };
-    window.RecruitAuth.isAdmin = function(role){
-      return roleCan(role, "admin");
-    };
-    window.RecruitAuth.canEdit = function(role){
-      return roleCan(role, "edit");
-    };
-    window.RecruitAuth.canExport = function(role){
-      return roleCan(role, "export");
     };
     window.RecruitAuth.markExplicitSignOut = function(){
       _explicitSignOutUntil = Date.now() + 5000;
