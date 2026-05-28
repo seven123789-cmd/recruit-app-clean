@@ -1,2 +1,2 @@
 // assets/js/version.js
-window.RECRUIT_APP_VERSION = '20260529_reason_tags';
+window.RECRUIT_APP_VERSION = '20260529_reason_column_fix';

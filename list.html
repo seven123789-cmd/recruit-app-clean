@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="./assets/css/common.css?v=20260528">
 <link rel="stylesheet" href="./assets/css/header.css?v=20260528">
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260528">
-<link rel="stylesheet" href="./assets/css/list.css?v=20260529_reason_tags">
+<link rel="stylesheet" href="./assets/css/list.css?v=20260529_reason_column_fix">
 </head>
 <body class="auth-checking">
 
@@ -195,6 +195,7 @@
                 <th>氏名</th>
                 <th>応募日</th>
                 <th>ステータス<br><span class="th-sub">選考結果</span></th>
+                <th>確認理由</th>
                 <th>本部</th>
                 <th>センター</th>
                 <th>媒体</th>
@@ -205,7 +206,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr><td class="empty" colspan="11">読込中です</td></tr>
+              <tr><td class="empty" colspan="12">読込中です</td></tr>
             </tbody>
           </table>
         </div>
@@ -217,7 +218,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260528"></script>
 <script src="assets/js/auth.js?v=20260528"></script>
-<script src="assets/js/version.js?v=20260529_reason_tags"></script>
+<script src="assets/js/version.js?v=20260529_reason_column_fix"></script>
 <script src="./common.js?v=20260529_step1"></script>
 <script src="assets/js/overdue_popup.js?v=20260529_step1"></script>
 <script src="assets/js/candidate_utils.js?v=20260528"></script>
@@ -247,7 +248,8 @@ let dashboardJob="";
 const selectedIds = new Set();
 let currentVisibleRows=[];
 let renderCandidatesTimer=null;
-const LIST_VIRTUAL_ROW_HEIGHT = 72;
+const LIST_VIRTUAL_ROW_HEIGHT = 96;
+const LIST_VIRTUAL_THRESHOLD = 300;
 const LIST_VIRTUAL_BUFFER = 6;
 let listShouldResetScroll = false;
 const listVirtualState = { rows:[], start:-1, end:-1, today:"" };
@@ -353,16 +355,16 @@ function getListActionReasonTags(row){
   }
 
   if(isActionRequired(normalized)){
-    if(!next) tags.push({label:"次回未設定", tone:"missing"});
+    if(!next) tags.push({label:"次回日未設定", tone:"missing"});
     else if(next<today) tags.push({label:"期限切れ", tone:"danger"});
     else if(next===today) tags.push({label:"今日対応", tone:"today"});
   }
 
-  if(isInterviewNotDone(normalized)) tags.push({label:"結果未登録", tone:"warning"});
-  if(isInterviewNotSet(normalized)) tags.push({label:"面接未設定", tone:"warning"});
+  if(isInterviewNotDone(normalized)) tags.push({label:"面接結果未登録", tone:"warning"});
+  if(isInterviewNotSet(normalized)) tags.push({label:"面接日未設定", tone:"warning"});
   if(isDormant3Days(normalized)) tags.push({label:"未接触3日+", tone:"muted"});
-  if(isNoContact(normalized)) tags.push({label:"連絡不通", tone:"danger"});
-  if(isDecline(normalized)) tags.push({label:"辞退確認", tone:"warning"});
+  if(isNoContact(normalized)) tags.push({label:"再連絡", tone:"danger"});
+  if(isDecline(normalized)) tags.push({label:"辞退理由確認", tone:"warning"});
   if(window.isRecruitOwnerStagnation && window.isRecruitOwnerStagnation(normalized)) tags.push({label:"担当停滞", tone:"warning"});
 
   const seen=new Set();
@@ -375,15 +377,19 @@ function getListActionReasonTags(row){
 
 function actionReasonTagsHtml(row){
   const tags=getListActionReasonTags(row);
-  if(!tags.length) return "";
+  if(!tags.length) return '<span class="action-reason-empty">-</span>';
   return '<div class="action-reason-tags" aria-label="要対応理由">'+
     tags.map(tag=>'<span class="action-reason-tag action-reason-'+esc(tag.tone||"info")+'">'+esc(tag.label)+'</span>').join('')+
     '</div>';
 }
 
+function actionReasonCell(row){
+  return '<div class="action-reason-cell">'+actionReasonTagsHtml(row)+'</div>';
+}
+
 function statusResultCell(row){
   const normalized = normalizeListCandidate(row);
-  return `<div class="status-result-cell"><div class="status-line">${badge(normalized.status)}</div><div class="result-line"><span>選考結果</span>${resultBadge(normalized)}</div>${actionReasonTagsHtml(normalized)}</div>`;
+  return `<div class="status-result-cell"><div class="status-line">${badge(normalized.status)}</div><div class="result-line"><span>選考結果</span>${resultBadge(normalized)}</div></div>`;
 }
 
 function getFiscalYearFromAppliedDate(dateStr){
@@ -1371,6 +1377,7 @@ function createCandidateRow(r, today){
     "<td><strong>"+esc(r.name||"")+"</strong></td>"+
     "<td>"+formatDate(r.applied_date)+"</td>"+
     "<td>"+statusResultCell(r)+"</td>"+
+    "<td>"+actionReasonCell(r)+"</td>"+
     "<td>"+esc(r.division||"")+"</td>"+
     "<td>"+esc(r.center_name||"")+"</td>"+
     "<td>"+esc(r.channel||"")+"</td>"+
@@ -1464,12 +1471,22 @@ function createVirtualSpacerRow(height, className){
   const tr=document.createElement("tr");
   tr.className=className;
   const td=document.createElement("td");
-  td.colSpan=11;
+  td.colSpan=12;
   td.style.height=Math.max(0,height)+"px";
   td.style.padding="0";
   td.style.border="none";
   tr.appendChild(td);
   return tr;
+}
+
+function renderFullCandidateRows(rows, today){
+  const tbody=document.querySelector("#candidateTable tbody");
+  if(!tbody)return;
+  const fragment=document.createDocumentFragment();
+  rows.forEach(r=>fragment.appendChild(createCandidateRow(r, today)));
+  tbody.innerHTML="";
+  tbody.appendChild(fragment);
+  updateBulkSelectCount();
 }
 
 function renderVirtualCandidateRows(force=false){
@@ -1539,14 +1556,13 @@ function renderCandidates(){
   if($("sideKpiOver"))$("sideKpiOver").textContent=overInRows;
   if($("sideKpiToday"))$("sideKpiToday").textContent=todayInRows;
 
-  setupListVirtualScroll();
   listVirtualState.rows=rows;
   listVirtualState.today=today;
   listVirtualState.start=-1;
   listVirtualState.end=-1;
 
   if(!rows.length){
-    tbody.innerHTML='<tr><td class="empty" colspan="11">表示対象のデータがありません</td></tr>';
+    tbody.innerHTML='<tr><td class="empty" colspan="12">表示対象のデータがありません</td></tr>';
     updateBulkSelectCount();
     return;
   }
@@ -1556,7 +1572,12 @@ function renderCandidates(){
   }
   listShouldResetScroll=false;
 
-  renderVirtualCandidateRows(true);
+  if(rows.length <= LIST_VIRTUAL_THRESHOLD){
+    renderFullCandidateRows(rows, today);
+  }else{
+    setupListVirtualScroll();
+    renderVirtualCandidateRows(true);
+  }
   restoreNav();
 }
 function saveNav(id){
