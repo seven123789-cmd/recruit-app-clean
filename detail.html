@@ -9,12 +9,12 @@
 <link rel="stylesheet" href="./assets/css/header.css?v=20260528">
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260528">
 
-<link rel="stylesheet" href="./assets/css/detail.css?v=20260528">
+<link rel="stylesheet" href="./assets/css/detail.css?v=20260529_detail_alert_emphasis">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260528"></script>
 <script src="assets/js/auth.js?v=20260528"></script>
-<script src="assets/js/version.js?v=20260529_step1"></script>
-<script src="./common.js?v=20260529_action_rule"></script>
+<script src="assets/js/version.js?v=20260529_detail_alert_emphasis"></script>
+<script src="./common.js?v=20260529_detail_alert_emphasis"></script>
 <script src="assets/js/overdue_popup.js?v=20260529_step1"></script>
 <script src="assets/js/candidate_utils.js?v=20260528"></script>
 <script src="assets/js/ui_utils.js?v=20260528"></script>
@@ -121,23 +121,27 @@
 
   <div id="pageMessage" style="display:none;"></div>
 
-  <div class="action-advice-card hidden action-collapsed" id="actionAdviceCard">
+  <div class="action-advice-card hidden" id="actionAdviceCard">
     <div class="action-advice-head" onclick="toggleActionAdvice()" role="button" tabindex="0" aria-label="要対応内容を開閉">
       <div class="action-advice-title">
         <span class="action-advice-dot"></span>
-        <span class="action-advice-main">要対応</span>
+        <span class="action-advice-main">⚠ 要対応があります</span>
         <span id="actionPriorityLabel" class="action-priority-label">通常</span>
         <span id="actionInlineSummary" class="action-inline-summary">確認事項あり</span>
       </div>
       <span class="action-advice-toggle" aria-hidden="true"></span>
     </div>
     <div class="action-advice-grid">
-      <div class="action-advice-box">
-        <div class="action-advice-label">状態</div>
+      <div class="action-advice-box action-advice-box-primary">
+        <div class="action-advice-label">現在の状態</div>
         <div class="action-advice-text" id="actionReasonText">-</div>
       </div>
-      <div class="action-advice-box">
-        <div class="action-advice-label">次のアクション</div>
+      <div class="action-advice-box action-advice-box-impact">
+        <div class="action-advice-label">このままだと</div>
+        <div class="action-advice-text" id="actionImpactText">-</div>
+      </div>
+      <div class="action-advice-box action-advice-box-action">
+        <div class="action-advice-label">消すために必要な対応</div>
         <div class="action-advice-text" id="nextActionText">-</div>
       </div>
     </div>
@@ -400,7 +404,7 @@
     </div>
   </div>
 </div>
-<script src="./assets/js/detail.js?v=20260529_action_rule"></script>
+<script src="./assets/js/detail.js?v=20260529_detail_alert_emphasis"></script>
 <script src="./sidebar.js?v=20260528"></script>
 </body>
 </html>

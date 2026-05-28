@@ -767,13 +767,14 @@ function toggleActionAdvice() {
 function applyActionAdviceDefaultState() {
   const card = document.getElementById("actionAdviceCard");
   if (!card) return;
-  card.classList.add("action-collapsed");
+  card.classList.remove("action-collapsed");
 }
 
 function renderActionAdvice(row) {
   const card = document.getElementById("actionAdviceCard");
   const reasonEl = document.getElementById("actionReasonText");
   const actionEl = document.getElementById("nextActionText");
+  const impactEl = document.getElementById("actionImpactText");
   const inlineSummaryEl = document.getElementById("actionInlineSummary");
 
   if (!card || !reasonEl || !actionEl) return;
@@ -787,6 +788,7 @@ function renderActionAdvice(row) {
     card.classList.add("hidden");
     reasonEl.textContent = "-";
     actionEl.textContent = "-";
+    if (impactEl) impactEl.textContent = "-";
     if (inlineSummaryEl) inlineSummaryEl.textContent = "対応不要";
     return;
   }
@@ -803,6 +805,7 @@ function renderActionAdvice(row) {
 
   reasonEl.textContent = advice.reason;
   actionEl.textContent = advice.action;
+  if (impactEl) impactEl.textContent = advice.impact || "要対応一覧に残り続けます。";
   if (inlineSummaryEl) inlineSummaryEl.textContent = advice.reason + " ・ " + advice.action;
   card.classList.remove("hidden");
   applyActionAdviceDefaultState();

@@ -386,17 +386,20 @@
     const due = getRecruitActionDueState(r);
     const pendingJoinFollow = isRecruitPendingJoinFollowRequired(r);
     let level = "caution";
-    let reason = "次回対応日が未設定です。";
-    let action = "応募者詳細で次回対応日を設定してください。";
+    let reason = "次回対応日が未設定です。次にいつ対応するかを登録してください。";
+    let impact = "フォロー予定がない候補者として、要対応一覧に残り続けます。";
+    let action = "次回対応日を登録してください。登録すると要対応から外れます。";
 
     if(due === "overdue"){
       level = "danger";
-      reason = "次回対応日が期限切れです。";
-      action = "応募者詳細で対応状況を確認し、次回対応日・選考結果・対応メモを更新してください。";
+      reason = "次回対応日が期限切れです。対応結果の登録、または次回対応日の更新が必要です。";
+      impact = "期限切れの要対応として残り続け、優先対応件数に計上されます。";
+      action = "対応済みなら対応メモを残し、次回対応日を未来日に更新してください。完了なら選考結果も更新してください。";
     }else if(due === "today"){
       level = "warning";
-      reason = "次回対応日が今日です。";
-      action = "応募者詳細で本日の対応結果を登録し、必要に応じて次回対応日を更新してください。";
+      reason = "次回対応日が本日です。本日の対応結果を登録してください。";
+      impact = "本日の要対応として残り、翌日以降は期限切れに変わります。";
+      action = "本日の対応結果を対応メモへ残し、必要に応じて次回対応日を更新してください。";
     }
 
     if(pendingJoinFollow){
@@ -405,10 +408,11 @@
       }else{
         reason = "採用ステータスですが、選考結果が「採用」のままです。入社前フォローの対応期限を確認してください。";
       }
+      impact = "入社済み・辞退・入社前フォローのどれかが未確定のため、要対応一覧に残り続けます。";
       action = "入社済みなら選考結果を「入社済」に変更してください。辞退なら選考結果を「辞退」に変更してください。入社前なら次回対応日と対応メモを更新してください。";
     }
 
-    return { level, reason, action, due, pendingJoinFollow };
+    return { level, reason, impact, action, due, pendingJoinFollow };
   }
 
   function isRecruitDormant3Days(row){

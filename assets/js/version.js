@@ -1,2 +1,2 @@
 // assets/js/version.js
-window.RECRUIT_APP_VERSION = "20260529_action_rule_sync";
+window.RECRUIT_APP_VERSION = "20260529_detail_alert_emphasis";
