@@ -130,7 +130,7 @@
     const list = Array.isArray(allowed) ? allowed : String(allowed || "").split(",");
     return list.map(v => String(v || "").trim().toLowerCase()).includes(r);
   }
-  function canEdit(role){ return hasRole(role, ["admin", "manager", "editor"]); }
+  function canEdit(role){ return hasRole(role, ["admin", "editor"]); }
   function canAdmin(role){ return hasRole(role, ["admin"]); }
 
   window.RecruitPageAuth = Object.assign(window.RecruitPageAuth || {}, {

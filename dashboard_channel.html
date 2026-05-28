@@ -5,19 +5,19 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>媒体分析</title>
-<link href="./assets/css/common.css?v=20260524_metric_audit" rel="stylesheet"/>
-<link href="./assets/css/header.css?v=20260524_metric_audit" rel="stylesheet"/>
-<link href="./assets/css/sidebar.css?v=20260524_metric_audit" rel="stylesheet"/>
-<link href="./assets/css/dashboard_channel.css?v=20260524_metric_audit" rel="stylesheet"/>
-<script src="./common.js?v=20260524_metric_audit"></script>
-<script src="assets/js/supabase.js?v=20260524_metric_audit"></script>
-<script src="assets/js/auth.js?v=20260524_metric_audit"></script>
-<script src="assets/js/ui_utils.js?v=20260524_metric_audit"></script>
-<script src="assets/js/audit_utils.js?v=20260524_metric_audit"></script>
-<script src="assets/js/ops_guard.js?v=20260524_metric_audit"></script>
-<script src="assets/js/safe_utils.js?v=20260524_metric_audit"></script>
-<script src="./sidebar.js?v=20260524_metric_audit"></script>
-<link href="./assets/css/dashboard_ui.css?v=20260524_metric_audit" rel="stylesheet"/>
+<link href="./assets/css/common.css?v=20260528_role_guard" rel="stylesheet"/>
+<link href="./assets/css/header.css?v=20260528_role_guard" rel="stylesheet"/>
+<link href="./assets/css/sidebar.css?v=20260528_role_guard" rel="stylesheet"/>
+<link href="./assets/css/dashboard_channel.css?v=20260528_role_guard" rel="stylesheet"/>
+<script src="./common.js?v=20260528_role_guard"></script>
+<script src="assets/js/supabase.js?v=20260528_role_guard"></script>
+<script src="assets/js/auth.js?v=20260528_role_guard"></script>
+<script src="assets/js/ui_utils.js?v=20260528_role_guard"></script>
+<script src="assets/js/audit_utils.js?v=20260528_role_guard"></script>
+<script src="assets/js/ops_guard.js?v=20260528_role_guard"></script>
+<script src="assets/js/safe_utils.js?v=20260528_role_guard"></script>
+<script src="./sidebar.js?v=20260528_role_guard"></script>
+<link href="./assets/css/dashboard_ui.css?v=20260528_role_guard" rel="stylesheet"/>
 </head>
 <body class="auth-checking">
 <div class="container hidden" id="authScreen">
@@ -597,6 +597,6 @@ async function loadAnalysis(){
 async function initPageAfterLogin(){applyFy();await loadAnalysis()}
 authInit();
 </script>
-<script src="dashboard_summary_links.js?v=20260524_metric_audit"></script>
+<script src="dashboard_summary_links.js?v=20260528_role_guard"></script>
 </body>
 </html>

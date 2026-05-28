@@ -1466,6 +1466,7 @@ async function deleteCandidate() {
 }
 
 async function saveCandidate() {
+  if(window.RecruitOpsGuard && !window.RecruitOpsGuard.requireWrite(currentRole)) return;
   if(window.RecruitRole && window.RecruitRole.isViewer(currentRole)){
     await showErrorModal("viewer権限のため、保存はできません。", "保存できません");
     return;

@@ -114,6 +114,12 @@ function isAdmin(){
   return role==="admin";
 }
 
+function requireAdminAction(message="管理者権限が必要です。"){
+  if(isAdmin()) return true;
+  adminError(message, "権限エラー");
+  return false;
+}
+
 async function getUser(){
   if(currentUser)return currentUser;
   const {data:{session}}=await sb.auth.getSession();
@@ -266,6 +272,7 @@ function renderProfiles(){
   }).join("")||'<tr><td class="empty" colspan="6">ユーザーがありません</td></tr>';
 }
 async function updateRole(userId){
+  if(!requireAdminAction()) return;
   const role=$("role_"+userId)?.value;
   if(!role)return;
   if(userId===currentUser?.id && role!=="admin"){
@@ -309,6 +316,7 @@ function closeDisableAccountModal(){
   }
 }
 async function confirmDisableAccount(){
+  if(!requireAdminAction()) return;
   const target=disableTargetProfile;
   if(!target){closeDisableAccountModal();return}
   if(String(target.user_id||"")===String(currentUser?.id||"")){
@@ -326,6 +334,7 @@ async function confirmDisableAccount(){
   await loadProfiles();
 }
 async function enableAccount(userId){
+  if(!requireAdminAction()) return;
   const target=profiles.find(p=>String(p.user_id)===String(userId));
   if(!target){adminError("再開対象のユーザーを確認できません。");return}
   const {error}=await sb.from("profiles").update({is_active:true,disabled_at:null,disabled_by:null,disabled_reason:null,updated_at:nowIso()}).eq("user_id",userId);
@@ -361,6 +370,7 @@ function closeDeleteAccountModal(){
   }
 }
 async function confirmDeleteAccount(){
+  if(!requireAdminAction()) return;
   const target=deleteTargetProfile;
   if(!target){closeDeleteAccountModal();return}
   if(String(target.user_id||"")===String(currentUser?.id||"")){
@@ -493,6 +503,7 @@ function editDivision(id){
   window.scrollTo({top:0,behavior:"smooth"});
 }
 async function saveDivision(){
+  if(!requireAdminAction()) return;
   const id=$("divisionId")?.value||"";
   const name=($("divisionName")?.value||"").trim();
   if(!name){showValidationPopup("本部保存の入力不足","本部名を入力してください。",{name});return}
@@ -525,6 +536,7 @@ async function toggleDivision(id,nextActive){
   }catch(e){showErrorPopup(`本部${label}に失敗しました`,e,{id,name:d.name,nextActive});}
 }
 async function deleteDivision(id){
+  if(!requireAdminAction()) return;
   const d=divisions.find(x=>Number(x.id)===Number(id));
   if(!d)return;
   const used=centers.some(c=>String(c.division_id)===String(id));
@@ -603,6 +615,7 @@ async function runCenterSaveQuery(id,row){
   return await q;
 }
 async function saveCenter(){
+  if(!requireAdminAction()) return;
   const id=$("centerId")?.value||"";
   const selectedDivisionId=$("centerDivisionId")?.value||"";
   const selectedDivision=divisions.find(d=>String(d.id)===String(selectedDivisionId));
@@ -670,6 +683,7 @@ async function toggleCenter(id,nextActive){
   }catch(e){showErrorPopup(`営業所${label}に失敗しました`,e,{id,name:c.center_name,nextActive});}
 }
 async function deleteCenter(id){
+  if(!requireAdminAction()) return;
   const c=centers.find(x=>Number(x.id)===Number(id));
   if(!c)return;
   const confirmText=adminPrompt(`営業所「${c.center_name}」を完全削除します。\n削除する場合は「削除」と入力してください。`);
@@ -817,6 +831,7 @@ function editOptionMaster(kind,id){
   openOptionModal();
 }
 async function saveOptionMaster(){
+  if(!requireAdminAction()) return;
   const kind=$("optionKind")?.value||"";
   const table=optionTableName(kind);
   const name=$("optionName")?.value.trim()||"";
@@ -896,6 +911,7 @@ async function archiveOptionMasterAfterDeleteFailure(kind,table,id,row,deleteErr
 }
 
 async function deleteOptionMaster(kind,id){
+  if(!requireAdminAction()) return;
   const row=optionMasters.find(x=>x.kind===kind&&Number(x.id)===Number(id));
   if(!row){adminError("削除対象を確認できません。");return}
   const table=optionTableName(kind);
@@ -982,6 +998,7 @@ function editCost(id){
 }
 function clearCostForm(){["costId","costContractStart","costContractEnd","costChannel","costAmount","costDivisionNote","costCenterNote","costJobNote"].forEach(id=>{const el=$(id);if(el)el.value=""});const costChannelType=$("costChannelType");if(costChannelType)costChannelType.value="求人媒体";}
 async function saveCostContract(){
+  if(!requireAdminAction()) return;
   const editingId=$("costId")?.value||"";
   const start=$("costContractStart")?.value||"";
   const end=$("costContractEnd")?.value||"";
@@ -1043,6 +1060,7 @@ async function toggleCost(id,nextActive){
 }
 
 async function deleteCost(id){
+  if(!requireAdminAction()) return;
   const row=costs.find(x=>Number(x.id)===Number(id));
   if(!row){adminError("削除対象の媒体費を確認できません。");return}
   const confirmText=adminPrompt(`媒体費「${row.channel || "-"} / ${row.target_month || "-"}」を完全削除します。\n削除する場合は「削除」と入力してください。`);
@@ -1096,6 +1114,7 @@ function editTarget(id){
 }
 function clearTargetForm(){["targetId","targetFiscalYear","targetDivision","targetCenter","targetCenterCode","targetShortCode","targetJobType","targetCount"].forEach(id=>$(id).value="")}
 async function saveTarget(){
+  if(!requireAdminAction()) return;
   const row={
     fiscal_year:Number($("targetFiscalYear").value),division:$("targetDivision").value.trim(),center_name:$("targetCenter").value.trim(),center_code:$("targetCenterCode").value.trim()||null,short_code:$("targetShortCode").value.trim()||null,job_type:$("targetJobType").value.trim(),target_count:Number($("targetCount").value||0),updated_at:nowIso()
   };
@@ -1131,6 +1150,7 @@ async function toggleTarget(id,nextActive){
 }
 
 async function deleteTarget(id){
+  if(!requireAdminAction()) return;
   const row=targets.find(x=>Number(x.id)===Number(id));
   if(!row){adminError("削除対象の採用目標を確認できません。");return}
   const confirmText=adminPrompt(`採用目標「${row.fiscal_year || "-"} / ${row.center_name || "-"} / ${row.job_type || "-"}」を完全削除します。\n削除する場合は「削除」と入力してください。`);

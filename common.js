@@ -1718,7 +1718,7 @@
     const list = Array.isArray(allowed) ? allowed : String(allowed || "").split(",");
     return list.map(v => String(v || "").trim().toLowerCase()).includes(r);
   }
-  function canRecruitEdit(role){ return hasRecruitRole(role, ["admin", "manager", "editor"]); }
+  function canRecruitEdit(role){ return hasRecruitRole(role, ["admin", "editor"]); }
   function canRecruitAdmin(role){ return hasRecruitRole(role, ["admin"]); }
 
   window.RecruitDashboard = Object.assign(window.RecruitDashboard || {}, {
