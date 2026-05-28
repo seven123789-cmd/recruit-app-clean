@@ -242,18 +242,21 @@ let selectedStatusFilters=new Set();
 let selectedResultFilters=new Set();
 let dashboardJob="";
 const selectedIds = new Set();
+let lastRenderedRows = [];
+let listRenderTimer = null;
+let listBulkOptionsInitialized = false;
 
 const ACTIVE_STATUSES=window.RECRUIT_STAGE_STATUSES || ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
 const HIRING_RESULT_OPTIONS=window.RECRUIT_HIRING_RESULTS || ["進行中","保留","辞退","不採用","不通","採用","入社済"];
 const STATE="recruit_list_filter_state";
 const NAV="recruit_list_navigation_state";
-let listRenderTimer=null;
 
 function $(id){return document.getElementById(id)}
+
 function scheduleRenderCandidates(delay=120){
   if(listRenderTimer) clearTimeout(listRenderTimer);
-  listRenderTimer=setTimeout(()=>{
-    listRenderTimer=null;
+  listRenderTimer = setTimeout(()=>{
+    listRenderTimer = null;
     renderCandidates();
   }, delay);
 }
@@ -672,12 +675,12 @@ function toggleStatusFilter(status){
   if(selectedStatusFilters.has(value))selectedStatusFilters.delete(value);
   else selectedStatusFilters.add(value);
   saveState();
-  renderCandidates();
+  scheduleRenderCandidates();
 }
 function clearStatusFilters(){
   selectedStatusFilters.clear();
   saveState();
-  renderCandidates();
+  scheduleRenderCandidates();
 }
 function renderResultFilterChips(){
   const wrap=$("resultFilterChips");
@@ -693,12 +696,12 @@ function toggleResultFilter(result){
   if(selectedResultFilters.has(value))selectedResultFilters.delete(value);
   else selectedResultFilters.add(value);
   saveState();
-  renderCandidates();
+  scheduleRenderCandidates();
 }
 function clearResultFilters(){
   selectedResultFilters.clear();
   saveState();
-  renderCandidates();
+  scheduleRenderCandidates();
 }
 function setupBulkStatusOptions(){
   const select=$("bulkStatus");
@@ -1000,15 +1003,15 @@ function getSelectedRows(){
   return allCandidateRows.filter(r => selectedIds.has(String(r.id)));
 }
 
-function updateBulkSelectCount(visibleRows){
+function updateBulkSelectCount(){
   const count = selectedIds.size;
   const el = $("bulkSelectCount");
   if(el) el.textContent = "選択 " + count + "件";
 
   const all = $("bulkSelectAll");
   if(all){
-    const rowsForSelection = Array.isArray(visibleRows) ? visibleRows : filteredRows();
-    const visibleIds = rowsForSelection.map(r => String(r.id));
+    const visibleRows = lastRenderedRows && lastRenderedRows.length ? lastRenderedRows : filteredRows();
+    const visibleIds = visibleRows.map(r => String(r.id));
     const selectedVisible = visibleIds.filter(id => selectedIds.has(id)).length;
     all.checked = visibleIds.length > 0 && selectedVisible === visibleIds.length;
     all.indeterminate = selectedVisible > 0 && selectedVisible < visibleIds.length;
@@ -1028,20 +1031,25 @@ function toggleBulkSelection(id, checked){
 }
 
 function toggleBulkSelectAll(checked){
-  filteredRows().forEach(r => {
+  const rows = lastRenderedRows && lastRenderedRows.length ? lastRenderedRows : filteredRows();
+  rows.forEach(r => {
     const key = String(r.id);
     if(checked) selectedIds.add(key);
     else selectedIds.delete(key);
   });
-  renderCandidates();
+  document.querySelectorAll(".bulk-row-check").forEach(box => {
+    box.checked = !!checked;
+  });
+  updateBulkSelectCount();
 }
 
 function clearBulkSelection(){
   selectedIds.clear();
-  renderCandidates();
+  document.querySelectorAll(".bulk-row-check").forEach(box => { box.checked = false; });
+  updateBulkSelectCount();
 }
 
-function setupBulkOptions(visibleRows){
+function setupBulkOptions(){
   setupBulkStatusOptions();
   const ownerSelect = $("bulkOwner");
   if(ownerSelect){
@@ -1077,7 +1085,7 @@ function setupBulkOptions(visibleRows){
     all.addEventListener("change", e => toggleBulkSelectAll(e.target.checked));
   }
 
-  updateBulkSelectCount(visibleRows);
+  updateBulkSelectCount();
 }
 
 function buildBulkUpdatePayload(){
@@ -1145,6 +1153,7 @@ async function bulkUpdateCandidates(){
     });
 
     if(window.RecruitUI) window.RecruitUI.toast("一括更新しました", "success");
+    setupBulkOptions();
     renderCandidates();
   }catch(e){
     if(window.RecruitUI) window.RecruitUI.showError("一括更新に失敗しました。\n\n" + (e.message || e));
@@ -1195,6 +1204,7 @@ async function bulkDeleteCandidates(){
     selectedIds.clear();
 
     if(window.RecruitUI) window.RecruitUI.toast("一括削除しました", "success");
+    setupBulkOptions();
     renderCandidates();
   }catch(e){
     if(window.RecruitUI) window.RecruitUI.showError("一括削除に失敗しました。\n\n" + (e.message || e));
@@ -1211,7 +1221,7 @@ function renderCandidates(){
   renderResultFilterChips();
 
   const rows=filteredRows();
-  setupBulkOptions(rows);
+  lastRenderedRows = rows;
   saveListOrder(rows);
 
   const tbody=document.querySelector("#candidateTable tbody");
@@ -1331,6 +1341,7 @@ function renderCandidates(){
             window.RecruitUI.toast("削除しました", "success");
           }
 
+          setupBulkOptions();
           renderCandidates();
 
         }catch(err){
@@ -1345,7 +1356,7 @@ function renderCandidates(){
 
     tbody.appendChild(tr);
   });
-  updateBulkSelectCount(rows);
+  updateBulkSelectCount();
   restoreNav();
 }
 function saveNav(id){
@@ -1392,6 +1403,7 @@ async function loadCandidates(){
 
     allCandidateRows=data||[];
     await setupFilters(allCandidateRows);
+    setupBulkOptions();
 
     let latestCandidateMarker = null;
     try {

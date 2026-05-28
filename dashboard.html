@@ -600,18 +600,22 @@ async function loadDashboard(){
   }
 }
 
+function activateDashboardLink(event, filterType){
+  if (!event) return;
+  const key = event.key || "";
+  if (key === "Enter" || key === " ") {
+    event.preventDefault();
+    goListFilter(filterType);
+  }
+}
+
+
 function setupDashboardLinkCards(){
-  document.querySelectorAll(".dashboard-link-card[data-list-filter]").forEach((card) => {
-    if (card.dataset.dashboardLinkBound === "1") return;
-    card.dataset.dashboardLinkBound = "1";
-    card.addEventListener("click", () => goListFilter(card.dataset.listFilter));
-    card.addEventListener("keydown", (event) => {
-      const key = event.key || "";
-      if (key === "Enter" || key === " ") {
-        event.preventDefault();
-        goListFilter(card.dataset.listFilter);
-      }
-    });
+  document.querySelectorAll(".dashboard-link-card[data-list-filter]").forEach(card => {
+    if(card.dataset.boundListFilter === "1") return;
+    card.dataset.boundListFilter = "1";
+    card.addEventListener("click", () => goListFilter(card.dataset.listFilter || "action"));
+    card.addEventListener("keydown", event => activateDashboardLink(event, card.dataset.listFilter || "action"));
   });
 }
 
@@ -664,9 +668,9 @@ sb.auth.onAuthStateChange((event) => {
     const ok = await refreshAuthState();
     if (ok) {
       await loadCenterMaster();
+      setupDashboardLinkCards();
       refreshDashboardFiscalYearLabels();
       setCurrentFiscalYear();
-      setupDashboardLinkCards();
       await loadDashboard();
     }
   } catch (e) {
