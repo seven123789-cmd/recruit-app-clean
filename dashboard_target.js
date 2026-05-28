@@ -127,7 +127,7 @@ function groupBy(data,keyFn){
     if(validDate(r.interview1_date))x.set++;
     if(validDate(r.interview_done_date))x.interview++;
     if(validDate(r.offer_date))x.offer++;
-    if(window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="採用"||r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="採用"))x.join++;
+    if(window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="入社済"||validDate(r.join_date)))x.join++;
   });
   return [...m.values()];
 }
@@ -173,7 +173,7 @@ function renderTargetChart(items){
 function updateSummary(data,items){
   const applied=data.filter(r=>validDate(r.applied_date)).length;
   const interview=data.filter(r=>validDate(r.interview_done_date)).length;
-  const join=data.filter(r=>window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="採用"||r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="採用")).length;
+  const join=data.filter(r=>window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="入社済"||validDate(r.join_date))).length;
   const targetTotal=items.reduce((sum,x)=>sum+x.target,0);
   const shortage=Math.max(targetTotal-join,0);
   const targetRate=targetTotal?rate(join,targetTotal):"対象外";
