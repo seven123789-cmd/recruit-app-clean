@@ -1350,3 +1350,45 @@
     font-size:30px;
   }
 }
+
+
+/* ===== Detail polish batch: spacing / save area / section rhythm ===== */
+.card-main,
+.history-card,
+.navigation-card,
+.basic-info-fold{
+  scroll-margin-top:18px;
+}
+.card-main .form-grid{
+  row-gap:14px;
+}
+.update-date-row,
+.update-result-row{
+  align-items:end;
+}
+#evaluationComment,
+#actionMemo{
+  min-height:92px;
+  line-height:1.55;
+}
+.history-card,
+.navigation-card{
+  margin-top:16px;
+}
+.history-head{
+  align-items:center;
+}
+.compact-navigation{
+  padding-top:16px;
+  padding-bottom:16px;
+}
+.detail-action-area{
+  max-width:calc(100vw - 332px);
+}
+@media (max-width:1100px){
+  .detail-action-area{
+    left:16px;
+    right:16px;
+    max-width:none;
+  }
+}

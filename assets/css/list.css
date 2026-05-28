@@ -425,50 +425,41 @@ tbody tr.action-missing td:first-child{
   border-color:#fde68a;
 }
 
-/* ===== LIST table alignment refinement ===== */
+
+/* ===== LIST table polish / virtual-render preparation ===== */
 #candidateTable{
   table-layout:fixed;
 }
-
 #candidateTable th,
 #candidateTable td{
-  text-align:center;
   vertical-align:middle;
 }
-
-#candidateTable tbody td{
-  height:72px;
-  line-height:1.35;
+#candidateTable tbody tr{
+  min-height:72px;
 }
-
-#candidateTable tbody td strong{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-height:24px;
-  line-height:1.35;
+#candidateTable td{
+  line-height:1.45;
 }
-
-#candidateTable .status-result-cell{
-  width:100%;
-  min-width:0;
-  min-height:52px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-}
-
-#candidateTable .status-result-cell .status-line,
-#candidateTable .result-line{
-  justify-content:center;
-  width:100%;
-}
-
-#candidateTable .list-check-col,
-#candidateTable .list-check-cell,
-#candidateTable .list-action-col,
-#candidateTable .list-action-cell{
+#candidateTable td:nth-child(2),
+#candidateTable td:nth-child(3),
+#candidateTable td:nth-child(5),
+#candidateTable td:nth-child(6),
+#candidateTable td:nth-child(7),
+#candidateTable td:nth-child(8),
+#candidateTable td:nth-child(9),
+#candidateTable td:nth-child(10),
+#candidateTable td:nth-child(11){
   text-align:center;
+}
+#candidateTable td:nth-child(4){
+  text-align:center;
+}
+#candidateTable td:nth-child(4) .status-cell,
+#candidateTable td:nth-child(4) .status-wrap{
+  align-items:center;
+  justify-content:center;
+}
+#candidateTable td:nth-child(2) strong{
+  display:inline-block;
+  max-width:100%;
 }
