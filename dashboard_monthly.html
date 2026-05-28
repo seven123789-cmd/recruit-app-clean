@@ -11,12 +11,12 @@
 <link href="./assets/css/dashboard_monthly.css?v=20260524_metric_audit" rel="stylesheet"/>
 <script src="./common.js?v=20260528_rolemenu"></script>
 <script src="assets/js/supabase.js?v=20260524_metric_audit"></script>
-<script src="assets/js/auth.js?v=20260528_sidebar_role_racefix"></script>
+<script src="assets/js/auth.js?v=20260528_rolemenu"></script>
 <script src="assets/js/ui_utils.js?v=20260524_metric_audit"></script>
 <script src="assets/js/audit_utils.js?v=20260524_metric_audit"></script>
 <script src="assets/js/ops_guard.js?v=20260528_rolemenu"></script>
 <script src="assets/js/safe_utils.js?v=20260524_metric_audit"></script>
-<script src="./sidebar.js?v=20260528_sidebar_role_racefix"></script>
+<script src="./sidebar.js?v=20260528_rolemenu"></script>
 <link href="./assets/css/dashboard_ui.css?v=20260524_metric_audit" rel="stylesheet"/>
 </head>
 <body class="auth-checking">
@@ -334,15 +334,15 @@ function createMonthMap(data){
     if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"面接設定") : validDate(r.interview1_date))x.set++;
     if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"面接実施") : validDate(r.interview_done_date))x.interview++;
     if(window.isRecruitStageReached ? window.isRecruitStageReached(r,"内定") : validDate(r.offer_date))x.offer++;
-    if(window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="入社"))x.join++;
+    if(window.isRecruitHired ? window.isRecruitHired(r) : validDate(r.join_date))x.join++;
   });
 
   return [...map.values()].sort((a,b)=>String(a.key).localeCompare(String(b.key)));
 }
 function updateSummary(data,monthly){
   const applied=data.filter(r=>validDate(r.applied_date)).length;
-  const interview=data.filter(r=>validDate(r.interview_done_date)).length;
-  const join=data.filter(r=>window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="入社")).length;
+  const interview=data.filter(r=>window.isRecruitInterviewDone ? window.isRecruitInterviewDone(r) : validDate(r.interview_done_date)).length;
+  const join=data.filter(r=>window.isRecruitHired ? window.isRecruitHired(r) : validDate(r.join_date)).length;
   const interviewRate=rate(interview,applied);
   const joinRate=rate(join,applied);
 

@@ -25,8 +25,8 @@ function validDate(s){if(!s)return false;const t=String(s).slice(0,10);const y=N
 function normalizeDate(s){return validDate(s)?String(s).slice(0,10):""}
 function todayStr(){return window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date())}
 function daysBetween(a,b){if(!validDate(a)||!validDate(b))return null;return Math.floor((new Date(normalizeDate(b)+"T00:00:00+09:00")-new Date(normalizeDate(a)+"T00:00:00+09:00"))/(86400000))}
-function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="入社")}
-function isFinal(r){return String(r.status||"").trim()==="採用"||["不採用","辞退","不通","保留","採用","入社済"].includes(String(r.hiring_result||"").trim())||isHired(r)}
+function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (String(r?.hiring_result||"").trim()==="入社済"||validDate(r?.join_date))}
+function isFinal(r){return window.isFinal ? window.isFinal(r) : (["不採用","辞退","不通","保留","入社済"].includes(String(r.hiring_result||"").trim())||isHired(r))}
 function isActionRequired(r){
   const st=String(r.status||"").trim();
   const result=String(r.hiring_result||"").trim();
@@ -211,7 +211,7 @@ function groupByOwner(data){
     divisionText:[...x.divisionSet].join(" / ")||"本部未設定"
   })).sort((a,b)=>b.join-a.join||b.interview-a.interview||b.applied-a.applied||String(a.key).localeCompare(String(b.key),"ja"));
 }
-function updateSummary(data){const applied=data.filter(r=>validDate(r.applied_date)).length;const interview=data.filter(r=>validDate(r.interview_done_date)).length;const join=data.filter(isHired).length;const interviewRate=rate(interview,applied);const joinRate=rate(join,applied);setText("sumApplied",applied);setText("sumInterview",interview);setText("sumJoin",join);setText("sumInterviewRate",interviewRate);setText("sumJoinRate",joinRate);setText("sideRows",data.length);setText("sideDivision",$("divisionFilter").value||"すべて");setText("sideOwner",$("ownerFilter").value||"すべて");setText("sideInterviewRate",interviewRate);setText("sideJoinRate",joinRate)}
+function updateSummary(data){const applied=data.filter(r=>validDate(r.applied_date)).length;const interview=data.filter(r=>window.isRecruitInterviewDone ? window.isRecruitInterviewDone(r) : validDate(r.interview_done_date)).length;const join=data.filter(isHired).length;const interviewRate=rate(interview,applied);const joinRate=rate(join,applied);setText("sumApplied",applied);setText("sumInterview",interview);setText("sumJoin",join);setText("sumInterviewRate",interviewRate);setText("sumJoinRate",joinRate);setText("sideRows",data.length);setText("sideDivision",$("divisionFilter").value||"すべて");setText("sideOwner",$("ownerFilter").value||"すべて");setText("sideInterviewRate",interviewRate);setText("sideJoinRate",joinRate)}
 function ownerLevel(item){
   if(item.applied<=5)return {label:"参考値",cls:"neutral",action:"母数が少ないため判断保留"};
   if(item.initialLate3>=10||item.overdue>=3||item.todo>=25||item.avgInitial>=3)return {label:"危険",cls:"danger",action:"初動遅れ・期限超過を優先確認"};
