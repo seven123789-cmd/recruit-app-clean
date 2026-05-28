@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="./assets/css/common.css?v=20260523_join_actual_fix">
 <link rel="stylesheet" href="./assets/css/header.css?v=20260523_join_actual_fix">
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_join_actual_fix">
-<link rel="stylesheet" href="./assets/css/list.css?v=20260523_join_actual_fix">
+<link rel="stylesheet" href="./assets/css/list.css?v=20260528_list_align_fix">
 </head>
 <body class="auth-checking">
 
@@ -242,8 +242,6 @@ let selectedStatusFilters=new Set();
 let selectedResultFilters=new Set();
 let dashboardJob="";
 const selectedIds = new Set();
-let lastRenderedRows = [];
-let listRenderTimer = null;
 
 const ACTIVE_STATUSES=window.RECRUIT_STAGE_STATUSES || ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
 const HIRING_RESULT_OPTIONS=window.RECRUIT_HIRING_RESULTS || ["進行中","保留","辞退","不採用","不通","採用","入社済"];
@@ -666,12 +664,12 @@ function toggleStatusFilter(status){
   if(selectedStatusFilters.has(value))selectedStatusFilters.delete(value);
   else selectedStatusFilters.add(value);
   saveState();
-  scheduleRenderCandidates();
+  renderCandidates();
 }
 function clearStatusFilters(){
   selectedStatusFilters.clear();
   saveState();
-  scheduleRenderCandidates();
+  renderCandidates();
 }
 function renderResultFilterChips(){
   const wrap=$("resultFilterChips");
@@ -687,12 +685,12 @@ function toggleResultFilter(result){
   if(selectedResultFilters.has(value))selectedResultFilters.delete(value);
   else selectedResultFilters.add(value);
   saveState();
-  scheduleRenderCandidates();
+  renderCandidates();
 }
 function clearResultFilters(){
   selectedResultFilters.clear();
   saveState();
-  scheduleRenderCandidates();
+  renderCandidates();
 }
 function setupBulkStatusOptions(){
   const select=$("bulkStatus");
@@ -738,12 +736,12 @@ function clearFilters(){
 function setListFilter(mode){
   currentListFilter=mode;
   saveState();
-  scheduleRenderCandidates();
+  renderCandidates();
 }
 function setSortMode(mode){
   sortMode=mode || "actionAsc";
   saveState();
-  scheduleRenderCandidates();
+  renderCandidates();
 }
 function updateSortButtons(){
   const map={
@@ -757,18 +755,6 @@ function updateSortButtons(){
     if(!el)return;
     el.className=sortMode===mode ? "btn-primary" : "btn-secondary";
   });
-}
-
-function scheduleRenderCandidates(){
-  if(listRenderTimer) window.clearTimeout(listRenderTimer);
-  listRenderTimer = window.setTimeout(() => {
-    listRenderTimer = null;
-    renderCandidates();
-  }, 80);
-}
-
-function getVisibleRowsForSelection(){
-  return Array.isArray(lastRenderedRows) && lastRenderedRows.length ? lastRenderedRows : filteredRows();
 }
 function sortPriority(row){
   const today=todayStr();
@@ -1013,7 +999,7 @@ function updateBulkSelectCount(){
 
   const all = $("bulkSelectAll");
   if(all){
-    const visibleRows = getVisibleRowsForSelection();
+    const visibleRows = filteredRows();
     const visibleIds = visibleRows.map(r => String(r.id));
     const selectedVisible = visibleIds.filter(id => selectedIds.has(id)).length;
     all.checked = visibleIds.length > 0 && selectedVisible === visibleIds.length;
@@ -1034,7 +1020,7 @@ function toggleBulkSelection(id, checked){
 }
 
 function toggleBulkSelectAll(checked){
-  getVisibleRowsForSelection().forEach(r => {
+  filteredRows().forEach(r => {
     const key = String(r.id);
     if(checked) selectedIds.add(key);
     else selectedIds.delete(key);
@@ -1217,7 +1203,6 @@ function renderCandidates(){
   renderResultFilterChips();
 
   const rows=filteredRows();
-  lastRenderedRows = rows;
   setupBulkOptions();
   saveListOrder(rows);
 
@@ -1485,7 +1470,7 @@ async function initPageAfterLogin(){
         dashboardContextActive=false;
       }
       saveState();
-      scheduleRenderCandidates();
+      renderCandidates();
     }
   });
 });

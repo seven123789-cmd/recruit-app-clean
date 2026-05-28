@@ -424,3 +424,51 @@ tbody tr.action-missing td:first-child{
   background:#fef3c7;
   border-color:#fde68a;
 }
+
+/* ===== LIST table alignment refinement ===== */
+#candidateTable{
+  table-layout:fixed;
+}
+
+#candidateTable th,
+#candidateTable td{
+  text-align:center;
+  vertical-align:middle;
+}
+
+#candidateTable tbody td{
+  height:72px;
+  line-height:1.35;
+}
+
+#candidateTable tbody td strong{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:24px;
+  line-height:1.35;
+}
+
+#candidateTable .status-result-cell{
+  width:100%;
+  min-width:0;
+  min-height:52px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+
+#candidateTable .status-result-cell .status-line,
+#candidateTable .result-line{
+  justify-content:center;
+  width:100%;
+}
+
+#candidateTable .list-check-col,
+#candidateTable .list-check-cell,
+#candidateTable .list-action-col,
+#candidateTable .list-action-cell{
+  text-align:center;
+}
