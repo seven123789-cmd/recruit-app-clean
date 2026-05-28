@@ -86,6 +86,14 @@
   }
 
   function roleCan(role, action){
+    const guard = window.RecruitOpsGuard;
+    if(guard){
+      if(action === "admin" && typeof guard.isAdmin === "function") return guard.isAdmin(role);
+      if(action === "edit" && typeof guard.canEdit === "function") return guard.canEdit(role);
+      if(action === "export" && typeof guard.canExport === "function") return guard.canExport(role);
+      if(action === "delete" && typeof guard.canDelete === "function") return guard.canDelete(role);
+      if(typeof guard.canRead === "function") return guard.canRead(role);
+    }
     const r = String(role || window.currentRole || "viewer").toLowerCase();
     if(action === "admin") return r === "admin";
     if(action === "edit") return r === "admin" || r === "editor";

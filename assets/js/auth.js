@@ -136,24 +136,31 @@
   }
 
   function normalizeRole(role){
-    if(window.RecruitRole && typeof window.RecruitRole.normalize === "function") return window.RecruitRole.normalize(role);
     if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.normalize === "function") return window.RecruitOpsGuard.normalize(role);
+    if(window.RecruitRole && typeof window.RecruitRole.normalize === "function") return window.RecruitRole.normalize(role);
     const value = String(role || window.currentRole || "viewer").toLowerCase();
     return ["admin", "editor", "viewer"].includes(value) ? value : "viewer";
   }
   function hasRole(role, allowed){
+    if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.hasRole === "function") return window.RecruitOpsGuard.hasRole(role, allowed);
     const r = normalizeRole(role);
     const list = Array.isArray(allowed) ? allowed : String(allowed || "").split(",");
     return list.map(v => String(v || "").trim().toLowerCase()).includes(r);
   }
-  function canEdit(role){ return hasRole(role, ["admin", "editor"]); }
-  function canAdmin(role){ return hasRole(role, ["admin"]); }
+  function canEdit(role){
+    if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.canEdit === "function") return window.RecruitOpsGuard.canEdit(role);
+    return hasRole(role, ["admin", "editor"]);
+  }
+  function canAdmin(role){
+    if(window.RecruitOpsGuard && typeof window.RecruitOpsGuard.isAdmin === "function") return window.RecruitOpsGuard.isAdmin(role);
+    return hasRole(role, ["admin"]);
+  }
 
   window.RecruitPageAuth = Object.assign(window.RecruitPageAuth || {}, {
     getUser, getRole, showAuth, showApp, login, logoutToIndex, authInit,
     normalizeRole, hasRole, canEdit, canAdmin
   });
-  window.hasRecruitRole = window.hasRecruitRole || hasRole;
-  window.canRecruitEdit = window.canRecruitEdit || canEdit;
-  window.canRecruitAdmin = window.canRecruitAdmin || canAdmin;
+  window.hasRecruitRole = hasRole;
+  window.canRecruitEdit = canEdit;
+  window.canRecruitAdmin = canAdmin;
 })();
