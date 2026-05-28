@@ -600,25 +600,6 @@ async function loadDashboard(){
   }
 }
 
-function activateDashboardLink(event, filterType){
-  if (!event) return;
-  const key = event.key || "";
-  if (key === "Enter" || key === " ") {
-    event.preventDefault();
-    goListFilter(filterType);
-  }
-}
-
-
-function setupDashboardLinkCards(){
-  document.querySelectorAll(".dashboard-link-card[data-list-filter]").forEach(card => {
-    if(card.dataset.boundListFilter === "1") return;
-    card.dataset.boundListFilter = "1";
-    card.addEventListener("click", () => goListFilter(card.dataset.listFilter || "action"));
-    card.addEventListener("keydown", event => activateDashboardLink(event, card.dataset.listFilter || "action"));
-  });
-}
-
 function goListFilter(filterType){
   const fiscalType = document.getElementById("filterFiscalYear")?.value || "current";
   const fiscalRange = getFiscalRangeByType(fiscalType);
@@ -654,6 +635,21 @@ function goListFilter(filterType){
   if (payload.owner) params.set("owner", payload.owner);
   window.location.href = "./list.html?" + params.toString();
 }
+function setupDashboardListLinks(){
+  document.querySelectorAll("[data-list-filter]").forEach(el => {
+    if(el.dataset.linkBound === "1") return;
+    el.dataset.linkBound = "1";
+    el.addEventListener("click", () => goListFilter(el.dataset.listFilter));
+    el.addEventListener("keydown", event => {
+      const key = event.key || "";
+      if(key === "Enter" || key === " "){
+        event.preventDefault();
+        goListFilter(el.dataset.listFilter);
+      }
+    });
+  });
+}
+
 sb.auth.onAuthStateChange((event) => {
   if (event === "SIGNED_OUT") {
     currentUser = null;
@@ -667,8 +663,8 @@ sb.auth.onAuthStateChange((event) => {
   try {
     const ok = await refreshAuthState();
     if (ok) {
+      setupDashboardListLinks();
       await loadCenterMaster();
-      setupDashboardLinkCards();
       refreshDashboardFiscalYearLabels();
       setCurrentFiscalYear();
       await loadDashboard();

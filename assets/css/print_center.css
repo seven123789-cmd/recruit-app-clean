@@ -1226,3 +1226,33 @@
     page-break-inside:avoid;
   }
 }
+
+
+/* 2026-05-28 batch print finishing */
+@media print{
+  .report-page,.print-page{
+    box-sizing:border-box;
+    overflow:hidden;
+  }
+  .report-card,.summary-card,.kpi-card,.metric-card,.chart-card,.print-card{
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+  .chart-wrap,canvas,svg{
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+  table{
+    border-collapse:collapse;
+  }
+  thead{
+    display:table-header-group;
+  }
+  tfoot{
+    display:table-footer-group;
+  }
+  tr,th,td{
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+}
