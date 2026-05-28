@@ -35,6 +35,17 @@
 
   const STAGE_STATUS_OPTIONS = window.RECRUIT_STAGE_STATUSES || ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
   const HIRING_RESULT_OPTIONS = window.RECRUIT_HIRING_RESULTS || ["進行中","保留","辞退","不採用","不通","採用","入社済"];
+  function allowedHiringResultsForStatus(status){
+    if(window.recruitAllowedHiringResults) return window.recruitAllowedHiringResults(status);
+    const map={"応募":["進行中","保留","不通","辞退"],"書類選考":["進行中","保留","不採用","不通","辞退"],"アポ取得":["進行中","保留","不通","辞退"],"面接設定":["進行中","保留","不通","辞退"],"面接実施":["進行中","保留","不採用","辞退","採用"],"内定":["進行中","保留","辞退","採用"],"採用":["採用","入社済","辞退"]};
+    return (map[String(status||"").trim()] || HIRING_RESULT_OPTIONS).slice();
+  }
+  function normalizeResultForStatus(status,result){
+    if(window.normalizeRecruitResultForStatus) return window.normalizeRecruitResultForStatus(status,result);
+    const value=String(result||"進行中").trim()||"進行中";
+    const list=allowedHiringResultsForStatus(status);
+    return list.includes(value) ? value : (String(status||"").trim()==="採用" ? "採用" : "進行中");
+  }
   const LEGACY_STATUS_TO_RESULT = {"未設定":"進行中","未判定":"進行中","合格":"採用","入社":"入社済","保留":"保留","辞退":"辞退","不採用":"不採用","不通":"不通"};
 
   const $=id=>document.getElementById(id);
@@ -207,6 +218,7 @@
     if(status==='採用' && (!result || result==='進行中')) result='採用';
     if(!status) status=inferStageStatus(r);
     if(!result) result='進行中';
+    result=normalizeResultForStatus(status,result);
     r.status=status; r.hiring_result=result;
     return r;
   }
@@ -226,6 +238,14 @@
       else if(col.master&&value&&masterSets&&masterSets[col.master]&&!masterSets[col.master].has(String(value).trim()))errors.push(`${index}行目：${col.label}「${value}」は有効なマスタにありません`);
       if(col.key==="hiring_result"&&value&&!HIRING_RESULT_OPTIONS.includes(String(value).trim()))errors.push(`${index}行目：選考結果が不正です（${value}）`);
     });
+    const status = String(row.status || "").trim();
+    const result = String(row.hiring_result || "進行中").trim() || "進行中";
+    if(status && result && !allowedHiringResultsForStatus(status).includes(result)){
+      errors.push(`${index}行目：ステータス「${status}」では選べない選考結果です（${result}）`);
+    }
+    if(result === "入社済" && !row.join_date){
+      errors.push(`${index}行目：選考結果が入社済なのに入社日が未入力です。`);
+    }
     return errors;
   }
 

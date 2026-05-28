@@ -15,7 +15,7 @@
 <script src="assets/js/audit_utils.js?v=20260524_metric_audit"></script>
 <script src="assets/js/ops_guard.js?v=20260524_metric_audit"></script>
 <script src="assets/js/safe_utils.js?v=20260524_metric_audit"></script>
-<script src="./common.js?v=20260524_metric_audit"></script>
+<script src="./common.js?v=20260528_stage_result_scope"></script>
 <script src="assets/js/candidate_utils.js?v=20260524_metric_audit"></script>
 </head>
 <body>
@@ -197,7 +197,18 @@ const CSV_COLUMNS = [
 const DATE_KEYS = new Set(["applied_date","appointment_date","interview1_date","interview_done_date","offer_date","join_date","last_action_date","next_action_date"]);
 const STAGE_STATUS_OPTIONS = window.RECRUIT_STAGE_STATUSES || ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
 const HIRING_RESULT_OPTIONS = window.RECRUIT_HIRING_RESULTS || ["進行中","保留","辞退","不採用","不通","採用","入社済"];
-const FINAL_RESULT_OPTIONS = window.RECRUIT_FINAL_RESULTS || ["保留","辞退","不採用","不通","採用","入社済"];
+const FINAL_RESULT_OPTIONS = window.RECRUIT_FINAL_RESULTS || ["保留","辞退","不採用","不通","入社済"];
+function allowedHiringResultsForStatus(status){
+  if(window.recruitAllowedHiringResults) return window.recruitAllowedHiringResults(status);
+  const map={"応募":["進行中","保留","不通","辞退"],"書類選考":["進行中","保留","不採用","不通","辞退"],"アポ取得":["進行中","保留","不通","辞退"],"面接設定":["進行中","保留","不通","辞退"],"面接実施":["進行中","保留","不採用","辞退","採用"],"内定":["進行中","保留","辞退","採用"],"採用":["採用","入社済","辞退"]};
+  return (map[String(status||"").trim()] || HIRING_RESULT_OPTIONS).slice();
+}
+function normalizeResultForStatus(status,result){
+  if(window.normalizeRecruitResultForStatus) return window.normalizeRecruitResultForStatus(status,result);
+  const value=String(result||"進行中").trim()||"進行中";
+  const list=allowedHiringResultsForStatus(status);
+  return list.includes(value) ? value : (String(status||"").trim()==="採用" ? "採用" : "進行中");
+}
 const LEGACY_STATUS_TO_RESULT = {
   "未設定":"進行中",
   "未判定":"進行中",
@@ -219,7 +230,7 @@ const IMPORT_HISTORY_KEY = "recruit_data_io_import_history";
 const BACKUP_LOCAL_KEY = "recruit_auto_backup_generations_v1";
 const BACKUP_AUTO_META_KEY = "recruit_auto_backup_meta_v1";
 const LAST_IMPORT_UNDO_KEY = "recruit_last_import_undo_v1";
-const BACKUP_TABLES = ["candidates","recruitment_targets","channel_costs","master_centers","master_divisions","master_statuses","profiles"];
+const BACKUP_TABLES = ["candidates","recruitment_targets","channel_costs","master_centers","profiles"];
 const MAX_LOCAL_BACKUP_GENERATIONS = 30;
 
 
@@ -228,13 +239,7 @@ function showIoTab(key){
   document.querySelectorAll('.io-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById(key+'Panel')?.classList.add('active');
 }
-function normalizeCsvExportCell(v){
-  return String(v ?? "").replace(/\r\n|\r|\n/g, " ").replace(/\t/g, " ").replace(/ {2,}/g, " ").trim();
-}
-function csvEscape(v){
-  const s=normalizeCsvExportCell(v);
-  return /[",]/.test(s) ? '"'+s.replaceAll('"','""')+'"' : s;
-}
+function csvEscape(v){ const s=String(v ?? ""); return /[",\n\r]/.test(s) ? '"'+s.replaceAll('"','""')+'"' : s; }
 function downloadText(filename, text){ const blob=new Blob(["\uFEFF"+text],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
 function downloadTemplateCsv(){ downloadText('recruit_template.csv', CSV_COLUMNS.map(c=>csvEscape(c[1])).join(',')+'\n'); }
 function parseCsv(text){
@@ -307,9 +312,11 @@ function normalizeStatusAndResult(row){
     status='採用';
     result='入社済';
   }
+  if(['採用','入社済'].includes(result)) status='採用';
   if(status==='採用' && (!result || result==='進行中')) result='採用';
   if(!status) status=inferStageStatus(r);
   if(!result) result='進行中';
+  result=normalizeResultForStatus(status,result);
   r.status=status;
   r.hiring_result=result;
   return r;
@@ -417,6 +424,8 @@ async function previewImportCsv(){
     if(!inMaster(masters.jobTypes,r.job_type)) previewErrors.push(`${r._row}行目：職種マスタ未登録（${r.job_type}）`);
     if(!STAGE_STATUS_OPTIONS.includes(r.status)) previewErrors.push(`${r._row}行目：ステータスが不正です（${r.status}）`);
     if(!HIRING_RESULT_OPTIONS.includes(r.hiring_result || '進行中')) previewErrors.push(`${r._row}行目：選考結果が不正です（${r.hiring_result}）`);
+    if(!allowedHiringResultsForStatus(r.status).includes(r.hiring_result || '進行中')) previewErrors.push(`${r._row}行目：ステータス「${r.status}」では選べない選考結果です（${r.hiring_result}）`);
+    if(r.hiring_result==='入社済' && !r.join_date) previewErrors.push(`${r._row}行目：選考結果が入社済なのに入社日が未入力です。`);
     if(!inMaster(masters.declineReasons,r.decline_reason)) previewErrors.push(`${r._row}行目：辞退理由マスタ未登録（${r.decline_reason}）`);
     if(!inMaster(masters.rejectReasons,r.reject_reason)) previewErrors.push(`${r._row}行目：不採用理由マスタ未登録（${r.reject_reason}）`);
   });
@@ -537,7 +546,7 @@ async function createPreImportBackup(){
     autoStatusLabel:'CSV取込前に自動保存完了'
   }));
   try{
-    const { data: savedBackup, error: backupError } = await sb.from('system_backups').insert({
+    await sb.from('system_backups').insert({
       backup_type:payload.backup_type,
       backup_version:1,
       backup_label:payload.created_label,
@@ -551,31 +560,9 @@ async function createPreImportBackup(){
       profile_count:item.profile_count,
       backup_json:payload,
       note:payload.note
-    }).select('id').single();
-    if(backupError) throw backupError;
-    if(savedBackup?.id){
-      item.supabase_backup_id = savedBackup.id;
-      payload.supabase_backup_id = savedBackup.id;
-      const refreshed=JSON.parse(localStorage.getItem(BACKUP_LOCAL_KEY) || '[]');
-      const index=refreshed.findIndex(row=>row.id===item.id);
-      if(index>=0){
-        refreshed[index]=item;
-        localStorage.setItem(BACKUP_LOCAL_KEY, JSON.stringify(refreshed.slice(0, MAX_LOCAL_BACKUP_GENERATIONS)));
-      }
-    }
-    if(window.RecruitAudit && window.RecruitAudit.write){
-      await window.RecruitAudit.write('backup_create','system_backups',savedBackup?.id || item.id,{type:payload.backup_type,label:payload.created_label,source:'csv_import_before',counts:{candidates:item.candidate_count,recruitment_targets:item.recruitment_target_count,channel_costs:item.channel_cost_count,master_centers:item.master_center_count,profiles:item.profile_count}});
-    }
+    });
   }catch(e){
-    console.error('Supabase backup failed before import:', e?.message || e);
-    if(window.RecruitAudit && window.RecruitAudit.write){
-      try{
-        await window.RecruitAudit.write('backup_create_failed','system_backups','csv_import_before',{type:payload.backup_type,label:payload.created_label,error:e?.message || String(e)});
-      }catch(auditError){
-        console.warn('backup failure audit skipped:', auditError?.message || auditError);
-      }
-    }
-    throw new Error('CSV取込前のSupabaseバックアップに失敗しました。取り込みは中止しました。' + (e?.message ? '\n' + e.message : ''));
+    console.warn('Supabase backup skipped before import:', e?.message || e);
   }
   return item;
 }
@@ -678,7 +665,7 @@ async function runImportCsv(){
         file_name: fileName
       });
     }
-    localStorage.setItem(LAST_IMPORT_UNDO_KEY, JSON.stringify({backup_id:backupItem.id,supabase_backup_id:backupItem.supabase_backup_id || null,created_at:backupItem.created_at,created_label:backupItem.created_label,file_name:selectedCsvFileName,total:clean.length,inserted:mode === "insert" ? clean.length : clean.filter(x=>!x.id).length,updated:mode === "upsert" ? clean.filter(x=>x.id).length : 0}));
+    localStorage.setItem(LAST_IMPORT_UNDO_KEY, JSON.stringify({backup_id:backupItem.id,created_at:backupItem.created_at,created_label:backupItem.created_label,file_name:selectedCsvFileName,total:clean.length,inserted:mode === "insert" ? clean.length : clean.filter(x=>!x.id).length,updated:mode === "upsert" ? clean.filter(x=>x.id).length : 0}));
     updateLastImportUndoUi();
     RecruitUI.toast(`自動バックアップ後に取り込みしました：${clean.length}件`, "success"); cancelImportCsv(true);
   }catch(e){ RecruitUI.showError("取り込みに失敗しました。\n\n"+(e.message||e)); }

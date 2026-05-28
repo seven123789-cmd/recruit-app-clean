@@ -9,11 +9,11 @@
 <link rel="stylesheet" href="./assets/css/header.css?v=20260524_metric_audit">
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260524_metric_audit">
 
-<link rel="stylesheet" href="./assets/css/detail.css?v=20260528_batch_finish1">
+<link rel="stylesheet" href="./assets/css/detail.css?v=20260524_metric_audit">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260524_metric_audit"></script>
 <script src="assets/js/auth.js?v=20260528_rolemenu"></script>
-<script src="./common.js?v=20260528_rolemenu"></script>
+<script src="./common.js?v=20260528_stage_result_scope"></script>
 <script src="assets/js/candidate_utils.js?v=20260524_metric_audit"></script>
 <script src="assets/js/ui_utils.js?v=20260524_metric_audit"></script>
 <script src="assets/js/audit_utils.js?v=20260524_metric_audit"></script>
@@ -258,14 +258,14 @@
       <div class="col-12">
         <div class="detail-action-area">
           <div class="primary-save-area">
-            <button id="detailSaveButton" class="btn-primary" type="button" onclick="saveCandidate()">保存</button>
+            <button class="btn-primary" type="button" onclick="saveCandidate()">保存</button>
             <div id="saveStatus" class="save-status-bar saved">
               <span>✓ 保存済み</span>
               <span class="save-status-sub">変更すると未保存表示に変わります</span>
             </div>
           </div>
           <div class="detail-sub-actions">
-            <a class="link-btn" href="./list.html" onclick="return handleReturnToList(event)">一覧へ戻る</a>
+            <a class="link-btn" href="./list.html" onclick="markReturnToList()">一覧へ戻る</a>
             <button class="btn-danger-soft" type="button" onclick="deleteCandidate()" data-requires-role="admin">削除</button>
           </div>
         </div>
@@ -398,7 +398,7 @@
     </div>
   </div>
 </div>
-<script src="./assets/js/detail.js?v=20260524_metric_audit"></script>
+<script src="./assets/js/detail.js?v=20260528_stage_result_scope"></script>
 <script src="./sidebar.js?v=20260528_rolemenu"></script>
 </body>
 </html>

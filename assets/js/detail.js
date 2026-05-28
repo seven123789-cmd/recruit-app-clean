@@ -18,7 +18,6 @@ let DECLINE_REASON_OPTIONS = [];
 let REJECT_REASON_OPTIONS = [];
 
 let isDirty = false;
-let isSaving = false;
 
 function setSaveStatus(state, message) {
   const el = document.getElementById("saveStatus");
@@ -43,14 +42,6 @@ function markSaved(message = "保存済み") {
   setSaveStatus("saved", message);
 }
 
-
-function setSaveBusy(busy) {
-  isSaving = !!busy;
-  const btn = document.getElementById("detailSaveButton");
-  if (!btn) return;
-  btn.disabled = !!busy;
-  btn.textContent = busy ? "保存中..." : "保存";
-}
 
 function showErrorModal(message, title = "保存できません") {
   return new Promise((resolve) => {
@@ -482,12 +473,39 @@ function normalizeDetailCandidateRow(row){
   return out;
 }
 
+function getAllowedHiringResultsForStatus(statusValue){
+  const status = normalizeDetailStageStatus(statusValue || document.getElementById("status")?.value || "");
+  if (window.recruitAllowedHiringResults) return window.recruitAllowedHiringResults(status);
+  const map = {
+    "応募": ["進行中","保留","不通","辞退"],
+    "書類選考": ["進行中","保留","不採用","不通","辞退"],
+    "アポ取得": ["進行中","保留","不通","辞退"],
+    "面接設定": ["進行中","保留","不通","辞退"],
+    "面接実施": ["進行中","保留","不採用","辞退","採用"],
+    "内定": ["進行中","保留","辞退","採用"],
+    "採用": ["採用","入社済","辞退"]
+  };
+  return (map[status] || HIRING_RESULT_OPTIONS).slice();
+}
+
+function normalizeDetailResultForStatus(statusValue, resultValue){
+  const status = normalizeDetailStageStatus(statusValue || "");
+  const result = normalizeDetailHiringResult(resultValue || "");
+  if (window.normalizeRecruitResultForStatus) return window.normalizeRecruitResultForStatus(status, result);
+  const allowed = getAllowedHiringResultsForStatus(status);
+  if (allowed.includes(result)) return result;
+  return status === "採用" ? "採用" : "進行中";
+}
+
 function renderHiringResultOptions(){
   const select = document.getElementById("hiringResult");
   if (!select) return;
+  const status = normalizeDetailStageStatus(document.getElementById("status")?.value || "");
   const current = normalizeDetailHiringResult(select.dataset.currentValue || select.value || "");
-  select.innerHTML = HIRING_RESULT_OPTIONS.map(name => '<option value="' + escapeAttr(name) + '">' + escapeHtml(name) + '</option>').join("");
-  select.value = HIRING_RESULT_OPTIONS.includes(current) ? current : "進行中";
+  const list = getAllowedHiringResultsForStatus(status);
+  const nextValue = list.includes(current) ? current : normalizeDetailResultForStatus(status, current);
+  select.innerHTML = list.map(name => '<option value="' + escapeAttr(name) + '">' + escapeHtml(name) + '</option>').join("");
+  select.value = list.includes(nextValue) ? nextValue : (list[0] || "進行中");
   delete select.dataset.currentValue;
 }
 
@@ -826,8 +844,9 @@ function fillCandidate(row) {
   setFieldValue("joinDate", row.join_date);
   setFieldValue("status", row.status);
   renderDetailMasterSelect("status", STATUS_OPTIONS, "選択");
+  const hiringResultSelect = document.getElementById("hiringResult");
+  if (hiringResultSelect) hiringResultSelect.dataset.currentValue = normalizeDetailHiringResult(row.hiring_result);
   renderHiringResultOptions();
-  setFieldValue("hiringResult", normalizeDetailHiringResult(row.hiring_result));
   setFieldValue("rejectReason", row.reject_reason);
   renderDetailMasterSelect("rejectReason", REJECT_REASON_OPTIONS, "未選択");
   setFieldValue("declineReason", row.decline_reason);
@@ -1113,10 +1132,10 @@ if (legacyResultStatuses.includes(payload.status)) {
 }
 if (payload.status === "入社") {
   payload.status = "採用";
-  payload.hiring_result = "採用";
+  payload.hiring_result = "入社済";
 }
-if (payload.status === "採用") payload.hiring_result = "採用";
-if (["採用","入社済"].includes(payload.hiring_result)) payload.status = "採用";
+if (payload.hiring_result === "入社済") payload.status = "採用";
+if (payload.hiring_result === "採用" && payload.status !== "採用") payload.status = "採用";
 
 // ===== 入社日・採用・終了結果の自動連動 =====
 if (payload.join_date) {
@@ -1124,10 +1143,13 @@ if (payload.join_date) {
   payload.hiring_result = "入社済";
 }
 
-// 終了・結果確定は次回対応日を自動クリア
-const resultFixed = ["採用","入社済","不採用","辞退","不通","保留"].includes(payload.hiring_result);
+payload.hiring_result = normalizeDetailResultForStatus(payload.status, payload.hiring_result);
 
-if (payload.status === "採用" || resultFixed) {
+// 終了・結果確定は次回対応日を自動クリア。
+// 採用+採用は入社前の採用決定（内定扱い）のため、次回対応日を保持する。
+const resultFixed = ["入社済","不採用","辞退","不通","保留"].includes(payload.hiring_result);
+
+if (resultFixed) {
   payload.next_action_date = null;
 }
 
@@ -1172,9 +1194,9 @@ function quickSetStatus(status) {
   if (status === "採用") {
     if (!document.getElementById("offerDate").value) document.getElementById("offerDate").value = today;
     document.getElementById("hiringResult").value = "採用";
-    document.getElementById("nextActionDate").value = "";
   }
 
+  renderHiringResultOptions();
   document.getElementById("summaryStatus").innerHTML = getStatusBadge(status);
   document.getElementById("summaryNextActionDate").textContent = formatDate(document.getElementById("nextActionDate").value);
 
@@ -1187,7 +1209,7 @@ function quickSetResult(result) {
   const resultEl = document.getElementById("hiringResult");
   const nextActionDate = document.getElementById("nextActionDate");
   if (resultEl) resultEl.value = result;
-  if ((["採用","入社済","不採用","辞退","不通","保留"].includes(result)) && nextActionDate) nextActionDate.value = "";
+  if ((["入社済","不採用","辞退","不通","保留"].includes(result)) && nextActionDate) nextActionDate.value = "";
   if (result === "採用") {
     const statusEl = document.getElementById("status");
     if (statusEl && statusEl.value !== "採用") statusEl.value = "採用";
@@ -1224,9 +1246,12 @@ function syncJoinDateAndHiringResult(options = {}) {
   } else if (hiringResult.value === "入社済") {
     hiringResult.value = statusEl && statusEl.value === "採用" ? "採用" : "進行中";
     changed = true;
+  } else if (hiringResult.value === "採用" && statusEl && statusEl.value !== "採用") {
+    statusEl.value = "採用";
+    changed = true;
   }
 
-  if (["保留","辞退","不採用","不通","採用","入社済"].includes(hiringResult.value) && nextActionDate && nextActionDate.value) {
+  if (["保留","辞退","不採用","不通","入社済"].includes(hiringResult.value) && nextActionDate && nextActionDate.value) {
     nextActionDate.value = "";
     changed = true;
   }
@@ -1273,10 +1298,11 @@ function handleStatusChange() {
     if (hiringResult && hiringResult.value === "進行中") hiringResult.value = "採用";
   }
 
+  renderHiringResultOptions();
   syncJoinDateAndHiringResult({ showMessage:false });
 
   const fixedResult = hiringResult ? String(hiringResult.value || "").trim() : "";
-  if (nextActionDate && ["保留","辞退","不採用","不通","採用","入社済"].includes(fixedResult)) {
+  if (nextActionDate && ["保留","辞退","不採用","不通","入社済"].includes(fixedResult)) {
     nextActionDate.value = "";
   }
 
@@ -1346,10 +1372,14 @@ function validatePayload(payload) {
   }
 
   // ===== ステータス連動チェック =====
-  // 選考結果=進行中の案件だけ、次回対応日を必須にする。
-  // 保留・辞退・不採用・不通・採用・入社済は終了/保留扱いのため次回対応日は不要。
-  if (payload.hiring_result === "進行中" && payload.status !== "採用" && !payload.next_action_date) {
-    messages.push("選考結果が進行中の場合は、次回対応日を入力してください。");
+  // ステータスごとに選べる選考結果を制限する。
+  // 採用+採用は入社前の採用決定（内定扱い）のため、次回対応日を必須にする。
+  if (!getAllowedHiringResultsForStatus(payload.status).includes(payload.hiring_result)) {
+    messages.push("現在のステータスでは選べない選考結果です。ステータスに応じた選考結果を選び直してください。");
+  }
+
+  if ((payload.hiring_result === "進行中" || (payload.status === "採用" && payload.hiring_result === "採用" && !payload.join_date)) && !payload.next_action_date) {
+    messages.push("次回対応日を入力してください。");
   }
 
   if (payload.status === "アポ取得" && !payload.appointment_date) {
@@ -1376,8 +1406,8 @@ function validatePayload(payload) {
     messages.push("内定なのに内定日が未入力です。");
   }
 
-  if (payload.status === "採用" && !["採用","入社済"].includes(payload.hiring_result)) {
-    messages.push("採用ステータスの場合は、選考結果を採用または入社済にしてください。");
+  if (payload.status === "採用" && !["採用","入社済","辞退"].includes(payload.hiring_result)) {
+    messages.push("採用ステータスの場合は、選考結果を採用・入社済・辞退のいずれかにしてください。");
   }
 
   if (["採用","入社済"].includes(payload.hiring_result) && payload.status !== "採用") {
@@ -1475,7 +1505,6 @@ async function deleteCandidate() {
 }
 
 async function saveCandidate() {
-  if (isSaving) return;
   if(window.RecruitOpsGuard && !window.RecruitOpsGuard.requireWrite(currentRole)) return;
   if(window.RecruitRole && window.RecruitRole.isViewer(currentRole)){
     await showErrorModal("viewer権限のため、保存はできません。", "保存できません");
@@ -1509,7 +1538,6 @@ async function saveCandidate() {
 
     payload.updated_by = user.id;
 
-    setSaveBusy(true);
     setPageMessage("保存中です", "info");
 
     const beforeCandidate = currentCandidate ? {...currentCandidate} : null;
@@ -1537,8 +1565,6 @@ setPageMessage("保存しました", "success");
 showSuccessModal("保存しました");
   } catch (e) {
     setPageMessage("保存失敗: " + (e.message || e), "error");
-  } finally {
-    setSaveBusy(false);
   }
 }
 
@@ -1599,11 +1625,22 @@ function initDirtyTracking() {
     });
   }
 
+  const status = document.getElementById("status");
+  if (status && status.dataset.statusResultFilterWatch !== "1") {
+    status.dataset.statusResultFilterWatch = "1";
+    status.addEventListener("change", () => {
+      renderHiringResultOptions();
+      syncJoinDateAndHiringResult({ showMessage:false });
+      markDirty();
+    });
+  }
+
   const hiringResult = document.getElementById("hiringResult");
   if (hiringResult && hiringResult.dataset.resultSyncWatch !== "1") {
     hiringResult.dataset.resultSyncWatch = "1";
     hiringResult.addEventListener("change", () => {
-      syncJoinDateAndHiringResult({ showMessage:false });
+      const changed = syncJoinDateAndHiringResult({ showMessage:false });
+      if (changed) renderHiringResultOptions();
       markDirty();
     });
   }

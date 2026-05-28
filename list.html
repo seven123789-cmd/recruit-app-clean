@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="./assets/css/common.css?v=20260523_join_actual_fix">
 <link rel="stylesheet" href="./assets/css/header.css?v=20260523_join_actual_fix">
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260523_join_actual_fix">
-<link rel="stylesheet" href="./assets/css/list.css?v=20260528_batch_finish1">
+<link rel="stylesheet" href="./assets/css/list.css?v=20260523_join_actual_fix">
 </head>
 <body class="auth-checking">
 
@@ -216,7 +216,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260523_join_actual_fix"></script>
 <script src="assets/js/auth.js?v=20260528_rolemenu"></script>
-<script src="./common.js?v=20260528_rolemenu"></script>
+<script src="./common.js?v=20260528_stage_result_scope"></script>
 <script src="assets/js/candidate_utils.js?v=20260523_join_actual_fix"></script>
 <script src="assets/js/ops_guard.js?v=20260528_rolemenu"></script>
 <script src="assets/js/ui_utils.js?v=20260523_join_actual_fix"></script>
@@ -242,8 +242,6 @@ let selectedStatusFilters=new Set();
 let selectedResultFilters=new Set();
 let dashboardJob="";
 const selectedIds = new Set();
-let currentVisibleRows=[];
-let renderCandidatesTimer=null;
 
 const ACTIVE_STATUSES=window.RECRUIT_STAGE_STATUSES || ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
 const HIRING_RESULT_OPTIONS=window.RECRUIT_HIRING_RESULTS || ["進行中","保留","辞退","不採用","不通","採用","入社済"];
@@ -645,14 +643,6 @@ async function loadListMasterStatuses(rows=[]){
 
   statusColorMap=Object.fromEntries(listMasterStatuses.map(row=>[row.name,normalizeStatusColor(row.color)]));
 }
-function requestRenderCandidates(){
-  if(renderCandidatesTimer) clearTimeout(renderCandidatesTimer);
-  renderCandidatesTimer = setTimeout(()=>{
-    renderCandidatesTimer = null;
-    renderCandidates();
-  },80);
-}
-
 function renderStatusFilterChips(){
   const wrap=$("statusFilterChips");
   if(!wrap)return;
@@ -674,12 +664,12 @@ function toggleStatusFilter(status){
   if(selectedStatusFilters.has(value))selectedStatusFilters.delete(value);
   else selectedStatusFilters.add(value);
   saveState();
-  requestRenderCandidates();
+  renderCandidates();
 }
 function clearStatusFilters(){
   selectedStatusFilters.clear();
   saveState();
-  requestRenderCandidates();
+  renderCandidates();
 }
 function renderResultFilterChips(){
   const wrap=$("resultFilterChips");
@@ -695,12 +685,12 @@ function toggleResultFilter(result){
   if(selectedResultFilters.has(value))selectedResultFilters.delete(value);
   else selectedResultFilters.add(value);
   saveState();
-  requestRenderCandidates();
+  renderCandidates();
 }
 function clearResultFilters(){
   selectedResultFilters.clear();
   saveState();
-  requestRenderCandidates();
+  renderCandidates();
 }
 function setupBulkStatusOptions(){
   const select=$("bulkStatus");
@@ -741,17 +731,17 @@ function clearFilters(){
   currentListFilter="all";
   sortMode="actionAsc";
   saveState();
-  requestRenderCandidates();
+  renderCandidates();
 }
 function setListFilter(mode){
   currentListFilter=mode;
   saveState();
-  requestRenderCandidates();
+  renderCandidates();
 }
 function setSortMode(mode){
   sortMode=mode || "actionAsc";
   saveState();
-  requestRenderCandidates();
+  renderCandidates();
 }
 function updateSortButtons(){
   const map={
@@ -1009,7 +999,7 @@ function updateBulkSelectCount(){
 
   const all = $("bulkSelectAll");
   if(all){
-    const visibleRows = currentVisibleRows.length ? currentVisibleRows : filteredRows();
+    const visibleRows = filteredRows();
     const visibleIds = visibleRows.map(r => String(r.id));
     const selectedVisible = visibleIds.filter(id => selectedIds.has(id)).length;
     all.checked = visibleIds.length > 0 && selectedVisible === visibleIds.length;
@@ -1030,8 +1020,7 @@ function toggleBulkSelection(id, checked){
 }
 
 function toggleBulkSelectAll(checked){
-  const rows = currentVisibleRows.length ? currentVisibleRows : filteredRows();
-  rows.forEach(r => {
+  filteredRows().forEach(r => {
     const key = String(r.id);
     if(checked) selectedIds.add(key);
     else selectedIds.delete(key);
@@ -1214,7 +1203,6 @@ function renderCandidates(){
   renderResultFilterChips();
 
   const rows=filteredRows();
-  currentVisibleRows=rows;
   setupBulkOptions();
   saveListOrder(rows);
 
@@ -1237,7 +1225,6 @@ function renderCandidates(){
   }
 
   tbody.innerHTML="";
-  const fragment=document.createDocumentFragment();
   rows.forEach(r=>{
     const tr=document.createElement("tr");
     tr.dataset.id=String(r.id);
@@ -1348,9 +1335,8 @@ function renderCandidates(){
       });
     }
 
-    fragment.appendChild(tr);
+    tbody.appendChild(tr);
   });
-  tbody.appendChild(fragment);
   updateBulkSelectCount();
   restoreNav();
 }
@@ -1484,7 +1470,7 @@ async function initPageAfterLogin(){
         dashboardContextActive=false;
       }
       saveState();
-      requestRenderCandidates();
+      renderCandidates();
     }
   });
 });
