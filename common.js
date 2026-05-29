@@ -463,12 +463,12 @@
       );
     }
 
-    if((status === "面接設定" || status === "面接実施") && !isValidRecruitDate(r.interview1_date) && !isValidRecruitDate(r.interview_date)){
+    if(status === "面接実施" && !isValidRecruitDate(r.interview_done_date) && !isValidRecruitDate(r.interview1_date) && !isValidRecruitDate(r.interview_date)){
       add(
-        "interview_stage_without_date",
+        "interview_done_stage_without_date",
         "面接日未登録",
-        "ステータスが面接段階ですが、面接日が未登録です。",
-        "応募者詳細で面接日を登録してください。登録すると面接設定・面接実施の集計が正しくなります。"
+        "ステータスが「面接実施」ですが、面接実施日または面接日が未登録です。",
+        "応募者詳細で面接実施日または面接日を登録してください。登録すると面接実施数・面接後の結果管理が正しくなります。"
       );
     }
 
@@ -553,6 +553,30 @@
     };
   }
 
+  const RECRUIT_ALLOWED_HIRING_RESULTS_BY_STATUS = {
+    "応募": ["進行中","保留","不通","辞退"],
+    "書類選考": ["進行中","保留","不採用","不通","辞退"],
+    "アポ取得": ["進行中","保留","不採用","不通","辞退"],
+    "面接設定": ["進行中","保留","不採用","不通","辞退"],
+    "面接実施": ["進行中","保留","不採用","辞退","採用"],
+    "内定": ["進行中","保留","辞退","採用"],
+    "採用": ["採用","入社済","辞退"]
+  };
+
+  function recruitAllowedHiringResults(statusValue){
+    const status = normalizeRecruitStageStatus(statusValue || "");
+    const list = RECRUIT_ALLOWED_HIRING_RESULTS_BY_STATUS[status] || recruitHiringResultNames();
+    return list.slice();
+  }
+
+  function normalizeRecruitResultForStatus(statusValue, resultValue){
+    const status = normalizeRecruitStageStatus(statusValue || "");
+    const result = normalizeRecruitHiringResult(resultValue || "");
+    const allowed = recruitAllowedHiringResults(status);
+    if(allowed.includes(result)) return result;
+    return status === "採用" ? "採用" : "進行中";
+  }
+
   function isFinal(row){
     const r = normalizeRecruitCandidateState(row || {});
     const status = String(r.status || "").trim();
@@ -606,6 +630,9 @@
   window.RECRUIT_STAGE_STATUSES = window.RECRUIT_STAGE_STATUSES || recruitStatusDefaultNames();
   window.RECRUIT_HIRING_RESULTS = window.RECRUIT_HIRING_RESULTS || recruitHiringResultNames();
   window.RECRUIT_FINAL_RESULTS = window.RECRUIT_FINAL_RESULTS || ["辞退","不採用","不通","入社済"];
+  window.RECRUIT_ALLOWED_HIRING_RESULTS_BY_STATUS = window.RECRUIT_ALLOWED_HIRING_RESULTS_BY_STATUS || RECRUIT_ALLOWED_HIRING_RESULTS_BY_STATUS;
+  window.recruitAllowedHiringResults = window.recruitAllowedHiringResults || recruitAllowedHiringResults;
+  window.normalizeRecruitResultForStatus = window.normalizeRecruitResultForStatus || normalizeRecruitResultForStatus;
   window.RECRUIT_STATUS_MASTER_DEFAULTS = window.RECRUIT_STATUS_MASTER_DEFAULTS || RECRUIT_STATUS_MASTER_DEFAULTS;
   window.recruitStatusDefaultNames = window.recruitStatusDefaultNames || recruitStatusDefaultNames;
   window.mergeRecruitStatusNames = window.mergeRecruitStatusNames || mergeRecruitStatusNames;
@@ -652,6 +679,8 @@
     isInterviewDone: isRecruitInterviewDone,
     isPendingJoin: isRecruitPendingJoin,
     isPendingJoinFollowRequired: isRecruitPendingJoinFollowRequired,
+    allowedHiringResults: recruitAllowedHiringResults,
+    normalizeResultForStatus: normalizeRecruitResultForStatus,
     isFinal: isFinal,
     isActionRequired: isRecruitActionRequired,
     getActionDueState: getRecruitActionDueState,

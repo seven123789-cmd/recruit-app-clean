@@ -37,7 +37,7 @@
   const HIRING_RESULT_OPTIONS = window.RECRUIT_HIRING_RESULTS || ["進行中","保留","辞退","不採用","不通","採用","入社済"];
   function allowedHiringResultsForStatus(status){
     if(window.recruitAllowedHiringResults) return window.recruitAllowedHiringResults(status);
-    const map={"応募":["進行中","保留","不通","辞退"],"書類選考":["進行中","保留","不採用","不通","辞退"],"アポ取得":["進行中","保留","不通","辞退"],"面接設定":["進行中","保留","不通","辞退"],"面接実施":["進行中","保留","不採用","辞退","採用"],"内定":["進行中","保留","辞退","採用"],"採用":["採用","入社済","辞退"]};
+    const map={"応募":["進行中","保留","不通","辞退"],"書類選考":["進行中","保留","不採用","不通","辞退"],"アポ取得":["進行中","保留","不採用","不通","辞退"],"面接設定":["進行中","保留","不採用","不通","辞退"],"面接実施":["進行中","保留","不採用","辞退","採用"],"内定":["進行中","保留","辞退","採用"],"採用":["採用","入社済","辞退"]};
     return (map[String(status||"").trim()] || HIRING_RESULT_OPTIONS).slice();
   }
   function normalizeResultForStatus(status,result){

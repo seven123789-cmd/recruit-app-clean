@@ -479,8 +479,8 @@ function getAllowedHiringResultsForStatus(statusValue){
   const map = {
     "応募": ["進行中","保留","不通","辞退"],
     "書類選考": ["進行中","保留","不採用","不通","辞退"],
-    "アポ取得": ["進行中","保留","不通","辞退"],
-    "面接設定": ["進行中","保留","不通","辞退"],
+    "アポ取得": ["進行中","保留","不採用","不通","辞退"],
+    "面接設定": ["進行中","保留","不採用","不通","辞退"],
     "面接実施": ["進行中","保留","不採用","辞退","採用"],
     "内定": ["進行中","保留","辞退","採用"],
     "採用": ["採用","入社済","辞退"]
@@ -1323,9 +1323,6 @@ function validatePayload(payload) {
     messages.push("面接実施で選考結果が採用なのに内定日が未入力です。");
   }
 
-  if (payload.status === "面接実施" && payload.hiring_result === "不採用" && !payload.reject_reason) {
-    messages.push("面接実施で選考結果が不採用なのに不採用理由が未選択です。");
-  }
 
   // ===== 逆流チェック（重要） =====
   if (payload.status === "応募" && payload.interview1_date) {
