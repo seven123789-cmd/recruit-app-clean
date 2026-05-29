@@ -337,6 +337,26 @@ tbody tr.action-missing td:first-child{
   }
 }
 
+/* 氏名＋要対応バッジ */
+.candidate-name-cell{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:7px;
+  min-width:120px;
+}
+.candidate-name-cell strong{
+  color:#0f172a;
+  font-size:14px;
+  font-weight:950;
+  line-height:1.35;
+}
+.candidate-alert-line{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+}
+
 /* ステータス＋選考結果 2段表示 */
 .result-filter-panel{
   margin-top:8px;
@@ -402,25 +422,26 @@ tbody tr.action-missing td:first-child{
   color:#fff;
 }
 
-.status-action-line{
-  display:flex;
-  align-items:center;
-  justify-content:flex-start;
-}
 .list-action-required-badge{
   display:inline-flex;
   align-items:center;
   justify-content:center;
   min-height:22px;
-  padding:0 8px;
+  padding:0 9px;
   border-radius:999px;
-  border:1px solid #fecaca;
+  border:1px solid #fca5a5;
   background:#fff1f2;
-  color:#be123c;
+  color:#b91c1c;
+  box-shadow:0 6px 14px rgba(239,68,68,.10);
   font-size:11px;
   font-weight:950;
   line-height:1;
   cursor:pointer;
+  white-space:nowrap;
+}
+.list-action-required-badge:hover{
+  background:#ffe4e6;
+  border-color:#fb7185;
 }
 
 #candidateTable .th-sub{

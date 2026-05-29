@@ -347,13 +347,17 @@ function resultBadge(row){
 }
 function actionRequiredBadge(row){
   if(!isActionRequired(row)) return "";
-  return '<button class="list-action-required-badge" type="button" title="応募者詳細で要対応内容を確認">要対応</button>';
+  return '<button class="list-action-required-badge" type="button" title="応募者詳細で要対応内容を確認">⚠ 要対応</button>';
+}
+
+function candidateNameCell(row){
+  const actionBadge = actionRequiredBadge(row);
+  return `<div class="candidate-name-cell"><strong>${esc(row.name||"")}</strong>${actionBadge ? `<div class="candidate-alert-line">${actionBadge}</div>` : ""}</div>`;
 }
 
 function statusResultCell(row){
   const normalized = normalizeListCandidate(row);
-  const actionBadge = actionRequiredBadge(normalized);
-  return `<div class="status-result-cell"><div class="status-line">${badge(normalized.status)}</div><div class="result-line"><span>選考結果</span>${resultBadge(normalized)}</div>${actionBadge ? `<div class="action-required-line">${actionBadge}</div>` : ""}</div>`;
+  return `<div class="status-result-cell"><div class="status-line">${badge(normalized.status)}</div><div class="result-line"><span>選考結果</span>${resultBadge(normalized)}</div></div>`;
 }
 
 function getFiscalYearFromAppliedDate(dateStr){
@@ -1245,7 +1249,7 @@ function createCandidateRow(r, today){
 
   tr.innerHTML=
     '<td class="list-check-cell"><input type="checkbox" class="bulk-row-check" data-id="'+esc(r.id)+'" aria-label="選択"'+checked+'></td>'+
-    "<td><strong>"+esc(r.name||"")+"</strong></td>"+
+    "<td>"+candidateNameCell(r)+"</td>"+
     "<td>"+formatDate(r.applied_date)+"</td>"+
     "<td>"+statusResultCell(r)+"</td>"+
     "<td>"+esc(r.division||"")+"</td>"+
