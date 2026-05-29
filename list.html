@@ -123,7 +123,7 @@
           </div>
           <div class="col-3">
             <label for="filterNameKeyword">氏名・フリーワード検索</label>
-            <input id="filterNameKeyword" type="text" placeholder="例：山田 / Indeed" />
+            <input id="filterNameKeyword" type="text" placeholder="例：山田 / テンリク / Indeed" />
           </div>
           <div class="col-12 list-status-filter-panel result-filter-panel">
             <div class="list-status-filter-head">
@@ -341,6 +341,30 @@ function resultBadge(row){
 }
 function normalizeListNameKey(value){
   return String(value || "").trim().replace(/[\s\u3000]+/g, "").toLowerCase();
+}
+function listFreewordText(row){
+  return [
+    row?.name,
+    row?.kana,
+    row?.division,
+    row?.center_name,
+    row?.owner_name,
+    row?.channel,
+    row?.channel_detail,
+    row?.media_detail,
+    row?.job_type,
+    row?.status,
+    row?.hiring_result,
+    row?.memo,
+    row?.note,
+    row?.action_memo,
+    row?.interview_comment
+  ].map(v => String(v || "")).join(" ");
+}
+function matchesListFreeword(row, keyword){
+  const key = normalizeListNameKey(keyword);
+  if(!key) return true;
+  return normalizeListNameKey(listFreewordText(row)).includes(key);
 }
 function isDuplicateCandidateName(row){
   const key=normalizeListNameKey(row?.name);
@@ -1005,7 +1029,7 @@ function filteredRows(){
       if(dateFrom&&targetDate<dateFrom)return false;
       if(dateTo&&targetDate>dateTo)return false;
     }
-    if(nameKeyword && !normalizeListNameKey(r.name).includes(nameKeyword))return false;
+    if(nameKeyword && !matchesListFreeword(r, nameKeyword))return false;
     if(selectedStatusFilters.size && !selectedStatusFilters.has(String(normalizeListCandidate(r).status||"").trim()))return false;
     if(selectedResultFilters.size && !selectedResultFilters.has(normalizeHiringResult(r)))return false;
     return (!d||r.division===d)&&(!c||r.center_name===c)&&(!o||r.owner_name===o)&&(!ch||r.channel===ch)&&(!job||r.job_type===job);
