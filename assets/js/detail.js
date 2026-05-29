@@ -1126,8 +1126,8 @@ function quickSetResult(result) {
   if (resultEl) resultEl.value = result;
   if ((["入社済","不採用","辞退","不通","保留"].includes(result)) && nextActionDate) nextActionDate.value = "";
   if (result === "採用") {
-    const statusEl = document.getElementById("status");
-    if (statusEl && statusEl.value !== "採用") statusEl.value = "採用";
+    // 選考結果が採用でも、ステータスは面接実施・内定・採用のいずれも成立する。
+    // ここでステータスを採用へ強制すると、面接実施＋採用が保存後に採用へ戻るため変更しない。
     const offerDate = document.getElementById("offerDate");
     if (offerDate && !offerDate.value) offerDate.value = (window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date()));
   }
@@ -1338,9 +1338,8 @@ function validatePayload(payload) {
     messages.push("不採用なのに不採用理由が未選択です。");
   }
 
-  if (payload.status === "面接実施" && payload.hiring_result === "採用" && !payload.offer_date) {
-    messages.push("面接実施で選考結果が採用なのに内定日が未入力です。");
-  }
+  // 内定日は現在の中途運用では任意項目とする。
+  // 面接実施＋採用、内定＋採用、採用＋採用のいずれも、内定日未入力だけでは保存を止めない。
 
 
   // ===== 逆流チェック（重要） =====
@@ -1565,24 +1564,22 @@ function initDirtyTracking() {
 
 function toggleActionAdvice() {
   const card = document.getElementById("actionAdviceCard");
-  if (!card || card.classList.contains("hidden")) return;
+  const body = document.getElementById("actionAdviceBody");
+  const button = document.getElementById("actionAdviceToggle");
+  const target = body || card;
+  if (!target) return;
 
-  const isCollapsed = card.classList.toggle("action-collapsed");
-  const head = card.querySelector(".action-advice-head");
-  if (head) {
-    head.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
-  }
+  const isCollapsed = target.classList.toggle("is-collapsed");
+  if (button) button.textContent = isCollapsed ? "+" : "−";
 }
 
 function applyActionAdviceDefaultState() {
   const card = document.getElementById("actionAdviceCard");
-  if (!card) return;
-
-  card.classList.remove("action-collapsed");
-  const head = card.querySelector(".action-advice-head");
-  if (head) {
-    head.setAttribute("aria-expanded", "true");
-  }
+  const body = document.getElementById("actionAdviceBody");
+  const button = document.getElementById("actionAdviceToggle");
+  if (card) card.classList.remove("is-collapsed");
+  if (body) body.classList.remove("is-collapsed");
+  if (button) button.textContent = "−";
 }
 
 function bindDetailActionButtons() {

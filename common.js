@@ -182,10 +182,10 @@
       if(!rawResult || result === "進行中") result = rawStatus;
       status = inferRecruitStageFromDates(out) || status || "応募";
     }else if(result === "入社済"){
-      status = "採用";
-    }else if(result === "採用"){
+      // 実入社だけは採用ステータスへ寄せる。
       status = "採用";
     }else if(rawStatus === "採用" && (!rawResult || result === "進行中")){
+      // ステータスが採用で結果未設定なら、入社前の採用決定として扱う。
       result = "採用";
     }
 
