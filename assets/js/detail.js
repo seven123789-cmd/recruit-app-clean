@@ -710,21 +710,19 @@ function updateActionPriority(level) {
   }
 }
 
-
 function applyActionAdviceDefaultState() {
   const card = document.getElementById("actionAdviceCard");
   if (!card) return;
-  card.classList.remove("action-collapsed");
-  const head = card.querySelector(".action-advice-head");
-  if (head) head.setAttribute("aria-expanded", "true");
+  // 要対応カードは初期表示で必ず展開する。
+  card.classList.remove("is-collapsed");
+  card.setAttribute("aria-expanded", "true");
 }
 
 function toggleActionAdvice() {
   const card = document.getElementById("actionAdviceCard");
   if (!card || card.classList.contains("hidden")) return;
-  const collapsed = card.classList.toggle("action-collapsed");
-  const head = card.querySelector(".action-advice-head");
-  if (head) head.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  const collapsed = card.classList.toggle("is-collapsed");
+  card.setAttribute("aria-expanded", collapsed ? "false" : "true");
 }
 
 function renderActionAdvice(row) {
@@ -1068,7 +1066,6 @@ if (payload.status === "入社") {
   payload.hiring_result = "入社済";
 }
 if (payload.hiring_result === "入社済") payload.status = "採用";
-if (payload.hiring_result === "採用" && payload.status !== "採用") payload.status = "採用";
 
 // ===== 入社日・採用・終了結果の自動連動 =====
 if (payload.join_date) {
@@ -1144,8 +1141,6 @@ function quickSetResult(result) {
   if (resultEl) resultEl.value = result;
   if ((["入社済","不採用","辞退","不通","保留"].includes(result)) && nextActionDate) nextActionDate.value = "";
   if (result === "採用") {
-    const statusEl = document.getElementById("status");
-    if (statusEl && statusEl.value !== "採用") statusEl.value = "採用";
     const offerDate = document.getElementById("offerDate");
     if (offerDate && !offerDate.value) offerDate.value = (window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date()));
   }
@@ -1178,9 +1173,6 @@ function syncJoinDateAndHiringResult(options = {}) {
     }
   } else if (hiringResult.value === "入社済") {
     hiringResult.value = statusEl && statusEl.value === "採用" ? "採用" : "進行中";
-    changed = true;
-  } else if (hiringResult.value === "採用" && statusEl && statusEl.value !== "採用") {
-    statusEl.value = "採用";
     changed = true;
   }
 
@@ -1343,8 +1335,8 @@ function validatePayload(payload) {
     messages.push("採用ステータスの場合は、選考結果を採用・入社済・辞退のいずれかにしてください。");
   }
 
-  if (["採用","入社済"].includes(payload.hiring_result) && payload.status !== "採用") {
-    messages.push("選考結果が採用または入社済の場合は、ステータスも採用にしてください。");
+  if (payload.hiring_result === "入社済" && payload.status !== "採用") {
+    messages.push("選考結果が入社済の場合は、ステータスを採用にしてください。");
   }
 
   if (payload.hiring_result === "入社済" && !payload.join_date) {
