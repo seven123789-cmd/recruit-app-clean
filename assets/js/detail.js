@@ -710,21 +710,6 @@ function updateActionPriority(level) {
   }
 }
 
-function applyActionAdviceDefaultState() {
-  const card = document.getElementById("actionAdviceCard");
-  if (!card) return;
-  // 要対応カードは初期表示で必ず展開する。
-  card.classList.remove("is-collapsed");
-  card.setAttribute("aria-expanded", "true");
-}
-
-function toggleActionAdvice() {
-  const card = document.getElementById("actionAdviceCard");
-  if (!card || card.classList.contains("hidden")) return;
-  const collapsed = card.classList.toggle("is-collapsed");
-  card.setAttribute("aria-expanded", collapsed ? "false" : "true");
-}
-
 function renderActionAdvice(row) {
   const card = document.getElementById("actionAdviceCard");
   const reasonEl = document.getElementById("actionReasonText");
@@ -1141,6 +1126,8 @@ function quickSetResult(result) {
   if (resultEl) resultEl.value = result;
   if ((["入社済","不採用","辞退","不通","保留"].includes(result)) && nextActionDate) nextActionDate.value = "";
   if (result === "採用") {
+    const statusEl = document.getElementById("status");
+    if (statusEl && statusEl.value !== "採用") statusEl.value = "採用";
     const offerDate = document.getElementById("offerDate");
     if (offerDate && !offerDate.value) offerDate.value = (window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date()));
   }
