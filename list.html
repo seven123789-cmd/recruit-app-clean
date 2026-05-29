@@ -78,56 +78,6 @@
             </select>
           </div>
           
-          <div class="col-2">
-            <label for="filterDivision">本部</label>
-            <select id="filterDivision"><option value="">全部</option></select>
-          </div>
-          <div class="col-2">
-            <label for="filterCenter">営業所</label>
-            <select id="filterCenter"><option value="">全営業所</option></select>
-          </div>
-          <div class="col-2">
-            <label for="filterOwner">担当者</label>
-            <select id="filterOwner"><option value="">全担当</option></select>
-          </div>
-          <div class="col-2">
-            <label for="filterChannel">媒体</label>
-            <select id="filterChannel"><option value="">全媒体</option></select>
-          </div>
-          <div class="col-3">
-            <label for="filterDateType">日付種類</label>
-            <select id="filterDateType">
-              <option value="applied_date">応募日</option>
-              <option value="appointment_date">アポ日</option>
-              <option value="interview1_date">面接設定日</option>
-              <option value="interview_done_date">面接実施日</option>
-              <option value="offer_date">内定日</option>
-              <option value="join_date">採用日</option>
-              <option value="next_action_date">次回対応日</option>
-            </select>
-          </div>
-          <div class="col-3">
-            <label for="filterDateFrom">開始日</label>
-            <input id="filterDateFrom" type="date">
-          </div>
-          <div class="col-3">
-            <label for="filterNameKeyword">氏名・フリーワード検索</label>
-            <input id="filterNameKeyword" type="search" placeholder="例：山田 / Indeed">
-          </div>
-          <div class="col-3">
-            <label for="filterDateTo">終了日</label>
-            <input id="filterDateTo" type="date">
-          </div>
-          <div class="col-12 list-status-filter-panel">
-            <div class="list-status-filter-head">
-              <div>
-                <span class="list-filter-label">ステータス</span>
-                <span class="list-filter-note">ステータスマスタ連動・複数選択可</span>
-              </div>
-              <button class="btn-secondary list-status-clear" type="button" onclick="clearStatusFilters()">ステータス解除</button>
-            </div>
-            <div id="statusFilterChips" class="status-filter-chips" aria-label="ステータス絞り込み"></div>
-          </div>
           <div class="col-12 list-status-filter-panel result-filter-panel">
             <div class="list-status-filter-head">
               <div>
