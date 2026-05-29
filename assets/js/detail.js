@@ -42,6 +42,22 @@ function markSaved(message = "保存済み") {
   setSaveStatus("saved", message);
 }
 
+function setSaveButtonBusy(isBusy) {
+  const btn = document.getElementById("saveCandidateButton");
+  if (!btn) return;
+  btn.disabled = !!isBusy;
+  btn.textContent = isBusy ? "保存中..." : "保存";
+}
+
+function markListNeedsRefresh() {
+  try {
+    sessionStorage.setItem("recruit_list_force_reload_at", String(Date.now()));
+    localStorage.removeItem("recruit_list_current_order");
+  } catch (e) {
+    console.warn("一覧更新フラグの保存に失敗しました", e);
+  }
+}
+
 
 function showErrorModal(message, title = "保存できません") {
   return new Promise((resolve) => {
@@ -1395,11 +1411,13 @@ async function deleteCandidate() {
 }
 
 async function saveCandidate() {
+  console.log("candidate save clicked", { candidateId });
   if(window.RecruitOpsGuard && !window.RecruitOpsGuard.requireWrite(currentRole)) return;
   if(window.RecruitRole && window.RecruitRole.isViewer(currentRole)){
     await showErrorModal("viewer権限のため、保存はできません。", "保存できません");
     return;
   }
+  setSaveButtonBusy(true);
   try {
     const user = await getSessionUser();
 
@@ -1441,20 +1459,26 @@ async function saveCandidate() {
 
     if (error) throw error;
 
+    let auditRecorded = true;
     if(window.RecruitAudit && window.RecruitAudit.candidateUpdate){
-      await window.RecruitAudit.candidateUpdate(candidateId, beforeCandidate, data, Object.keys(payload));
+      auditRecorded = await window.RecruitAudit.candidateUpdate(candidateId, beforeCandidate, data, Object.keys(payload));
     } else if(window.writeRecruitAuditLog){
       const diff = window.diffRecruitObjects ? window.diffRecruitObjects(beforeCandidate, data, Object.keys(payload)) : payload;
-      await window.writeRecruitAuditLog("candidate_update", "candidates", candidateId, { name:data?.name||beforeCandidate?.name||null, diff });
+      auditRecorded = await window.writeRecruitAuditLog("candidate_update", "candidates", candidateId, { name:data?.name||beforeCandidate?.name||null, diff });
     }
 
     fillCandidate(data);
-    loadCandidateAuditTimeline();
-markSaved("保存済み");
-setPageMessage("保存しました", "success");
-showSuccessModal("保存しました");
+    markListNeedsRefresh();
+    await loadCandidateAuditTimeline();
+    markSaved("保存済み");
+    setPageMessage(auditRecorded ? "保存しました" : "保存しました。ただし更新履歴の記録に失敗しました。Consoleを確認してください。", auditRecorded ? "success" : "warning");
+    showSuccessModal("保存しました");
   } catch (e) {
+    console.error("candidate save failed", e);
     setPageMessage("保存失敗: " + (e.message || e), "error");
+    await showErrorModal("保存に失敗しました。\n\n" + (e.message || e), "保存失敗");
+  } finally {
+    setSaveButtonBusy(false);
   }
 }
 
@@ -1485,7 +1509,7 @@ async function loadCandidateAuditTimeline(){
       .limit(30);
     if(error) throw error;
     const rows=data||[];
-    if(!rows.length){body.textContent="この応募者の更新履歴はまだありません。";return;}
+    if(!rows.length){body.innerHTML="<div class=\"history-empty\">この応募者の更新履歴はまだありません。保存後も表示されない場合は、audit_logs の権限または記録処理を確認してください。</div>";return;}
     body.innerHTML=rows.map(row=>`<div class="history-row">
       <div>${escapeHtml(window.RecruitDate?.formatJSTDateTimeMinute ? window.RecruitDate.formatJSTDateTimeMinute(row.created_at) : String(row.created_at||"").replace("T"," ").slice(0,16))}</div>
       <div><div class="history-action">${escapeHtml(auditActionLabelForDetail(row.action_type))}</div><div>${escapeHtml(row.user_email||"-")}</div></div>
@@ -1552,8 +1576,35 @@ if (sb && sb.auth) {
   });
 }
 
+function bindDetailActionHandlers(){
+  const saveBtn = document.getElementById("saveCandidateButton");
+  if(saveBtn && saveBtn.dataset.bound !== "1"){
+    saveBtn.dataset.bound = "1";
+    saveBtn.addEventListener("click", function(e){
+      e.preventDefault();
+      saveCandidate();
+    });
+  }
+  const historyBtn = document.getElementById("reloadCandidateHistoryButton");
+  if(historyBtn && historyBtn.dataset.bound !== "1"){
+    historyBtn.dataset.bound = "1";
+    historyBtn.addEventListener("click", function(e){
+      e.preventDefault();
+      loadCandidateAuditTimeline();
+    });
+  }
+}
+
+window.saveCandidate = saveCandidate;
+window.deleteCandidate = deleteCandidate;
+window.quickSetStatus = quickSetStatus;
+window.quickSetResult = quickSetResult;
+window.loadCandidateAuditTimeline = loadCandidateAuditTimeline;
+window.markReturnToList = markReturnToList;
+
 (async function init() {
   try {
+    bindDetailActionHandlers();
     candidateId = getQueryParam("id");
     await Promise.all([loadCenterMaster(), loadOptionMasters()]);
 

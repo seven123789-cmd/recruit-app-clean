@@ -1,2 +1,2 @@
 // assets/js/version.js
-window.RECRUIT_APP_VERSION = "20260529_reject_save_fix";
+window.RECRUIT_APP_VERSION = "20260529_detail_save_history_sync";

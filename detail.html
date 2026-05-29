@@ -9,12 +9,12 @@
 <link rel="stylesheet" href="./assets/css/header.css?v=20260528">
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260528">
 
-<link rel="stylesheet" href="./assets/css/detail.css?v=20260529_reject_save_fix">
+<link rel="stylesheet" href="./assets/css/detail.css?v=20260529_detail_save_history_sync">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260528"></script>
 <script src="assets/js/auth.js?v=20260528"></script>
-<script src="assets/js/version.js?v=20260529_reject_save_fix"></script>
-<script src="./common.js?v=20260529_reject_save_fix"></script>
+<script src="assets/js/version.js?v=20260529_detail_save_history_sync"></script>
+<script src="./common.js?v=20260529_detail_save_history_sync"></script>
 <script src="assets/js/overdue_popup.js?v=20260529_step1"></script>
 <script src="assets/js/candidate_utils.js?v=20260528"></script>
 <script src="assets/js/ui_utils.js?v=20260528"></script>
@@ -264,7 +264,7 @@
       <div class="col-12">
         <div class="detail-action-area">
           <div class="primary-save-area">
-            <button class="btn-primary" type="button" onclick="saveCandidate()">保存</button>
+            <button id="saveCandidateButton" class="btn-primary" type="button">保存</button>
             <div id="saveStatus" class="save-status-bar saved">
               <span>✓ 保存済み</span>
               <span class="save-status-sub">変更すると未保存表示に変わります</span>
@@ -285,7 +285,7 @@
         <h2>更新履歴</h2>
         <p>この応募者に対する更新・削除などの履歴を表示します。</p>
       </div>
-      <button class="btn-secondary" type="button" onclick="loadCandidateAuditTimeline()">履歴更新</button>
+      <button id="reloadCandidateHistoryButton" class="btn-secondary" type="button">履歴更新</button>
     </div>
     <div id="candidateHistoryBody" class="history-body">履歴を読み込みます。</div>
   </section>
@@ -404,7 +404,7 @@
     </div>
   </div>
 </div>
-<script src="./assets/js/detail.js?v=20260529_reject_save_fix"></script>
+<script src="./assets/js/detail.js?v=20260529_detail_save_history_sync"></script>
 <script src="./sidebar.js?v=20260528"></script>
 </body>
 </html>
