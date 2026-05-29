@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260524_metric_audit">
 <link rel="stylesheet" href="./assets/css/dashboard.css?v=20260528_batch_finish1">
 <link rel="icon" href="data:,">
-<script src="./common.js?v=20260529_action_rule"></script>
+<script src="./common.js?v=20260529_data_quality"></script>
 <script src="assets/js/overdue_popup.js?v=20260529_step1"></script>
 <script src="assets/js/dashboard_utils.js?v=20260529_step1"></script>
 <script src="assets/js/supabase.js?v=20260524_metric_audit"></script>
@@ -140,6 +140,11 @@
             <div class="priority-label">放置（3日+）</div>
             <div class="priority-value" id="priorityDormant">0</div>
             <div class="priority-sub">応募後3日以上未接触</div>
+          </div>
+          <div class="priority-card warning dashboard-link-card" onclick="goListFilter('data_quality')" onkeydown="activateDashboardLink(event,'data_quality')" role="button" tabindex="0" aria-label="データ不整合の応募者一覧を開く" title="データ不整合の応募者一覧を開く">
+            <div class="priority-label">データ不整合</div>
+            <div class="priority-value" id="priorityDataQuality">0</div>
+            <div class="priority-sub">理由・日付・結果の未登録</div>
           </div>
         </div>
       </section>
@@ -487,12 +492,8 @@ function updateDashboardUi(rows){
 
   const priorityToday = activeRows.filter(isActionRequired).length;
   const priorityNotDone = activeRows.filter(r => isValidDate(r.interview1_date) && !isValidDate(r.interview_done_date) && !isFinal(r)).length;
-  const priorityDormant = activeRows.filter(r => {
-    if (!isValidDate(r.applied_date) || isFinal(r)) return false;
-    if (isValidDate(r.appointment_date) || isValidDate(r.interview1_date) || isValidDate(r.interview_done_date)) return false;
-    const days = daysBetween(r.applied_date, today);
-    return days !== null && days >= 3;
-  }).length;
+  const priorityDormant = activeRows.filter(r => window.RecruitRule?.isDormant3Days ? window.RecruitRule.isDormant3Days(r) : isRecruitDormant3Days(r)).length;
+  const priorityDataQuality = activeRows.filter(r => window.RecruitRule?.isDataQualityIssue ? window.RecruitRule.isDataQualityIssue(r) : (window.isRecruitDataQualityIssue ? window.isRecruitDataQualityIssue(r) : false)).length;
 
   const noContact = activeRows.filter(r => window.isRecruitNoContact ? window.isRecruitNoContact(r) : String(r.hiring_result||"").trim()==="不通").length;
   const decline = activeRows.filter(r => window.isRecruitDeclined ? window.isRecruitDeclined(r) : (String(r.hiring_result||"").trim()==="辞退" || String(r.status||"").trim()==="辞退" || !!r.decline_reason)).length;
@@ -502,6 +503,7 @@ function updateDashboardUi(rows){
   setText("priorityToday", priorityToday);
   setText("priorityNotDone", priorityNotDone);
   setText("priorityDormant", priorityDormant);
+  setText("priorityDataQuality", priorityDataQuality);
 
   if (window.RecruitDashboard && window.RecruitDashboard.applyRecruitFlowMetrics && flowMetrics) {
     window.RecruitDashboard.applyRecruitFlowMetrics(null, flowMetrics);

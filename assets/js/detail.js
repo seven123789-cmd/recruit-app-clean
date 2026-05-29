@@ -677,9 +677,15 @@ function setFieldValue(id, value) {
 function getActionAdvice(row) {
   // 応募者詳細も common.js / RecruitRule の正式ルールだけを使う。
   // ここに独自判定を置くと、Dashboard・LISTと理由や件数がズレる。
-  if (window.RecruitRule?.getActionAdvice) return window.RecruitRule.getActionAdvice(row);
-  if (window.getRecruitActionAdvice) return window.getRecruitActionAdvice(row);
-  return null;
+  const actionAdvice = window.RecruitRule?.getActionAdvice
+    ? window.RecruitRule.getActionAdvice(row)
+    : (window.getRecruitActionAdvice ? window.getRecruitActionAdvice(row) : null);
+  if (actionAdvice) return actionAdvice;
+
+  const qualityAdvice = window.RecruitRule?.getDataQualityAdvice
+    ? window.RecruitRule.getDataQualityAdvice(row)
+    : (window.getRecruitDataQualityAdvice ? window.getRecruitDataQualityAdvice(row) : null);
+  return qualityAdvice || null;
 }
 function renderActionAdvice(row) {
   const card = document.getElementById("actionAdviceCard");

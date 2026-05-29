@@ -1,2 +1,2 @@
 // assets/js/version.js
-window.RECRUIT_APP_VERSION = "20260529_recruit_rule_unified";
+window.RECRUIT_APP_VERSION = "20260529_data_quality";

@@ -415,6 +415,112 @@
     return { level, reason, impact, action, due, pendingJoinFollow };
   }
 
+  function getRecruitDataQualityIssues(row){
+    // データ品質監査の正式定義。
+    // Dashboard / LIST / 応募者詳細はこの関数だけを参照し、画面ごとの独自判定を置かない。
+    const r = normalizeRecruitCandidateState(row || {});
+    if(r.is_deleted === true) return [];
+
+    const status = String(r.status || "").trim();
+    const result = String(r.hiring_result || "進行中").trim() || "進行中";
+    const issues = [];
+    const add = (code, label, reason, action, level="warning") => {
+      issues.push({
+        code,
+        label,
+        level,
+        reason,
+        impact:"分析・帳票・要対応件数にズレが出る可能性があります。",
+        action
+      });
+    };
+
+    if(isRecruitHired(r) && !isValidRecruitDate(r.join_date)){
+      add(
+        "joined_without_join_date",
+        "入社日未登録",
+        "選考結果が「入社済」ですが、入社日が未登録です。",
+        "応募者詳細で入社日を登録してください。登録すると入社実績・年間目標進捗が正しく反映されます。",
+        "danger"
+      );
+    }
+
+    if(isRecruitDeclined(r) && !String(r.decline_reason || "").trim()){
+      add(
+        "declined_without_reason",
+        "辞退理由未登録",
+        "選考結果が「辞退」ですが、辞退理由が未登録です。",
+        "応募者詳細で辞退理由を登録してください。登録すると辞退分析・媒体分析・担当分析に反映されます。"
+      );
+    }
+
+    if(isRecruitRejected(r) && !String(r.reject_reason || "").trim()){
+      add(
+        "rejected_without_reason",
+        "不採用理由未登録",
+        "選考結果が「不採用」ですが、不採用理由が未登録です。",
+        "応募者詳細で不採用理由を登録してください。登録すると選考結果分析に反映されます。"
+      );
+    }
+
+    if((status === "面接設定" || status === "面接実施") && !isValidRecruitDate(r.interview1_date) && !isValidRecruitDate(r.interview_date)){
+      add(
+        "interview_stage_without_date",
+        "面接日未登録",
+        "ステータスが面接段階ですが、面接日が未登録です。",
+        "応募者詳細で面接日を登録してください。登録すると面接設定・面接実施の集計が正しくなります。"
+      );
+    }
+
+    if((status === "面接実施" || isValidRecruitDate(r.interview_done_date)) && ["", "進行中", "保留"].includes(result)){
+      add(
+        "interview_done_without_result",
+        "面接結果未登録",
+        "面接実施済みですが、選考結果が未確定です。",
+        "応募者詳細で選考結果を「採用」「不採用」「辞退」などに更新してください。更新すると面接後の滞留から外れます。"
+      );
+    }
+
+    if((status === "内定" || status === "採用" || result === "採用" || isValidRecruitDate(r.join_date)) && !isValidRecruitDate(r.offer_date)){
+      add(
+        "offer_without_offer_date",
+        "内定日未登録",
+        "内定・採用段階ですが、内定日が未登録です。",
+        "応募者詳細で内定日を登録してください。登録すると内定数・採用進捗の時系列が正しくなります。"
+      );
+    }
+
+    if(status === "採用" && result === "入社済" && !isValidRecruitDate(r.join_date)){
+      add(
+        "hired_stage_joined_without_join_date",
+        "入社日未登録",
+        "採用ステータスで入社済ですが、入社日が未登録です。",
+        "応募者詳細で入社日を登録してください。年間目標進捗は実入社日を基準にします。",
+        "danger"
+      );
+    }
+
+    return issues;
+  }
+
+  function isRecruitDataQualityIssue(row){
+    return getRecruitDataQualityIssues(row).length > 0;
+  }
+
+  function getRecruitDataQualityAdvice(row){
+    const issues = getRecruitDataQualityIssues(row);
+    if(!issues.length) return null;
+    const first = issues[0];
+    const labels = issues.map(i => i.label).filter(Boolean);
+    return {
+      level: issues.some(i => i.level === "danger") ? "danger" : "warning",
+      reason: labels.length > 1 ? `データ不整合が${issues.length}件あります：${labels.join("、")}` : first.reason,
+      impact: first.impact || "分析・帳票・要対応件数にズレが出る可能性があります。",
+      action: first.action,
+      issues
+    };
+  }
+
   function isRecruitDormant3Days(row){
     // 応募後3日以上、アポ・面接設定・面接実施に進んでおらず、終了結果でもない候補者。
     const r = normalizeRecruitCandidateState(row || {});
@@ -533,6 +639,9 @@
   window.getRecruitActionDueState = window.getRecruitActionDueState || getRecruitActionDueState;
   window.isRecruitActionRequired = window.isRecruitActionRequired || isRecruitActionRequired;
   window.getRecruitActionAdvice = window.getRecruitActionAdvice || getRecruitActionAdvice;
+  window.getRecruitDataQualityIssues = window.getRecruitDataQualityIssues || getRecruitDataQualityIssues;
+  window.isRecruitDataQualityIssue = window.isRecruitDataQualityIssue || isRecruitDataQualityIssue;
+  window.getRecruitDataQualityAdvice = window.getRecruitDataQualityAdvice || getRecruitDataQualityAdvice;
   window.isRecruitDormant3Days = window.isRecruitDormant3Days || isRecruitDormant3Days;
   window.isRecruitHeatmapDangerCandidate = window.isRecruitHeatmapDangerCandidate || isRecruitHeatmapDangerCandidate;
   window.recruitMetricCounts = window.recruitMetricCounts || recruitMetricCounts;
@@ -547,6 +656,9 @@
     isActionRequired: isRecruitActionRequired,
     getActionDueState: getRecruitActionDueState,
     getActionAdvice: getRecruitActionAdvice,
+    getDataQualityIssues: getRecruitDataQualityIssues,
+    isDataQualityIssue: isRecruitDataQualityIssue,
+    getDataQualityAdvice: getRecruitDataQualityAdvice,
     isDormant3Days: isRecruitDormant3Days,
     isOwnerStagnation: isRecruitOwnerStagnation,
     metricCounts: recruitMetricCounts

@@ -13,14 +13,15 @@
 .summary-item{min-height:40px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff;}
 .summary-label{color:#64748b;font-size:11px;font-weight:900;}
 .summary-value{color:#0f172a;font-size:14px;font-weight:950;text-align:right;}
-.priority-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;}
+.priority-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;}
 .flow-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px;}
 .reason-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;}
 .priority-label,.flow-label,.reason-title{font-size:13px;color:#334155;font-weight:900;line-height:1.35;}
 .priority-sub{margin-top:10px;color:#64748b;font-size:12px;font-weight:800;line-height:1.45;}
 .reason-card{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .auth-shell{max-width:520px;margin:48px auto 0;}.auth-title{margin:0 0 8px;font-size:28px;color:#fff;}.auth-sub{margin:0 0 20px;color:rgba(255,255,255,.82);}.auth-card{background:#fff;border:1px solid rgba(226,232,240,.9);border-radius:22px;box-shadow:var(--shadow);padding:24px;}.auth-card h2{margin:0 0 8px;font-size:22px;color:#0f172a;}.auth-note{margin:0 0 18px;color:var(--muted);font-size:13px;}
-@media(max-width:1200px){.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.priority-grid,.reason-grid{grid-template-columns:1fr;}.flow-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:1200px){.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.priority-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.reason-grid{grid-template-columns:1fr;}.flow-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:760px){.priority-grid{grid-template-columns:1fr;}}
 @media(max-width:720px){.filter-grid,.flow-grid{grid-template-columns:1fr;}.topbar h1{font-size:22px;min-height:58px;padding:0 20px;}}
 /* Dashboard table alignment fix */
 .analysis-table,
