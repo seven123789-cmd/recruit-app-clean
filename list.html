@@ -216,8 +216,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260528"></script>
 <script src="assets/js/auth.js?v=20260528"></script>
-<script src="assets/js/version.js?v=20260529_detail_save_history_sync"></script>
-<script src="./common.js?v=20260529_detail_save_history_sync"></script>
+<script src="assets/js/version.js?v=20260529_save_history_reflect_fix"></script>
+<script src="./common.js?v=20260529_save_history_reflect_fix"></script>
 <script src="assets/js/overdue_popup.js?v=20260529_step1"></script>
 <script src="assets/js/candidate_utils.js?v=20260528"></script>
 <script src="assets/js/ops_guard.js?v=20260528"></script>
@@ -1477,6 +1477,16 @@ function restoreNav(){
 }
 async function loadCandidates(){
   try{
+    const detailSaveMarkerRaw = sessionStorage.getItem("recruit_detail_saved_candidate");
+    let detailSaveMarker = null;
+    if (detailSaveMarkerRaw) {
+      try { detailSaveMarker = JSON.parse(detailSaveMarkerRaw); } catch(e) { detailSaveMarker = null; }
+      sessionStorage.removeItem("recruit_detail_saved_candidate");
+      // 応募者詳細で保存した直後は、古い復元条件やダッシュボード条件を一度解除して、DB最新状態をそのまま確認できるようにする。
+      localStorage.removeItem(STATE);
+      clearDashboardRangeFilter();
+      dashboardContextActive = false;
+    }
     const {data,error}=await sb
       .from("candidates")
       .select("id,name,applied_date,status,division,center_name,channel,channel_detail,owner_name,next_action_date,hiring_result,is_deleted,appointment_date,interview1_date,interview_done_date,offer_date,join_date,reject_reason,decline_reason,action_memo")
@@ -1544,6 +1554,17 @@ async function loadCandidates(){
 
     if(dashboardFilterActive)setDashboardYearDisplay();
     renderCandidates();
+
+    if(detailSaveMarker?.id){
+      requestAnimationFrame(() => {
+        const tr = document.querySelector('tr[data-id="' + CSS.escape(String(detailSaveMarker.id)) + '"]');
+        if(tr){
+          tr.classList.add("return-highlight");
+          tr.scrollIntoView({block:"center"});
+          setTimeout(() => tr.classList.remove("return-highlight"), 3000);
+        }
+      });
+    }
 
     if(shouldShowLatest && latestCandidateMarker?.id){
       requestAnimationFrame(() => {
