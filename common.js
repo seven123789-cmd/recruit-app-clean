@@ -472,23 +472,12 @@
       );
     }
 
-    if((status === "面接実施" || isValidRecruitDate(r.interview_done_date)) && ["", "進行中", "保留"].includes(result)){
-      add(
-        "interview_done_without_result",
-        "面接結果未登録",
-        "面接実施済みですが、選考結果が未確定です。",
-        "応募者詳細で選考結果を「採用」「不採用」「辞退」などに更新してください。更新すると面接後の滞留から外れます。"
-      );
-    }
+    // 進行中・保留はまだ選考が継続している状態として扱う。
+    // そのため、次回対応日の期限切れ・未設定は「要対応」で扱い、
+    // データ不整合にはしない。
 
-    if((status === "内定" || status === "採用" || result === "採用" || isValidRecruitDate(r.join_date)) && !isValidRecruitDate(r.offer_date)){
-      add(
-        "offer_without_offer_date",
-        "内定日未登録",
-        "内定・採用段階ですが、内定日が未登録です。",
-        "応募者詳細で内定日を登録してください。登録すると内定数・採用進捗の時系列が正しくなります。"
-      );
-    }
+    // 内定日は現在の運用では必須項目にしない。
+    // 空欄でもデータ不整合にはしない。
 
     if(status === "採用" && result === "入社済" && !isValidRecruitDate(r.join_date)){
       add(
