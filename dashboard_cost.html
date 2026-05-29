@@ -201,18 +201,13 @@ function yen(v){const n=Number(v||0);return n ? n.toLocaleString("ja-JP")+"円" 
 function yenDash(v){const n=Number(v||0);return n ? n.toLocaleString("ja-JP")+"円" : "-"}
 function todayStr(){return window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date())}
 
-function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="入社")}
+function isHired(r){return window.RecruitRule?.isHired ? window.RecruitRule.isHired(r) : (window.isRecruitHired ? window.isRecruitHired(r) : false)}
 
 function isActionRequired(r){
-  const st=String(r.status||"").trim();
-  const result=String(r.hiring_result||"").trim();
-  if(st === "採用")return false;
-  if(["採用","入社済","不採用","辞退","不通","保留"].includes(result))return false;
-  if(!ACTIVE_STATUSES.includes(st))return false;
-  if(!r.next_action_date)return true;
-  return daysBetween(todayStr(),r.next_action_date)<=1;
+  return window.RecruitRule?.isActionRequired
+    ? window.RecruitRule.isActionRequired(r)
+    : (window.isRecruitActionRequired ? window.isRecruitActionRequired(r) : false);
 }
-
 function fiscalRange(type){
   const fy=fiscalYear();
   if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};

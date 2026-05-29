@@ -295,24 +295,16 @@ function normalizeListCandidate(row){
 }
 
 function isActionRequired(r){
-  // LISTも common.js の正式ルールを使う。
-  // ダッシュボード・応募者詳細と件数がズレないよう、ここでは独自判定を増やさない。
-  if(window.isRecruitActionRequired) return window.isRecruitActionRequired(r);
-  r = normalizeListCandidate(r);
-  const st=String(r.status||"").trim();
-  const result=normalizeHiringResult(r);
-  if(st === "採用" && result === "採用"){
-    if(!r.next_action_date)return true;
-    return String(r.next_action_date).slice(0,10)<=todayStr();
-  }
-  if(st === "採用")return false;
-  if(result !== "進行中")return false;
-  if(!ACTIVE_STATUSES.includes(st))return false;
-  if(!r.next_action_date)return true;
-  return String(r.next_action_date).slice(0,10)<=todayStr();
+  // LISTも common.js / RecruitRule の正式ルールだけを使う。
+  // 独自判定を残すとDashboard・応募者詳細と件数がズレるため、フォールバック判定は置かない。
+  return window.RecruitRule?.isActionRequired
+    ? window.RecruitRule.isActionRequired(r)
+    : (window.isRecruitActionRequired ? window.isRecruitActionRequired(r) : false);
 }
 function isHired(r){
-  return window.isRecruitHired ? window.isRecruitHired(r) : (!!r && (String(r.hiring_result||"").trim()==="入社済" || validDate(r.join_date)));
+  return window.RecruitRule?.isHired
+    ? window.RecruitRule.isHired(r)
+    : (window.isRecruitHired ? window.isRecruitHired(r) : false);
 }
 function normalizeStatusColor(value){
   const v=String(value||"").trim();
@@ -347,17 +339,13 @@ function resultBadge(row){
 }
 function actionRequiredBadge(row){
   if(!isActionRequired(row)) return "";
-  return '<button class="list-action-required-badge" type="button" title="応募者詳細で要対応内容を確認">⚠ 要対応</button>';
-}
-
-function candidateNameCell(row){
-  const actionBadge = actionRequiredBadge(row);
-  return `<div class="candidate-name-cell"><strong>${esc(row.name||"")}</strong>${actionBadge ? `<div class="candidate-alert-line">${actionBadge}</div>` : ""}</div>`;
+  return '<button class="list-action-required-badge" type="button" title="応募者詳細で要対応内容を確認">要対応</button>';
 }
 
 function statusResultCell(row){
   const normalized = normalizeListCandidate(row);
-  return `<div class="status-result-cell"><div class="status-line">${badge(normalized.status)}</div><div class="result-line"><span>選考結果</span>${resultBadge(normalized)}</div></div>`;
+  const actionBadge = actionRequiredBadge(normalized);
+  return `<div class="status-result-cell"><div class="status-line">${badge(normalized.status)}</div><div class="result-line"><span>選考結果</span>${resultBadge(normalized)}</div>${actionBadge ? `<div class="action-required-line">${actionBadge}</div>` : ""}</div>`;
 }
 
 function getFiscalYearFromAppliedDate(dateStr){
@@ -1249,7 +1237,7 @@ function createCandidateRow(r, today){
 
   tr.innerHTML=
     '<td class="list-check-cell"><input type="checkbox" class="bulk-row-check" data-id="'+esc(r.id)+'" aria-label="選択"'+checked+'></td>'+
-    "<td>"+candidateNameCell(r)+"</td>"+
+    "<td><strong>"+esc(r.name||"")+"</strong></td>"+
     "<td>"+formatDate(r.applied_date)+"</td>"+
     "<td>"+statusResultCell(r)+"</td>"+
     "<td>"+esc(r.division||"")+"</td>"+

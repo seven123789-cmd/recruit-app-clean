@@ -25,17 +25,13 @@ function validDate(s){if(!s)return false;const t=String(s).slice(0,10);const y=N
 function normalizeDate(s){return validDate(s)?String(s).slice(0,10):""}
 function todayStr(){return window.RecruitDate?.todayJST ? window.RecruitDate.todayJST() : new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date())}
 function daysBetween(a,b){if(!validDate(a)||!validDate(b))return null;return Math.floor((new Date(normalizeDate(b)+"T00:00:00+09:00")-new Date(normalizeDate(a)+"T00:00:00+09:00"))/(86400000))}
-function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (String(r?.hiring_result||"").trim()==="入社済"||validDate(r?.join_date))}
-function isFinal(r){return window.isFinal ? window.isFinal(r) : (["不採用","辞退","不通","保留","入社済"].includes(String(r.hiring_result||"").trim())||isHired(r))}
+function isHired(r){return window.RecruitRule?.isHired ? window.RecruitRule.isHired(r) : (window.isRecruitHired ? window.isRecruitHired(r) : false)}
+function isFinal(r){return window.RecruitRule?.isFinal ? window.RecruitRule.isFinal(r) : (window.isFinal ? window.isFinal(r) : false)}
 function isActionRequired(r){
-  if(window.isRecruitActionRequired) return window.isRecruitActionRequired(r);
-  const result=String(r.hiring_result||"進行中").trim()||"進行中";
-  if(["入社済","不採用","辞退","不通","保留"].includes(result))return false;
-  if(isHired(r) || isFinal(r))return false;
-  if(!r.next_action_date)return true;
-  return daysBetween(todayStr(),r.next_action_date)<=0;
+  return window.RecruitRule?.isActionRequired
+    ? window.RecruitRule.isActionRequired(r)
+    : (window.isRecruitActionRequired ? window.isRecruitActionRequired(r) : false);
 }
-
 function fiscalRange(type){const fy=fiscalYear();if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};if(type==="all")return {fy:null,label:"全期間",from:"",to:""};return {fy,label:fy+"年度",from:fy+"-04-01",to:(fy+1)+"-03-31"}}
 function applyFy(){const range=fiscalRange($("fy").value);$("from").value=range.from;$("to").value=range.to;const period=range.from&&range.to ? `${range.from} ～ ${range.to}` : "全期間";setText("periodText","対象期間："+period);setText("sideFiscalYear",range.label);setText("sidePeriod",period)}
 function handleFilterChange(){applyFy();loadAnalysis()}

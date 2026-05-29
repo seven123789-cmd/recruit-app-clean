@@ -152,18 +152,13 @@ function todayStr(){return window.RecruitDate?.todayJST ? window.RecruitDate.tod
 function validDate(s){if(!s)return false;const y=Number(String(s).slice(0,4));return y>=2000}
 
 
-function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="入社")}
+function isHired(r){return window.RecruitRule?.isHired ? window.RecruitRule.isHired(r) : (window.isRecruitHired ? window.isRecruitHired(r) : false)}
 
 function isActionRequired(r){
-  const st=String(r.status||"").trim();
-  const result=String(r.hiring_result||"").trim();
-  if(st === "採用")return false;
-  if(["採用","入社済","不採用","辞退","不通","保留"].includes(result))return false;
-  if(!ACTIVE_STATUSES.includes(st))return false;
-  if(!r.next_action_date)return true;
-  return daysBetween(todayStr(),r.next_action_date)<=1;
-}
-function normalizeJob(v){const s=String(v||"").trim();return s||"未設定"}
+  return window.RecruitRule?.isActionRequired
+    ? window.RecruitRule.isActionRequired(r)
+    : (window.isRecruitActionRequired ? window.isRecruitActionRequired(r) : false);
+}function normalizeJob(v){const s=String(v||"").trim();return s||"未設定"}
 async function loadJobTypeMaster(){
 
   try{

@@ -371,20 +371,15 @@ function isHiringDecision(r){
   const row=normalizedCandidate(r);
   return String(row.status||"").trim()==="採用" || ["採用","入社済"].includes(String(row.hiring_result||"").trim()) || validDate(row.join_date);
 }
-function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : resultOf(r)==="入社済"||validDate((r||{}).join_date)}
+function isHired(r){return window.RecruitRule?.isHired ? window.RecruitRule.isHired(r) : (window.isRecruitHired ? window.isRecruitHired(r) : false)}
 function isDeclined(r){return window.isRecruitDeclined ? window.isRecruitDeclined(r) : (resultOf(r)==="辞退"||String((r||{}).decline_reason||"").trim()!=="")}
 function isNoContact(r){return window.isRecruitNoContact ? window.isRecruitNoContact(r) : resultOf(r)==="不通"}
-function isFinal(r){return window.isRecruitFinal ? window.isRecruitFinal(r) : ["不採用","辞退","不通","保留","採用","入社済"].includes(resultOf(r))||isHired(r)}
+function isFinal(r){return window.RecruitRule?.isFinal ? window.RecruitRule.isFinal(r) : (window.isFinal ? window.isFinal(r) : false)}
 function isActionRequired(r){
-  if(window.isRecruitActionRequired) return window.isRecruitActionRequired(r);
-  const row=normalizedCandidate(r);
-  const result=String(row.hiring_result||"進行中").trim()||"進行中";
-  const st=String(row.status||"").trim();
-  if(st === "採用" || result !== "進行中" || isFinal(row))return false;
-  if(!row.next_action_date)return true;
-  return String(row.next_action_date).slice(0,10)<=todayStr();
-}
-function isDormant(r){
+  return window.RecruitRule?.isActionRequired
+    ? window.RecruitRule.isActionRequired(r)
+    : (window.isRecruitActionRequired ? window.isRecruitActionRequired(r) : false);
+}function isDormant(r){
   if(window.isRecruitDormant3Days) return window.isRecruitDormant3Days(r);
   const row=normalizedCandidate(r);
   if(!validDate(row.applied_date)||validDate(row.appointment_date)||validDate(row.interview1_date)||validDate(row.interview_date)||validDate(row.interview_done_date)||isFinal(row))return false;

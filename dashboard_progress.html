@@ -134,7 +134,7 @@ function joinedInRange(row,range){
   // hiring_result=入社済だけでは、旧データ・手入力ミスで人数が膨らむため進捗人数には混ぜない。
   return dateInRange(row.join_date,range);
 }
-function isHired(row){return window.isRecruitHired ? window.isRecruitHired(row) : (String(row?.hiring_result||"").trim()==="入社済"||validDate(row?.join_date))}
+function isHired(row){return window.RecruitRule?.isHired ? window.RecruitRule.isHired(row) : (window.isRecruitHired ? window.isRecruitHired(row) : false)}
 function isJoined(row){return isHired(row)}
 function isPendingJoin(row){return (String(row.status||"")==="採用"||String(row.hiring_result||"")==="採用")&&!isHired(row)}
 function pendingJoinInRange(row,range){

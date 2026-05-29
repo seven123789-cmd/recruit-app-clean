@@ -348,24 +348,12 @@ function isValidDate(dateStr){
 }
 
 function isActionRequired(row){
-  // 要対応判定は common.js の window.isRecruitActionRequired を正式ルールにする。
-  // ダッシュボードだけの独自判定を置くと、LIST・応募者詳細と件数がズレるため禁止。
-  if (window.isRecruitActionRequired) return window.isRecruitActionRequired(row);
-  const status = String(row.status || "").trim();
-  const hiringResult = String(row.hiring_result || "進行中").trim() || "進行中";
-  if (row.is_deleted === true) return false;
-  if (status === "採用" && hiringResult === "採用") {
-    if (!row.next_action_date) return true;
-    return String(row.next_action_date).slice(0,10) <= todayStr();
-  }
-  if (status === "採用") return false;
-  if (hiringResult !== "進行中") return false;
-  const activeStatuses = ["応募","書類選考","アポ取得","面接設定","面接実施","内定"];
-  if (!activeStatuses.includes(status)) return false;
-  if (!row.next_action_date) return true;
-  return String(row.next_action_date).slice(0,10) <= todayStr();
+  // 要対応判定は common.js / RecruitRule の正式ルールに統一。
+  // ここに独自フォールバックを置くと、Dashboard・LIST・応募者詳細の件数がズレる。
+  return window.RecruitRule?.isActionRequired
+    ? window.RecruitRule.isActionRequired(row)
+    : (window.isRecruitActionRequired ? window.isRecruitActionRequired(row) : false);
 }
-
 
 function refreshDashboardFiscalYearLabels(){
   if (window.refreshRecruitFiscalYearSelectLabels) window.refreshRecruitFiscalYearSelectLabels(document);

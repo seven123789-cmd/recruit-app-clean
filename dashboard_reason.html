@@ -230,7 +230,7 @@ function rate(n,d){return !d ? "0.0%" : ((n/d)*100).toFixed(1)+"%"}
 function rateNum(n,d){return !d ? 0 : Number(((n/d)*100).toFixed(1))}
 
 function normalizeText(v){return String(v||"").trim()}
-function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (String(r?.hiring_result||"").trim()==="入社済"||validDate(r?.join_date))}
+function isHired(r){return window.RecruitRule?.isHired ? window.RecruitRule.isHired(r) : (window.isRecruitHired ? window.isRecruitHired(r) : false)}
 function fiscalRange(type){
   const fy=fiscalYear();
   if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};

@@ -166,7 +166,7 @@ function setMsg(id,msg,type="info"){const el=$(id);if(!el)return;if(!msg){el.tex
 function rate(n,d){return !d ? "0.0%" : ((n/d)*100).toFixed(1)+"%"}
 function rateNum(n,d){return !d ? 0 : Number(((n/d)*100).toFixed(1))}
 function validDate(s){if(!s)return false;const y=Number(String(s).slice(0,4));return y>=2000}
-function isHired(r){return window.isRecruitHired ? window.isRecruitHired(r) : (r.hiring_result==="入社済"||validDate(r.join_date)||String(r.status||"").trim()==="入社")}
+function isHired(r){return window.RecruitRule?.isHired ? window.RecruitRule.isHired(r) : (window.isRecruitHired ? window.isRecruitHired(r) : false)}
 
 function fiscalRange(type){const fy=fiscalYear();if(type==="previous")return {fy:fy-1,label:(fy-1)+"年度",from:(fy-1)+"-04-01",to:fy+"-03-31"};if(type==="all")return {fy:null,label:"全期間",from:"",to:""};return {fy,label:fy+"年度",from:fy+"-04-01",to:(fy+1)+"-03-31"}}
 function applyFy(){const range=fiscalRange($("fy").value);$("from").value=range.from;$("to").value=range.to;const period=range.from&&range.to ? `${range.from} ～ ${range.to}` : "全期間";setText("periodText","対象期間："+period);setText("sideFiscalYear",range.label);setText("sidePeriod",period)}

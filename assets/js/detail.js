@@ -675,101 +675,12 @@ function setFieldValue(id, value) {
 }
 
 function getActionAdvice(row) {
-  // 応募者詳細の要対応表示も common.js の正式ルールを使う。
-  // ここで独自判定を持つと、ダッシュボード・LISTと件数や理由がズレる。
-  if (window.getRecruitActionAdvice) {
-    return window.getRecruitActionAdvice(row);
-  }
-
-  const status = String(row.status || "").trim();
-  const hiringResult = String(row.hiring_result || "進行中").trim() || "進行中";
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const nextDate = row.next_action_date ? new Date(row.next_action_date + "T00:00:00+09:00") : null;
-
-  if (row.is_deleted === true) return null;
-  if (!(status === "採用" && hiringResult === "採用")) {
-    if (status === "採用" || hiringResult !== "進行中") return null;
-  }
-
-  if (!nextDate) {
-    return {
-      level: "caution",
-      reason: status === "採用" && hiringResult === "採用"
-        ? "採用ステータスですが、選考結果が「採用」のままです。入社前の内定状態として扱うため、フォロー予定が必要です。"
-        : "次回対応日が未設定です。",
-      action: status === "採用" && hiringResult === "採用"
-        ? "入社済みなら選考結果を「入社済」に変更してください。辞退なら選考結果を「辞退」に変更してください。入社前なら次回対応日と対応メモを更新してください。"
-        : "応募者詳細で次回対応日を設定してください。"
-    };
-  }
-
-  if (nextDate < today) {
-    return {
-      level: "danger",
-      reason: "次回対応日が期限切れです。",
-      action: "応募者詳細で対応状況を確認し、次回対応日・選考結果・対応メモを更新してください。"
-    };
-  }
-
-  if (nextDate.getTime() === today.getTime()) {
-    return {
-      level: "warning",
-      reason: "次回対応日が今日です。",
-      action: "応募者詳細で本日の対応結果を登録し、必要に応じて次回対応日を更新してください。"
-    };
-  }
-
+  // 応募者詳細も common.js / RecruitRule の正式ルールだけを使う。
+  // ここに独自判定を置くと、Dashboard・LISTと理由や件数がズレる。
+  if (window.RecruitRule?.getActionAdvice) return window.RecruitRule.getActionAdvice(row);
+  if (window.getRecruitActionAdvice) return window.getRecruitActionAdvice(row);
   return null;
 }
-
-function updateActionPriority(level) {
-  const chip = document.getElementById("actionPriorityChip");
-  const label = document.getElementById("actionPriorityLabel");
-  if (!chip) return;
-
-  chip.classList.remove("priority-danger", "priority-warning", "priority-caution", "priority-normal");
-
-  let text = "優先度：通常";
-  let labelText = "通常";
-  let cls = "priority-normal";
-
-  if (level === "danger") {
-    text = "優先度：期限切れ";
-    labelText = "期限切れ";
-    cls = "priority-danger";
-  } else if (level === "warning") {
-    text = "優先度：今日・明日";
-    labelText = "今日・明日";
-    cls = "priority-warning";
-  } else if (level === "caution") {
-    text = "優先度：未設定";
-    labelText = "未設定";
-    cls = "priority-caution";
-  }
-
-  chip.textContent = text;
-  chip.classList.add(cls);
-  if (label) label.textContent = labelText;
-}
-
-function toggleActionAdvice() {
-  const card = document.getElementById("actionAdviceCard");
-  if (!card || card.classList.contains("hidden")) return;
-  card.classList.toggle("action-collapsed");
-  try {
-    sessionStorage.setItem("recruit_detail_action_advice_open", card.classList.contains("action-collapsed") ? "0" : "1");
-  } catch (e) {
-    console.warn("要対応開閉状態の保存に失敗しました", e);
-  }
-}
-
-function applyActionAdviceDefaultState() {
-  const card = document.getElementById("actionAdviceCard");
-  if (!card) return;
-  card.classList.remove("action-collapsed");
-}
-
 function renderActionAdvice(row) {
   const card = document.getElementById("actionAdviceCard");
   const reasonEl = document.getElementById("actionReasonText");
@@ -954,21 +865,10 @@ async function moveActionCandidate(step) {
 
     function isActionRow(row) {
       if (!row) return false;
-      if (window.isRecruitActionRequired) return window.isRecruitActionRequired(row);
-
-      const status = String(row.status || "").trim();
-      const hiringResult = String(row.hiring_result || "進行中").trim() || "進行中";
-      if (row.is_deleted === true) return false;
-      if (status === "採用" && hiringResult === "採用") {
-        if (!row.next_action_date) return true;
-        return String(row.next_action_date).slice(0,10) <= todayStr();
-      }
-      if (status === "採用") return false;
-      if (hiringResult !== "進行中") return false;
-      if (!row.next_action_date) return true;
-      return String(row.next_action_date).slice(0,10) <= todayStr();
+      return window.RecruitRule?.isActionRequired
+        ? window.RecruitRule.isActionRequired(row)
+        : (window.isRecruitActionRequired ? window.isRecruitActionRequired(row) : false);
     }
-
     const currentIdText = String(candidateId);
     const currentPos = orderedIds.indexOf(currentIdText);
 

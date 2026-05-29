@@ -450,7 +450,10 @@
   function isFinal(row){
     const r = normalizeRecruitCandidateState(row || {});
     const status = String(r.status || "").trim();
-    return isRecruitHired(r) || ["不採用","辞退","不通","保留","採用","入社済"].includes(String(r.hiring_result || "").trim()) || ["不採用","辞退","不通","保留","入社"].includes(status);
+    // 完了扱いは「入社済・辞退・不採用・不通」に限定する。
+    // hiring_result=採用 は入社前フォロー対象になり得るため、ここでは完了扱いにしない。
+    // 保留は停止理由であり、完了ではない。要対応対象からは別条件で除外する。
+    return isRecruitHired(r) || ["不採用","辞退","不通","入社済"].includes(String(r.hiring_result || "").trim()) || ["不採用","辞退","不通","入社"].includes(status);
   }
 
 
@@ -496,7 +499,7 @@
   window.getFiscalYearFromDate = window.getFiscalYearFromDate || getFiscalYearFromDate;
   window.RECRUIT_STAGE_STATUSES = window.RECRUIT_STAGE_STATUSES || recruitStatusDefaultNames();
   window.RECRUIT_HIRING_RESULTS = window.RECRUIT_HIRING_RESULTS || recruitHiringResultNames();
-  window.RECRUIT_FINAL_RESULTS = window.RECRUIT_FINAL_RESULTS || ["保留","辞退","不採用","不通","採用","入社済"];
+  window.RECRUIT_FINAL_RESULTS = window.RECRUIT_FINAL_RESULTS || ["辞退","不採用","不通","入社済"];
   window.RECRUIT_STATUS_MASTER_DEFAULTS = window.RECRUIT_STATUS_MASTER_DEFAULTS || RECRUIT_STATUS_MASTER_DEFAULTS;
   window.recruitStatusDefaultNames = window.recruitStatusDefaultNames || recruitStatusDefaultNames;
   window.mergeRecruitStatusNames = window.mergeRecruitStatusNames || mergeRecruitStatusNames;
@@ -533,6 +536,22 @@
   window.isRecruitDormant3Days = window.isRecruitDormant3Days || isRecruitDormant3Days;
   window.isRecruitHeatmapDangerCandidate = window.isRecruitHeatmapDangerCandidate || isRecruitHeatmapDangerCandidate;
   window.recruitMetricCounts = window.recruitMetricCounts || recruitMetricCounts;
+  window.RecruitRule = window.RecruitRule || {
+    normalize: normalizeRecruitCandidateState,
+    isHired: isRecruitHired,
+    isHiringDecision: isRecruitHiringDecision,
+    isInterviewDone: isRecruitInterviewDone,
+    isPendingJoin: isRecruitPendingJoin,
+    isPendingJoinFollowRequired: isRecruitPendingJoinFollowRequired,
+    isFinal: isFinal,
+    isActionRequired: isRecruitActionRequired,
+    getActionDueState: getRecruitActionDueState,
+    getActionAdvice: getRecruitActionAdvice,
+    isDormant3Days: isRecruitDormant3Days,
+    isOwnerStagnation: isRecruitOwnerStagnation,
+    metricCounts: recruitMetricCounts
+  };
+  window.isRecruitFinal = window.isRecruitFinal || isFinal;
   window.isFinal = window.isFinal || isFinal;
   window.getRecruitCurrentFiscalYear = window.getRecruitCurrentFiscalYear || getRecruitCurrentFiscalYear;
   window.formatRecruitFiscalYearLabel = window.formatRecruitFiscalYearLabel || formatRecruitFiscalYearLabel;
