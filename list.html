@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="./assets/css/common.css?v=20260528">
 <link rel="stylesheet" href="./assets/css/header.css?v=20260528">
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260528">
-<link rel="stylesheet" href="./assets/css/list.css?v=20260529_list_virtual">
+<link rel="stylesheet" href="./assets/css/list.css?v=20260529_name_search_duplicate">
 </head>
 <body class="auth-checking">
 
@@ -76,6 +76,10 @@
               <option value="11">11月</option>
               <option value="12">12月</option>
             </select>
+          </div>
+          <div class="col-3">
+            <label for="filterNameKeyword">氏名キーワード</label>
+            <input id="filterNameKeyword" type="search" placeholder="例：山田">
           </div>
           <div class="col-2">
             <label for="filterDivision">本部</label>
@@ -216,7 +220,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260528"></script>
 <script src="assets/js/auth.js?v=20260528"></script>
-<script src="assets/js/version.js?v=20260529_save_history_reflect_fix"></script>
+<script src="assets/js/version.js?v=20260529_name_search_duplicate"></script>
 <script src="./common.js?v=20260529_save_history_reflect_fix"></script>
 <script src="assets/js/overdue_popup.js?v=20260529_step1"></script>
 <script src="assets/js/candidate_utils.js?v=20260528"></script>
@@ -337,6 +341,26 @@ function resultBadge(row){
   const cls=result==="入社済"?"result-joined":result==="採用"?"result-hired":result==="不採用"?"result-rejected":result==="辞退"?"result-declined":result==="不通"?"result-no-contact":result==="保留"?"result-hold":"result-pending";
   return `<span class="result-badge ${cls}">${esc(result)}</span>`;
 }
+function normalizeListNameKey(value){
+  return String(value || "").trim().replace(/[\s\u3000]+/g, "").toLowerCase();
+}
+function isDuplicateCandidateName(row){
+  const key=normalizeListNameKey(row?.name);
+  if(!key)return false;
+  let count=0;
+  for(const item of allCandidateRows || []){
+    if(normalizeListNameKey(item?.name)===key){
+      count += 1;
+      if(count > 1)return true;
+    }
+  }
+  return false;
+}
+function duplicateCandidateBadge(row){
+  if(!isDuplicateCandidateName(row)) return "";
+  return '<button class="list-duplicate-badge" type="button" title="同じ氏名の候補者が複数登録されています">重複候補</button>';
+}
+
 function actionRequiredBadge(row){
   if(!isActionRequired(row)) return "";
   return '<button class="list-action-required-badge" type="button" title="応募者詳細で要対応内容を確認">要対応</button>';
@@ -346,7 +370,7 @@ function dataQualityBadge(row){
   return '<button class="list-data-quality-badge" type="button" title="応募者詳細で未登録・不整合の内容を確認">データ不整合</button>';
 }
 function nameCell(row){
-  const alerts=[actionRequiredBadge(row), dataQualityBadge(row)].filter(Boolean).join("");
+  const alerts=[actionRequiredBadge(row), dataQualityBadge(row), duplicateCandidateBadge(row)].filter(Boolean).join("");
   return `<div class="candidate-name-cell"><strong>${esc(row.name||"")}</strong>${alerts ? `<div class="candidate-alert-line">${alerts}</div>` : ""}</div>`;
 }
 
@@ -534,6 +558,7 @@ function saveState(){
     sortMode,
     year:$("filterYear").value,
     month:$("filterMonth").value,
+    nameKeyword:$("filterNameKeyword")?.value || "",
     division:$("filterDivision").value,
     center:$("filterCenter").value,
     owner:$("filterOwner").value,
@@ -745,7 +770,7 @@ async function setupFilters(rows){
   setupBulkStatusOptions();
 }
 function clearFilters(){
-  ["filterYear","filterMonth","filterDivision","filterCenter","filterOwner","filterChannel","filterDateFrom","filterDateTo"].forEach(id=>{
+  ["filterYear","filterMonth","filterNameKeyword","filterDivision","filterCenter","filterOwner","filterChannel","filterDateFrom","filterDateTo"].forEach(id=>{
     const el=$(id);
     if(el)el.value="";
   });
@@ -954,6 +979,7 @@ function filteredRows(){
 
   const y=$("filterYear").value;
   const m=$("filterMonth").value;
+  const nameKeyword=normalizeListNameKey($("filterNameKeyword")?.value || "");
   const d=$("filterDivision").value;
   const c=$("filterCenter").value;
   const o=$("filterOwner").value;
@@ -981,6 +1007,7 @@ function filteredRows(){
       if(dateFrom&&targetDate<dateFrom)return false;
       if(dateTo&&targetDate>dateTo)return false;
     }
+    if(nameKeyword && !normalizeListNameKey(r.name).includes(nameKeyword))return false;
     if(selectedStatusFilters.size && !selectedStatusFilters.has(String(normalizeListCandidate(r).status||"").trim()))return false;
     if(selectedResultFilters.size && !selectedResultFilters.has(normalizeHiringResult(r)))return false;
     return (!d||r.division===d)&&(!c||r.center_name===c)&&(!o||r.owner_name===o)&&(!ch||r.channel===ch)&&(!job||r.job_type===job);
@@ -1512,7 +1539,7 @@ async function loadCandidates(){
       sortMode = "appliedDesc";
       clearDashboardRangeFilter();
       dashboardContextActive = false;
-      ["filterYear","filterMonth","filterDivision","filterCenter","filterOwner","filterChannel","filterDateFrom","filterDateTo"].forEach(id => {
+      ["filterYear","filterMonth","filterNameKeyword","filterDivision","filterCenter","filterOwner","filterChannel","filterDateFrom","filterDateTo"].forEach(id => {
         const el = $(id);
         if(el) el.value = "";
       });
@@ -1533,6 +1560,7 @@ async function loadCandidates(){
         const map={
           year:"filterYear",
           month:"filterMonth",
+          nameKeyword:"filterNameKeyword",
           division:"filterDivision",
           center:"filterCenter",
           owner:"filterOwner",
@@ -1585,7 +1613,7 @@ async function loadCandidates(){
 async function initPageAfterLogin(){
   await loadCandidates();
 }
-["filterYear","filterMonth","filterDivision","filterCenter","filterOwner","filterChannel","filterDateType","filterDateFrom","filterDateTo"].forEach(id=>{
+["filterYear","filterMonth","filterNameKeyword","filterDivision","filterCenter","filterOwner","filterChannel","filterDateType","filterDateFrom","filterDateTo"].forEach(id=>{
   document.addEventListener("change",e=>{
     if(e.target&&e.target.id===id){
       if(dashboardContextActive){

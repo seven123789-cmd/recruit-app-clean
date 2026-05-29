@@ -355,6 +355,8 @@ tbody tr.action-missing td:first-child{
   display:flex;
   align-items:center;
   justify-content:flex-start;
+  flex-wrap:wrap;
+  gap:5px;
 }
 
 /* ステータス＋選考結果 2段表示 */
@@ -554,4 +556,22 @@ tbody tr.action-missing td:first-child{
     height:calc(100vh - 220px);
     min-height:360px;
   }
+}
+
+/* 同名候補者の注意表示 */
+.list-duplicate-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:20px;
+  padding:0 8px;
+  border-radius:999px;
+  border:1px solid #fed7aa;
+  background:#fff7ed;
+  color:#c2410c;
+  font-size:11px;
+  font-weight:950;
+  line-height:1;
+  white-space:nowrap;
+  cursor:pointer;
 }

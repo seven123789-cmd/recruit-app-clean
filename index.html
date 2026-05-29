@@ -428,7 +428,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260528"></script>
 <script src="assets/js/auth.js?v=20260528"></script>
-<script src="assets/js/version.js?v=20260529_reject_save_fix"></script>
+<script src="assets/js/version.js?v=20260529_name_search_duplicate"></script>
 <script src="./common.js?v=20260529_reject_save_fix"></script>
 <script src="assets/js/overdue_popup.js?v=20260529_step1"></script>
 <script src="assets/js/candidate_utils.js?v=20260528"></script>
@@ -969,6 +969,29 @@ function setupEnterMoveForEntryForm(){
     });
   });
 }
+function duplicateNameSearchKey(value){
+  return String(value || "").trim().replace(/[\s\u3000]+/g, "").toLowerCase();
+}
+function formatDuplicateCandidateList(rows){
+  return (rows || []).slice(0,5).map(row => {
+    const applied = row.applied_date ? " / 応募日:" + row.applied_date : "";
+    const status = row.status ? " / " + row.status : "";
+    return "・" + (row.name || "氏名未設定") + applied + status;
+  }).join("\n");
+}
+async function findDuplicateCandidatesByName(name){
+  const key = duplicateNameSearchKey(name);
+  if(!key)return [];
+  const { data, error } = await sb
+    .from("candidates")
+    .select("id,name,applied_date,status,is_deleted")
+    .eq("is_deleted", false)
+    .eq("name", name)
+    .limit(10);
+  if(error) throw error;
+  return (data || []).filter(row => duplicateNameSearchKey(row.name) === key);
+}
+
 function validateEntry(payload, centerRaw, divisionRaw, channelRaw){
   clearValidationHighlights();
 
@@ -1058,6 +1081,20 @@ async function addData(){
   }
 
   try {
+    const duplicates = await findDuplicateCandidatesByName(payload.name);
+    if (duplicates.length > 0) {
+      const ok = await showWarningConfirm(
+        "同じ氏名の候補者が既に登録されています。\n\n" +
+        formatDuplicateCandidateList(duplicates) +
+        "\n\n同一人物でないか確認してください。\nこのまま新規登録しますか？",
+        "重複候補の確認"
+      );
+      if (!ok) {
+        setPageMessage("重複候補の確認で登録を中止しました", "info");
+        return;
+      }
+    }
+
     saveEntryMemory();
     setPageMessage("登録中です", "info");
 
