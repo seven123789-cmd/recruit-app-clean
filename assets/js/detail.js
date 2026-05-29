@@ -751,6 +751,19 @@ function renderActionAdvice(row) {
   applyActionAdviceDefaultState();
 }
 
+
+function applyActionAdviceDefaultState() {
+  const card = document.getElementById("actionAdviceCard");
+  if (!card) return;
+  card.classList.remove("action-collapsed");
+}
+
+function toggleActionAdvice() {
+  const card = document.getElementById("actionAdviceCard");
+  if (!card || card.classList.contains("hidden")) return;
+  card.classList.toggle("action-collapsed");
+}
+
 function fillCandidate(row) {
   row = normalizeDetailCandidateRow(row);
   currentCandidate = row;
