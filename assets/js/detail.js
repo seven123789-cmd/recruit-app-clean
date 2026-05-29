@@ -710,6 +710,23 @@ function updateActionPriority(level) {
   }
 }
 
+
+function applyActionAdviceDefaultState() {
+  const card = document.getElementById("actionAdviceCard");
+  if (!card) return;
+  card.classList.remove("action-collapsed");
+  const head = card.querySelector(".action-advice-head");
+  if (head) head.setAttribute("aria-expanded", "true");
+}
+
+function toggleActionAdvice() {
+  const card = document.getElementById("actionAdviceCard");
+  if (!card || card.classList.contains("hidden")) return;
+  const collapsed = card.classList.toggle("action-collapsed");
+  const head = card.querySelector(".action-advice-head");
+  if (head) head.setAttribute("aria-expanded", collapsed ? "false" : "true");
+}
+
 function renderActionAdvice(row) {
   const card = document.getElementById("actionAdviceCard");
   const reasonEl = document.getElementById("actionReasonText");
@@ -749,19 +766,6 @@ function renderActionAdvice(row) {
   if (inlineSummaryEl) inlineSummaryEl.textContent = advice.reason + " ・ " + advice.action;
   card.classList.remove("hidden");
   applyActionAdviceDefaultState();
-}
-
-
-function applyActionAdviceDefaultState() {
-  const card = document.getElementById("actionAdviceCard");
-  if (!card) return;
-  card.classList.remove("action-collapsed");
-}
-
-function toggleActionAdvice() {
-  const card = document.getElementById("actionAdviceCard");
-  if (!card || card.classList.contains("hidden")) return;
-  card.classList.toggle("action-collapsed");
 }
 
 function fillCandidate(row) {

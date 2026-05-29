@@ -1,2 +1,2 @@
 // assets/js/version.js
-window.RECRUIT_APP_VERSION = "20260529_detail_toggle_fix";
+window.RECRUIT_APP_VERSION = "20260529_detail_toggle_def_fix";
