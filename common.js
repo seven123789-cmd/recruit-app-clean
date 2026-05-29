@@ -182,10 +182,10 @@
       if(!rawResult || result === "進行中") result = rawStatus;
       status = inferRecruitStageFromDates(out) || status || "応募";
     }else if(result === "入社済"){
-      // 実入社だけは採用ステータスへ寄せる。
+      status = "採用";
+    }else if(result === "採用"){
       status = "採用";
     }else if(rawStatus === "採用" && (!rawResult || result === "進行中")){
-      // ステータスが採用で結果未設定なら、入社前の採用決定として扱う。
       result = "採用";
     }
 
@@ -662,23 +662,114 @@
   window.isRecruitHeatmapDangerCandidate = window.isRecruitHeatmapDangerCandidate || isRecruitHeatmapDangerCandidate;
   window.recruitMetricCounts = window.recruitMetricCounts || recruitMetricCounts;
   window.RecruitRule = window.RecruitRule || {
+    /**
+     * 候補者行のステータス・選考結果・日付状態を正規化する。
+     * @param {Object} row - 候補者データ行。
+     * @returns {Object} 正規化済みの候補者データ。
+     */
     normalize: normalizeRecruitCandidateState,
+    /**
+     * 実入社済みかを判定する。
+     * @param {Object} row - 候補者データ行。
+     * @returns {boolean} 入社済みの場合 true。
+     */
     isHired: isRecruitHired,
+    /**
+     * 採用決定状態かを判定する。
+     * @param {Object} row - 候補者データ行。
+     * @returns {boolean} 採用決定状態の場合 true。
+     */
     isHiringDecision: isRecruitHiringDecision,
+    /**
+     * 面接実施済みとして扱うかを判定する。
+     * @param {Object} row - 候補者データ行。
+     * @returns {boolean} 面接実施済みの場合 true。
+     */
     isInterviewDone: isRecruitInterviewDone,
+    /**
+     * 入社前フォロー状態かを判定する。
+     * @param {Object} row - 候補者データ行。
+     * @returns {boolean} 入社前フォロー状態の場合 true。
+     */
     isPendingJoin: isRecruitPendingJoin,
+    /**
+     * 入社前フォローの対応が必要かを判定する。
+     * @param {Object} row - 候補者データ行。
+     * @returns {boolean} 対応が必要な場合 true。
+     */
     isPendingJoinFollowRequired: isRecruitPendingJoinFollowRequired,
+    /**
+     * ステータスに対して許可される選考結果一覧を返す。
+     * @param {string} status - ステータス名。
+     * @returns {string[]} 許可される選考結果名の配列。
+     */
     allowedHiringResults: recruitAllowedHiringResults,
+    /**
+     * ステータスに対して選考結果を許可範囲内へ正規化する。
+     * @param {string} statusValue - ステータス名。
+     * @param {string} resultValue - 選考結果名。
+     * @returns {string} 正規化された選考結果名。
+     */
     normalizeResultForStatus: normalizeRecruitResultForStatus,
+    /**
+     * 完了扱いの候補者かを判定する。
+     * @param {Object} row - 候補者データ行。
+     * @returns {boolean} 完了扱いの場合 true。
+     */
     isFinal: isFinal,
+    /**
+     * 要対応対象かを判定する。
+     * @param {Object} row - 候補者データ行。
+     * @returns {boolean} 要対応の場合 true。
+     */
     isActionRequired: isRecruitActionRequired,
+    /**
+     * 次回対応日の期限状態を返す。
+     * @param {Object} row - 候補者データ行。
+     * @returns {Object} 期限状態情報。
+     */
     getActionDueState: getRecruitActionDueState,
+    /**
+     * 要対応理由と解消方法を返す。
+     * @param {Object} row - 候補者データ行。
+     * @returns {Object[]} 要対応アドバイス配列。
+     */
     getActionAdvice: getRecruitActionAdvice,
+    /**
+     * データ品質上の不整合一覧を返す。
+     * @param {Object} row - 候補者データ行。
+     * @returns {Object[]} データ不整合情報の配列。
+     */
     getDataQualityIssues: getRecruitDataQualityIssues,
+    /**
+     * データ品質上の不整合があるかを判定する。
+     * @param {Object} row - 候補者データ行。
+     * @returns {boolean} 不整合がある場合 true。
+     */
     isDataQualityIssue: isRecruitDataQualityIssue,
+    /**
+     * データ品質上の不整合に対する修正案を返す。
+     * @param {Object} row - 候補者データ行。
+     * @returns {Object[]} 修正案の配列。
+     */
     getDataQualityAdvice: getRecruitDataQualityAdvice,
+    /**
+     * 応募後3日以上の放置候補者かを判定する。
+     * @param {Object} row - 候補者データ行。
+     * @returns {boolean} 放置候補者の場合 true。
+     */
     isDormant3Days: isRecruitDormant3Days,
+    /**
+     * 担当者停滞候補者かを判定する。
+     * @param {Object} row - 候補者データ行。
+     * @returns {boolean} 担当者停滞の場合 true。
+     */
     isOwnerStagnation: isRecruitOwnerStagnation,
+    /**
+     * 候補者一覧から主要KPI件数を集計する。
+     * @param {Object[]} rows - 候補者データ行の配列。
+     * @returns {Object} KPI件数オブジェクト。
+     */
     metricCounts: recruitMetricCounts
   };
   window.isRecruitFinal = window.isRecruitFinal || isFinal;

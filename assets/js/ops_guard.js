@@ -192,24 +192,120 @@ function applyToPage(role = currentRole()){
 }
 
 window.RecruitOpsGuard = {
+  /**
+   * role文字列を admin / editor / viewer のいずれかへ正規化する。
+   * @param {string} role - 権限名。
+   * @returns {string} 正規化後の権限名。
+   */
   normalize,
+  /**
+   * 現在の画面上の権限を返す。
+   * @param {void} _unused - 使用しない。
+   * @returns {string} 現在の権限名。
+   */
   currentRole,
+  /**
+   * 指定権限が許可リストに含まれるかを判定する。
+   * @param {string} role - 判定する権限名。
+   * @param {string|string[]} allowed - 許可する権限名または配列。
+   * @returns {boolean} 許可される場合 true。
+   */
   hasRole,
+  /**
+   * admin権限かを判定する。
+   * @param {string} role - 判定する権限名。
+   * @returns {boolean} adminの場合 true。
+   */
   isAdmin,
+  /**
+   * viewer権限かを判定する。
+   * @param {string} role - 判定する権限名。
+   * @returns {boolean} viewerの場合 true。
+   */
   isViewer,
+  /**
+   * 現在権限を設定し、画面へ反映する。
+   * @param {string} role - 設定する権限名。
+   * @returns {string} 正規化後の権限名。
+   */
   setRole,
+  /**
+   * 読み取り可能かを判定する。
+   * @param {string} role - 判定する権限名。
+   * @returns {boolean} 読み取り可能な場合 true。
+   */
   canRead,
+  /**
+   * 登録・更新可能かを判定する。
+   * @param {string} role - 判定する権限名。
+   * @returns {boolean} 登録・更新可能な場合 true。
+   */
   canWrite,
+  /**
+   * 編集可能かを判定する。
+   * @param {string} role - 判定する権限名。
+   * @returns {boolean} 編集可能な場合 true。
+   */
   canEdit,
+  /**
+   * CSV取り込み可能かを判定する。
+   * @param {string} role - 判定する権限名。
+   * @returns {boolean} 取り込み可能な場合 true。
+   */
   canImport,
+  /**
+   * CSV出力・印刷可能かを判定する。
+   * @param {string} role - 判定する権限名。
+   * @returns {boolean} 出力可能な場合 true。
+   */
   canExport,
+  /**
+   * 削除可能かを判定する。
+   * @param {string} role - 判定する権限名。
+   * @returns {boolean} 削除可能な場合 true。
+   */
   canDelete,
+  /**
+   * マスタ管理可能かを判定する。
+   * @param {string} role - 判定する権限名。
+   * @returns {boolean} マスタ管理可能な場合 true。
+   */
   canManageMaster,
+  /**
+   * 登録・更新権限を要求し、不可の場合は通知する。
+   * @param {string} role - 判定する権限名。
+   * @returns {boolean} 実行可能な場合 true。
+   */
   requireWrite,
+  /**
+   * CSV取り込み権限を要求し、不可の場合は通知する。
+   * @param {string} role - 判定する権限名。
+   * @returns {boolean} 実行可能な場合 true。
+   */
   requireImport,
+  /**
+   * CSV出力・印刷権限を要求し、不可の場合は通知する。
+   * @param {string} role - 判定する権限名。
+   * @returns {boolean} 実行可能な場合 true。
+   */
   requireExport,
+  /**
+   * 削除権限を要求し、不可の場合は通知する。
+   * @param {string} role - 判定する権限名。
+   * @returns {boolean} 実行可能な場合 true。
+   */
   requireDelete,
+  /**
+   * マスタ管理権限を要求し、不可の場合は通知する。
+   * @param {string} role - 判定する権限名。
+   * @returns {boolean} 実行可能な場合 true。
+   */
   requireMaster,
+  /**
+   * 権限に応じて画面表示・操作可否を反映する。
+   * @param {string} role - 反映する権限名。
+   * @returns {void}
+   */
   applyToPage
 };
 
