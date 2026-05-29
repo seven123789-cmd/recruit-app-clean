@@ -1562,6 +1562,29 @@ function initDirtyTracking() {
   }
 }
 
+
+function toggleActionAdvice() {
+  const card = document.getElementById("actionAdviceCard");
+  if (!card || card.classList.contains("hidden")) return;
+
+  const isCollapsed = card.classList.toggle("action-collapsed");
+  const head = card.querySelector(".action-advice-head");
+  if (head) {
+    head.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+  }
+}
+
+function applyActionAdviceDefaultState() {
+  const card = document.getElementById("actionAdviceCard");
+  if (!card) return;
+
+  card.classList.remove("action-collapsed");
+  const head = card.querySelector(".action-advice-head");
+  if (head) {
+    head.setAttribute("aria-expanded", "true");
+  }
+}
+
 function bindDetailActionButtons() {
   const saveButton = document.getElementById("saveCandidateButton");
   if (saveButton && saveButton.dataset.boundSave !== "1") {
