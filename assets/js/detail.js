@@ -1573,6 +1573,26 @@ function bindDetailActionButtons() {
   }
 }
 
+function toggleActionAdvice() {
+  const body = document.getElementById("actionAdviceBody");
+  const button = document.getElementById("actionAdviceToggle");
+  const card = document.getElementById("actionAdviceCard");
+  if (!body && !card) return;
+
+  const target = body || card;
+  const closed = target.classList.toggle("is-collapsed");
+  if (button) button.textContent = closed ? "+" : "−";
+}
+
+function applyActionAdviceDefaultState() {
+  const body = document.getElementById("actionAdviceBody");
+  const button = document.getElementById("actionAdviceToggle");
+  const card = document.getElementById("actionAdviceCard");
+  if (body) body.classList.remove("is-collapsed");
+  if (card) card.classList.remove("is-collapsed");
+  if (button) button.textContent = "−";
+}
+
 window.saveCandidate = saveCandidate;
 window.deleteCandidate = deleteCandidate;
 window.quickSetStatus = quickSetStatus;
