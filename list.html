@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="./assets/css/common.css?v=20260528">
 <link rel="stylesheet" href="./assets/css/header.css?v=20260528">
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260528">
-<link rel="stylesheet" href="./assets/css/list.css?v=20260529_name_search_duplicate">
+<link rel="stylesheet" href="./assets/css/list.css?v=20260529_list_virtual">
 </head>
 <body class="auth-checking">
 
@@ -79,51 +79,53 @@
           </div>
           <div class="col-2">
             <label for="filterDivision">本部</label>
-            <select id="filterDivision">
-              <option value="">全部</option>
-            </select>
+            <select id="filterDivision"><option value="">全部</option></select>
           </div>
           <div class="col-2">
             <label for="filterCenter">営業所</label>
-            <select id="filterCenter">
-              <option value="">全営業所</option>
-            </select>
+            <select id="filterCenter"><option value="">全営業所</option></select>
           </div>
           <div class="col-2">
             <label for="filterOwner">担当者</label>
-            <select id="filterOwner">
-              <option value="">全担当</option>
-            </select>
+            <select id="filterOwner"><option value="">全担当</option></select>
           </div>
           <div class="col-2">
             <label for="filterChannel">媒体</label>
-            <select id="filterChannel">
-              <option value="">全媒体</option>
-            </select>
+            <select id="filterChannel"><option value="">全媒体</option></select>
           </div>
           <div class="col-3">
             <label for="filterDateType">日付種類</label>
             <select id="filterDateType">
               <option value="applied_date">応募日</option>
-              <option value="appointment_date">アポイント日</option>
-              <option value="interview_date">面接予定日</option>
+              <option value="appointment_date">アポ日</option>
+              <option value="interview1_date">面接設定日</option>
               <option value="interview_done_date">面接実施日</option>
               <option value="offer_date">内定日</option>
-              <option value="join_date">入社日</option>
+              <option value="join_date">採用日</option>
               <option value="next_action_date">次回対応日</option>
             </select>
           </div>
           <div class="col-3">
             <label for="filterDateFrom">開始日</label>
-            <input id="filterDateFrom" type="date" />
+            <input id="filterDateFrom" type="date">
           </div>
           <div class="col-3">
             <label for="filterDateTo">終了日</label>
-            <input id="filterDateTo" type="date" />
+            <input id="filterDateTo" type="date">
           </div>
           <div class="col-3">
             <label for="filterNameKeyword">氏名・フリーワード検索</label>
-            <input id="filterNameKeyword" type="text" placeholder="例：山田 / テンリク / Indeed" />
+            <input id="filterNameKeyword" type="text" placeholder="例：山田 / テンリク / Indeed">
+          </div>
+          <div class="col-12 list-status-filter-panel">
+            <div class="list-status-filter-head">
+              <div>
+                <span class="list-filter-label">ステータス</span>
+                <span class="list-filter-note">ステータスマスタ連動・複数選択可</span>
+              </div>
+              <button class="btn-secondary list-status-clear" type="button" onclick="clearStatusFilters()">ステータス解除</button>
+            </div>
+            <div id="statusFilterChips" class="status-filter-chips" aria-label="ステータス絞り込み"></div>
           </div>
           <div class="col-12 list-status-filter-panel result-filter-panel">
             <div class="list-status-filter-head">
@@ -218,8 +220,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/js/supabase.js?v=20260528"></script>
 <script src="assets/js/auth.js?v=20260528"></script>
-<script src="assets/js/version.js?v=20260529_name_search_duplicate"></script>
-<script src="./common.js?v=20260529_save_history_reflect_fix"></script>
+<script src="assets/js/version.js?v=20260529_list_virtual"></script>
+<script src="./common.js?v=20260529_data_quality"></script>
 <script src="assets/js/overdue_popup.js?v=20260529_step1"></script>
 <script src="assets/js/candidate_utils.js?v=20260528"></script>
 <script src="assets/js/ops_guard.js?v=20260528"></script>
@@ -277,6 +279,35 @@ function validDate(s){
   const y=Number(String(s).slice(0,4));
   return y>=2000;
 }
+
+function normalizeListFreewordKey(value){
+  return String(value || "").trim().replace(/[\s\u3000]+/g, "").toLowerCase();
+}
+function listFreewordText(row){
+  return [
+    row?.name,
+    row?.kana,
+    row?.division,
+    row?.center_name,
+    row?.owner_name,
+    row?.channel,
+    row?.channel_detail,
+    row?.media_detail,
+    row?.job_type,
+    row?.status,
+    row?.hiring_result,
+    row?.memo,
+    row?.note,
+    row?.action_memo,
+    row?.interview_comment
+  ].map(v => String(v || "")).join(" ");
+}
+function matchesListFreeword(row, keyword){
+  const key = normalizeListFreewordKey(keyword);
+  if(!key) return true;
+  return normalizeListFreewordKey(listFreewordText(row)).includes(key);
+}
+
 
 function normalizeListCandidate(row){
   const source = row || {};
@@ -339,50 +370,6 @@ function resultBadge(row){
   const cls=result==="入社済"?"result-joined":result==="採用"?"result-hired":result==="不採用"?"result-rejected":result==="辞退"?"result-declined":result==="不通"?"result-no-contact":result==="保留"?"result-hold":"result-pending";
   return `<span class="result-badge ${cls}">${esc(result)}</span>`;
 }
-function normalizeListNameKey(value){
-  return String(value || "").trim().replace(/[\s\u3000]+/g, "").toLowerCase();
-}
-function listFreewordText(row){
-  return [
-    row?.name,
-    row?.kana,
-    row?.division,
-    row?.center_name,
-    row?.owner_name,
-    row?.channel,
-    row?.channel_detail,
-    row?.media_detail,
-    row?.job_type,
-    row?.status,
-    row?.hiring_result,
-    row?.memo,
-    row?.note,
-    row?.action_memo,
-    row?.interview_comment
-  ].map(v => String(v || "")).join(" ");
-}
-function matchesListFreeword(row, keyword){
-  const key = normalizeListNameKey(keyword);
-  if(!key) return true;
-  return normalizeListNameKey(listFreewordText(row)).includes(key);
-}
-function isDuplicateCandidateName(row){
-  const key=normalizeListNameKey(row?.name);
-  if(!key)return false;
-  let count=0;
-  for(const item of allCandidateRows || []){
-    if(normalizeListNameKey(item?.name)===key){
-      count += 1;
-      if(count > 1)return true;
-    }
-  }
-  return false;
-}
-function duplicateCandidateBadge(row){
-  if(!isDuplicateCandidateName(row)) return "";
-  return '<button class="list-duplicate-badge" type="button" title="同じ氏名の候補者が複数登録されています">重複候補</button>';
-}
-
 function actionRequiredBadge(row){
   if(!isActionRequired(row)) return "";
   return '<button class="list-action-required-badge" type="button" title="応募者詳細で要対応内容を確認">要対応</button>';
@@ -392,7 +379,7 @@ function dataQualityBadge(row){
   return '<button class="list-data-quality-badge" type="button" title="応募者詳細で未登録・不整合の内容を確認">データ不整合</button>';
 }
 function nameCell(row){
-  const alerts=[actionRequiredBadge(row), dataQualityBadge(row), duplicateCandidateBadge(row)].filter(Boolean).join("");
+  const alerts=[actionRequiredBadge(row), dataQualityBadge(row)].filter(Boolean).join("");
   return `<div class="candidate-name-cell"><strong>${esc(row.name||"")}</strong>${alerts ? `<div class="candidate-alert-line">${alerts}</div>` : ""}</div>`;
 }
 
@@ -1001,7 +988,7 @@ function filteredRows(){
 
   const y=$("filterYear").value;
   const m=$("filterMonth").value;
-  const nameKeyword=normalizeListNameKey($("filterNameKeyword")?.value || "");
+  const nameKeyword=$("filterNameKeyword")?.value || "";
   const d=$("filterDivision").value;
   const c=$("filterCenter").value;
   const o=$("filterOwner").value;
@@ -1526,16 +1513,6 @@ function restoreNav(){
 }
 async function loadCandidates(){
   try{
-    const detailSaveMarkerRaw = sessionStorage.getItem("recruit_detail_saved_candidate");
-    let detailSaveMarker = null;
-    if (detailSaveMarkerRaw) {
-      try { detailSaveMarker = JSON.parse(detailSaveMarkerRaw); } catch(e) { detailSaveMarker = null; }
-      sessionStorage.removeItem("recruit_detail_saved_candidate");
-      // 応募者詳細で保存した直後は、古い復元条件やダッシュボード条件を一度解除して、DB最新状態をそのまま確認できるようにする。
-      localStorage.removeItem(STATE);
-      clearDashboardRangeFilter();
-      dashboardContextActive = false;
-    }
     const {data,error}=await sb
       .from("candidates")
       .select("id,name,applied_date,status,division,center_name,channel,channel_detail,owner_name,next_action_date,hiring_result,is_deleted,appointment_date,interview1_date,interview_done_date,offer_date,join_date,reject_reason,decline_reason,action_memo")
@@ -1604,17 +1581,6 @@ async function loadCandidates(){
 
     if(dashboardFilterActive)setDashboardYearDisplay();
     renderCandidates();
-
-    if(detailSaveMarker?.id){
-      requestAnimationFrame(() => {
-        const tr = document.querySelector('tr[data-id="' + CSS.escape(String(detailSaveMarker.id)) + '"]');
-        if(tr){
-          tr.classList.add("return-highlight");
-          tr.scrollIntoView({block:"center"});
-          setTimeout(() => tr.classList.remove("return-highlight"), 3000);
-        }
-      });
-    }
 
     if(shouldShowLatest && latestCandidateMarker?.id){
       requestAnimationFrame(() => {
