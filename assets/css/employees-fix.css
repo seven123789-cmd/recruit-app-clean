@@ -1,0 +1,298 @@
+/* ================================================================
+   employees-fix.css
+   社員一覧ページの未定義クラスを補完する
+   common.css + visual-upgrade.css の後に読み込む
+   ================================================================ */
+
+/* ── フィルターパネル ─────────────────────────────────────── */
+.filter-panel {
+  position: relative;
+  margin-bottom: 20px;
+  padding: 20px 22px 18px;
+  background:
+    url('../img/imperial/bg-paper.png') center / 400px repeat,
+    linear-gradient(180deg, rgba(255,252,238,.97), rgba(245,232,200,.95));
+  border: 1px solid rgba(180,130,30,.5);
+  box-shadow:
+    0 0 0 1px rgba(220,180,60,.2),
+    0 6px 18px rgba(70,38,8,.12),
+    inset 0 0 0 1px rgba(255,255,255,.5);
+}
+.filter-panel::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(180,130,30,.2);
+  pointer-events: none;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: 2fr repeat(3, 1fr) auto;
+  gap: 14px;
+  align-items: end;
+}
+.filter-grid.compact {
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
+}
+@media (max-width: 1100px) {
+  .filter-grid, .filter-grid.compact {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.form-group { display: grid; gap: 5px; }
+.form-label {
+  font-family: 'Shippori Mincho', 'Noto Serif JP', serif;
+  font-weight: 800;
+  font-size: 13px;
+  color: #4a2515;
+  letter-spacing: .04em;
+}
+.form-control,
+input[type="text"],
+select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid rgba(140,85,20,.4);
+  background: rgba(255,252,238,.92);
+  color: #2a1008;
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 14px;
+  box-shadow: inset 0 1px 3px rgba(60,30,5,.08);
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.form-control:focus,
+input[type="text"]:focus,
+select:focus {
+  outline: none;
+  border-color: #b08828;
+  box-shadow: 0 0 0 2px rgba(184,137,42,.22), inset 0 1px 3px rgba(60,30,5,.06);
+}
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238a5010' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
+  background-color: rgba(255,252,238,.92);
+}
+
+/* ── テーブルカード ───────────────────────────────────────── */
+.table-card {
+  position: relative;
+  background:
+    url('../img/imperial/bg-paper.png') center / 420px repeat,
+    linear-gradient(180deg, rgba(255,252,240,.98), rgba(245,232,202,.97));
+  border: 2px solid rgba(180,130,30,.55);
+  box-shadow:
+    0 0 0 1px rgba(220,180,60,.2),
+    0 0 0 5px rgba(255,248,210,.2),
+    0 10px 26px rgba(73,45,13,.16);
+  overflow: hidden;
+}
+.table-card::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(180,130,30,.18);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.table-tools {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(180,130,30,.25);
+  background: linear-gradient(180deg, rgba(255,250,235,.95), rgba(248,234,205,.9));
+}
+.table-count {
+  font-family: 'Shippori Mincho', serif;
+  font-size: 14px;
+  color: #3a1a0a;
+}
+.table-count strong {
+  font-size: 18px;
+  color: #8a0c18;
+}
+.text-muted { color: #8a6848; }
+.text-sm { font-size: 12px; }
+
+.table-wrap {
+  position: relative;
+  z-index: 1;
+  overflow-x: auto;
+}
+
+/* ── テーブル本体 ─────────────────────────────────────────── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: transparent;
+}
+th {
+  font-family: 'Shippori Mincho', serif;
+  background: linear-gradient(180deg, #082438, #041828);
+  color: #f5d880;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-align: left;
+  padding: 13px 14px;
+  border-bottom: 3px solid #c09020;
+  font-size: 13px;
+  white-space: nowrap;
+}
+td {
+  padding: 11px 14px;
+  border-bottom: 1px solid rgba(180,130,30,.15);
+  font-size: 13px;
+  vertical-align: middle;
+}
+tr:hover td {
+  background: rgba(255,240,185,.3);
+}
+
+/* 名前セル */
+.name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cell-main {
+  font-family: 'Shippori Mincho', serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: #2a1008;
+}
+.cell-sub {
+  font-size: 11px;
+  color: #8a6848;
+  margin-top: 1px;
+}
+.row-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+/* ── ページネーション ─────────────────────────────────────── */
+.pagination {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-top: 1px solid rgba(180,130,30,.22);
+  background: rgba(255,250,235,.6);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid rgba(140,85,20,.4);
+  background: rgba(255,252,238,.9);
+  color: #5a3010;
+  font-family: 'Shippori Mincho', serif;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.page-btn:hover:not(:disabled) {
+  background: rgba(255,244,210,.95);
+  border-color: #c09020;
+}
+.page-btn.active {
+  background: linear-gradient(180deg, #8a0c18, #620910);
+  color: #fff5c0;
+  border-color: #c8a030;
+}
+.page-btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+/* ── ページヘッダー（社員一覧向け） ────────────────────────── */
+.page-header {
+  min-height: 140px !important;
+}
+.page-icon {
+  width: 68px;
+  height: 68px;
+  background: linear-gradient(135deg, #083030, #0a4040);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2px solid #c09020;
+  box-shadow: 0 0 0 1px #6a3808, 0 6px 16px rgba(0,0,0,.28);
+  color: #e8c060;
+  flex-shrink: 0;
+}
+
+/* ── バッジ補完 ───────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 2px 9px;
+  border-radius: 3px;
+  font-family: 'Shippori Mincho', serif;
+  font-size: 12px;
+  font-weight: 800;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.badge-success { background:#e4f4e0; color:#155a20; border-color:#88c898; }
+.badge-danger  { background:#ffe0e0; color:#880010; border-color:#c87888; }
+.badge-warning { background:#fff0b8; color:#784808; border-color:#c8a848; }
+.badge-info, .badge-primary { background:#e0eeff; color:#084880; border-color:#88b8d8; }
+.badge-gray    { background:#eddfc8; color:#5a4530; border-color:#c8b888; }
+
+/* mini-avatar（テーブル内） */
+.mini-avatar {
+  flex: 0 0 32px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, #082830, #0c3840);
+  color: #e8c060;
+  font-family: 'Shippori Mincho', serif;
+  font-size: 13px;
+  font-weight: 900;
+  border: 1.5px solid #c09020;
+  flex-shrink: 0;
+}
+
+/* ================================================================
+   Employee Page Card Ivory Background 20260530
+   目的：
+   - 社員一覧系のフィルターパネル・テーブルカードも共通カード背景へ統一
+   - 背景画像に枠線を含めず、既存のborder/box-shadowはCSSで維持
+   ================================================================ */
+
+.filter-panel,
+.table-card {
+  background:
+    linear-gradient(180deg, rgba(255,252,241,.84), rgba(248,235,205,.78)),
+    url('../img/imperial/card-bg-ivory.png') center center / cover no-repeat,
+    #fbf2dc;
+}
+
+.table-tools {
+  background:
+    linear-gradient(180deg, rgba(255,250,235,.92), rgba(248,234,205,.86)),
+    url('../img/imperial/card-bg-ivory.png') center center / cover no-repeat,
+    rgba(255,250,235,.95);
+}

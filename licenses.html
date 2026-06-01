@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>事業所資格 — 資格・免許管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/common.css">
+<link rel="stylesheet" href="assets/css/visual-upgrade.css">
+</head>
+<body>
+<div class="app-shell">
+<aside class="sidebar" id="sidebar"></aside>
+<div class="page-content">
+<main class="page-main">
+  <div class="page-header">
+    <div class="page-heading">
+      <div class="page-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+      <div><div class="page-title">事業所資格管理</div><div class="page-title-en">Facility Licenses</div></div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat-card"><div class="stat-top"><span>対象センター</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div></div><div class="stat-value tabular" id="facility-center-count">—</div><div class="stat-sub">centers</div></div>
+  </div>
+  <div class="alert-box gold mb-4">事業所資格の実データ登録は次フェーズにて対応いたします。</div>
+  <div class="table-card">
+    <div class="table-tools"><div class="table-count">事業所資格 一覧</div><div class="text-muted text-sm">facility_licenses テーブル参照</div></div>
+    <div class="table-wrap"><table><thead><tr><th>センター</th><th>状態</th><th>管理対象</th><th>備考</th></tr></thead><tbody id="facility-tbody"></tbody></table></div>
+  </div>
+</main>
+</div>
+</div>
+<div id="toast-container"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/common.js"></script>
+<script src="assets/js/facility_licenses.js"></script>
+<script>(async()=>{await Auth.requireAuth();renderSidebar('facility');Modal.setup();APP.initHeader();await initFacilityLicenses();})();</script>
+</body></html>

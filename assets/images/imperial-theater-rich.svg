@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="260" viewBox="0 0 920 260">
+  <defs>
+    <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+      <stop stop-color="#b59b78" stop-opacity=".45"/>
+      <stop offset="1" stop-color="#6b563e" stop-opacity=".20"/>
+    </linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation=".45"/></filter>
+  </defs>
+  <g fill="none" stroke="url(#g)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".82">
+    <path d="M50 224H880"/>
+    <path d="M110 224V106l64-50 64 50v118"/>
+    <path d="M84 106H262M104 88H244"/>
+    <path d="M135 224v-70h28v70M185 224v-70h28v70"/>
+    <path d="M292 224V91h318v133"/>
+    <path d="M276 91h350M310 70h282"/>
+    <path d="M340 224v-86h42v86M430 224v-86h42v86M520 224v-86h42v86"/>
+    <path d="M320 91l130-66 142 66"/>
+    <path d="M650 224V106l64-50 64 50v118"/>
+    <path d="M624 106H806M644 88H786"/>
+    <path d="M674 224v-70h28v70M724 224v-70h28v70"/>
+    <path d="M24 224V134l28-22 28 22v90M840 224V134l28-22 28 22v90" opacity=".58"/>
+  </g>
+  <g fill="#9b876d" opacity=".16" filter="url(#soft)">
+    <rect x="300" y="97" width="303" height="11"/><rect x="112" y="111" width="125" height="10"/><rect x="652" y="111" width="125" height="10"/>
+  </g>
+</svg>

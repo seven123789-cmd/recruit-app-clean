@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>社員詳細 — 資格・免許管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/common.css">
+<link rel="stylesheet" href="assets/css/visual-upgrade.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="page-content">
+    
+<main class="page-main">
+
+      <!-- 社員ヘッダカード -->
+      <div class="detail-header">
+        <div style="display:flex;align-items:flex-start;gap:var(--s4)">
+          <div class="detail-avatar" id="detail-avatar">?</div>
+          <div>
+            <div class="detail-name" id="detail-name">読み込み中...</div>
+            <div class="detail-meta">
+              <span class="detail-meta-item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span id="detail-center">—</span></span>
+              <span class="detail-meta-item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span id="detail-position">—</span></span>
+              <span class="detail-meta-item"><span id="detail-employment" style="font-family:var(--font-serif)">—</span></span>
+              <span id="detail-badge-grade"></span>
+              <span id="detail-badge-promo"></span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:var(--s2)">
+          <a href="licenses.html" class="btn btn-secondary btn-sm">資格登録</a>
+        </div>
+      </div>
+
+      <!-- タブ -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="basic">基本情報</button>
+        <button class="tab-btn" data-tab="licenses">所持資格</button>
+        <button class="tab-btn" data-tab="alerts">期限アラート</button>
+        <button class="tab-btn" data-tab="promotion">昇格情報</button>
+      </div>
+
+      <div id="tab-basic">
+        <div class="card">
+          <div class="card-header"><div class="card-title">基本情報</div></div>
+          <div class="card-body"><div class="info-grid" id="info-grid"><div class="empty">読み込み中...</div></div></div>
+        </div>
+      </div>
+
+      <div id="tab-licenses" style="display:none">
+        <div class="table-card">
+          <div class="table-tools"><div class="card-title">所持資格一覧</div><div class="table-count">計 <strong id="lic-detail-count">—</strong> 件</div></div>
+          <div class="table-wrap"><table><thead><tr><th>資格名</th><th>区分</th><th>取得日</th><th>更新日</th><th>期限日</th><th>状態</th><th>残日数</th><th>メモ</th></tr></thead><tbody id="lic-detail-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <div id="tab-alerts" style="display:none">
+        <div class="table-card">
+          <div class="table-tools"><div class="card-title">期限アラート</div></div>
+          <div class="table-wrap"><table><thead><tr><th>状態</th><th>資格名</th><th>期限日</th><th>残日数</th></tr></thead><tbody id="alert-detail-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <div id="tab-promotion" style="display:none">
+        <div class="card">
+          <div class="card-header"><div class="card-title">昇格情報</div></div>
+          <div class="card-body"><div id="promo-detail-content"><div class="empty">読み込み中...</div></div></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/common.js"></script>
+<script>
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    ['basic','licenses','alerts','promotion'].forEach(t => {
+      document.getElementById('tab-'+t).style.display = t===tab ? '' : 'none';
+    });
+    btn.classList.add('active');
+  });
+});
+
+const params = new URLSearchParams(location.search);
+const empId  = params.get('id');
+
+async function loadDetail() {
+  if (!empId) { APP.toast('社員IDが指定されていません','error'); return; }
+  APP.initHeader();
+  const employees = await APP.loadEmployees();
+  const emp = employees.find(e => String(e.id) === String(empId));
+  if (!emp) { APP.toast('社員データが見つかりません','error'); return; }
+
+  document.getElementById('bc-name').textContent        = emp.name;
+  document.getElementById('detail-avatar').textContent  = (emp.name||'?')[0];
+  document.getElementById('detail-name').textContent    = emp.name;
+  document.getElementById('detail-center').textContent  = emp.center||'—';
+  document.getElementById('detail-position').textContent= emp.position||'—';
+  document.getElementById('detail-employment').textContent = emp.employment_type||'—';
+  document.getElementById('detail-badge-grade').innerHTML = APP.badge(emp.current_grade||'未設定','primary');
+  if (emp.promotion_target_flag===true||emp.promotion_target_flag==='true') {
+    document.getElementById('detail-badge-promo').innerHTML = APP.badge('昇格候補','success');
+  }
+  document.title = emp.name + ' — 資格・免許管理';
+
+  const today    = new Date();
+  const joinDate = emp.join_date   ? new Date(emp.join_date)   : null;
+  const birthDate= emp.birth_date  ? new Date(emp.birth_date)  : null;
+  const age = birthDate ? (today.getFullYear()-birthDate.getFullYear()-(today<new Date(today.getFullYear(),birthDate.getMonth(),birthDate.getDate())?1:0)) : null;
+  const tenure = joinDate ? (()=>{
+    const y=today.getFullYear()-joinDate.getFullYear(), m=today.getMonth()-joinDate.getMonth();
+    return `${m<0?y-1:y}年${((m%12)+12)%12}ヶ月`;
+  })() : null;
+  const lastPromo  = emp.last_promotion_date ? new Date(emp.last_promotion_date) : null;
+  const promoYears = lastPromo ? ((today-lastPromo)/(1000*60*60*24*365.25)).toFixed(1) : null;
+
+  const items = [
+    ['社員コード', `<code>${APP.escape(emp.employee_code||'—')}</code>`],
+    ['氏名',       APP.escape(emp.name||'—')],
+    ['センター',   APP.escape(emp.center||'—')],
+    ['職種',       APP.escape(emp.position||'—')],
+    ['雇用形態',   APP.escape(emp.employment_type||'—')],
+    ['等級',       APP.badge(emp.current_grade||'未設定','primary')],
+    ['入社日',     APP.fmtDate(emp.join_date)],
+    ['勤続年数',   tenure ? `<span class="font-600">${tenure}</span>` : '—'],
+    ['年齢',       age ? `<span class="font-600">${age}歳</span>` : '—'],
+    ['最終昇格日', APP.fmtDate(emp.last_promotion_date)],
+    ['昇格経過年数', promoYears ? `<span class="font-600 ${parseFloat(promoYears)>=3?'text-green':''}">${promoYears}年</span>` : '—'],
+    ['昇格候補',   emp.promotion_target_flag===true||emp.promotion_target_flag==='true' ? APP.badge('候補','success') : APP.badge('対象外','gray')],
+  ];
+  document.getElementById('info-grid').innerHTML = items.map(([l,v])=>
+    `<div><div class="info-item-label">${l}</div><div class="info-item-value">${v}</div></div>`
+  ).join('');
+
+  const allLics = await APP.loadLicenseRows();
+  const myLics  = allLics.filter(l=>String(l.employee_id)===String(empId)||String(l.employee_code)===String(emp.employee_code));
+  document.getElementById('lic-detail-count').textContent = myLics.length;
+  document.getElementById('lic-detail-tbody').innerHTML = myLics.length
+    ? myLics.map(l=>{
+        const cls=APP.statusClass(l.alert_status);
+        const days=l.days_remaining??APP.daysUntil(l.expiration_date);
+        const rowCls=cls==='danger'?'row-danger':cls==='warning'?'row-warning':cls==='info'?'row-info':'';
+        const daysStr=days===null?'—':days<0?`<span class="text-red font-600">${Math.abs(days)}日超過</span>`:`残り${days}日`;
+        return `<tr class="${rowCls}"><td class="font-600 font-serif">${APP.escape(l.license_name||'—')}</td><td>${APP.badge(l.category_name||'—','gray')}</td><td>${APP.fmtDate(l.acquired_date)}</td><td>${APP.fmtDate(l.renewal_date)}</td><td>${APP.fmtDate(l.expiration_date)}</td><td>${APP.alertBadge(l.alert_status,l.expiration_date)}</td><td>${daysStr}</td><td class="text-sm text-muted">${APP.escape(l.memo||'')}</td></tr>`;
+      }).join('')
+    : `<tr><td colspan="8" class="empty">登録された資格がありません</td></tr>`;
+
+  const alertLics = myLics.filter(l=>['期限切れ','30日以内','90日以内'].includes(l.alert_status));
+  document.getElementById('alert-detail-tbody').innerHTML = alertLics.length
+    ? alertLics.map(l=>{
+        const cls=APP.statusClass(l.alert_status);
+        const days=l.days_remaining??APP.daysUntil(l.expiration_date);
+        return `<tr class="${cls==='danger'?'row-danger':cls==='warning'?'row-warning':'row-info'}"><td>${APP.alertBadge(l.alert_status,l.expiration_date)}</td><td class="font-600 font-serif">${APP.escape(l.license_name||'—')}</td><td>${APP.fmtDate(l.expiration_date)}</td><td>${days===null?'—':days<0?`<span class="text-red font-600">${Math.abs(days)}日超過</span>`:`残り${days}日`}</td></tr>`;
+      }).join('')
+    : `<tr><td colspan="4" class="empty">期限アラートはございません</td></tr>`;
+
+  const isPromo = emp.promotion_target_flag===true||emp.promotion_target_flag==='true';
+  document.getElementById('promo-detail-content').innerHTML = `
+    <div class="info-grid">
+      <div><div class="info-item-label">昇格候補フラグ</div><div class="info-item-value">${isPromo?APP.badge('候補','success'):APP.badge('対象外','gray')}</div></div>
+      <div><div class="info-item-label">現等級</div><div class="info-item-value">${APP.badge(emp.current_grade||'未設定','primary')}</div></div>
+      <div><div class="info-item-label">最終昇格日</div><div class="info-item-value">${APP.fmtDate(emp.last_promotion_date)}</div></div>
+      <div><div class="info-item-label">昇格経過年数</div><div class="info-item-value">${promoYears?`<span class="font-600 ${parseFloat(promoYears)>=3?'text-green':''}">${promoYears}年${parseFloat(promoYears)>=3?' ✓ 候補条件クリア':''}</span>`:'—'}</div></div>
+      <div><div class="info-item-label">昇格判定</div><div class="info-item-value">
+        ${!emp.last_promotion_date?APP.badge('要確認（昇格日未設定）','danger'):parseFloat(promoYears)>=3?APP.badge('候補（三年以上経過）','success'):APP.badge(`対象外（あと${(3-parseFloat(promoYears)).toFixed(1)}年）`,'gray')}
+      </div></div>
+    </div>
+    <div class="divider"></div>
+    <div class="alert-box gold text-sm">昇格記録・履歴の登録機能は次フェーズにて実装いたします。</div>`;
+}
+
+(async()=>{
+  await Auth.requireAuth();
+  renderSidebar('employees');
+  Modal.setup();
+  await loadDetail();
+})();
+</script>
+</body>
+</html>

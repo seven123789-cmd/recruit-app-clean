@@ -1,0 +1,301 @@
+/* ================================================================
+   visual-upgrade.css
+   index.html の <head> で common.css の「後」に読み込む
+   ================================================================ */
+
+/* ──────────────────────────────────────────────────────────────
+   1. コンテンツエリア：漆喰パネル壁の背景
+      Image1 に見える「矩形タイル / 腰壁」のような質感を CSS で実現
+   ────────────────────────────────────────────────────────────── */
+.page-content {
+  background:
+    /* 格子線：縦 */
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 118px,
+      rgba(160, 110, 40, .10) 118px,
+      rgba(160, 110, 40, .10) 120px
+    ),
+    /* 格子線：横 */
+    repeating-linear-gradient(
+      180deg,
+      transparent 0px,
+      transparent 88px,
+      rgba(160, 110, 40, .10) 88px,
+      rgba(160, 110, 40, .10) 90px
+    ),
+    /* 微細ノイズ風グラデーション */
+    radial-gradient(ellipse at 60% 20%, rgba(255,230,160,.18), transparent 55%),
+    radial-gradient(ellipse at 15% 75%, rgba(200,150,60,.10), transparent 45%),
+    /* ベース色 */
+    linear-gradient(180deg, #f5e8cc 0%, #ede0b8 100%);
+}
+
+/* page-main内にも軽く乗せる */
+.page-main {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 118px,
+      rgba(160,110,40,.06) 118px,
+      rgba(160,110,40,.06) 120px
+    ),
+    repeating-linear-gradient(
+      180deg,
+      transparent 0px,
+      transparent 88px,
+      rgba(160,110,40,.06) 88px,
+      rgba(160,110,40,.06) 90px
+    ),
+    transparent;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   2. KPI カード：厚み・グロー・アイコンサイズアップ
+   ────────────────────────────────────────────────────────────── */
+
+/* 外枠のゴールドグロー強化 */
+.stat-card {
+  /* 外側に 3 層の光 */
+  box-shadow:
+    0 0 0 1px rgba(220, 180, 60, .55),
+    0 0 0 5px rgba(255, 240, 160, .20),
+    0 0 0 6px rgba(180, 130, 30, .35),
+    0 14px 32px rgba(80, 44, 10, .22),
+    inset 0 0 40px rgba(200, 160, 40, .06);
+  border: 2px solid #c8980a;
+}
+
+/* KPI アイコンを大きく */
+.stat-icon {
+  width:  90px !important;
+  height: 90px !important;
+  top:    22px !important;
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,.32)) drop-shadow(0 2px 4px rgba(0,0,0,.22));
+}
+
+/* アイコン分だけ上パディング調整 */
+.stat-card {
+  padding-top: 102px !important;
+  min-height:  274px;
+}
+
+/* ラベル（期限切れ / 30日以内 …）を少し大きく */
+.stat-card .stat-top > span {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: .05em;
+  margin-top: 6px;
+}
+
+/* 数値を確実に日本語 Serif に */
+.stat-value {
+  font-family: 'Shippori Mincho', 'Noto Serif JP', 'Yu Mincho', serif !important;
+  font-weight: 900 !important;
+  font-size:   70px !important;
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings: "lnum" 1, "tnum" 1;
+  letter-spacing: -.02em;
+  text-shadow: 0 3px 0 rgba(255,255,255,.7), 0 5px 10px rgba(0,0,0,.12);
+  margin-top: 14px !important;
+}
+
+/* kpi-corner の丸い飾りを少し大きく */
+.kpi-corner::before {
+  width:  9px;
+  height: 9px;
+  background: radial-gradient(circle at 38% 32%, #ffe878, #c8980a 55%, #8a5808);
+  box-shadow: 0 2px 4px rgba(0,0,0,.3), 0 0 6px rgba(220,160,20,.4);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   3. ヒーローバナー：高さと背景を強化
+   ────────────────────────────────────────────────────────────── */
+.page-header {
+  min-height: 168px !important;
+  border-width: 2px;
+  border-color: #c8980a;
+  box-shadow:
+    0 0 0 1px rgba(220,180,60,.4),
+    0 0 0 8px rgba(255,248,210,.35),
+    0 10px 30px rgba(70,38,8,.2) !important;
+}
+
+/* 劇場画像をもう少し大きく・右に余白なく */
+.page-header {
+  background:
+    linear-gradient(90deg,
+      rgba(255,252,236,.99)   0%,
+      rgba(255,248,224,.96)  42%,
+      rgba(255,244,210,.65)  62%,
+      rgba(255,244,210,.10)  78%,
+      transparent            100%
+    ),
+    url('../img/imperial/bg-theater.png') right center / auto 105% no-repeat,
+    url('../img/imperial/bg-sakura.png')  60% center / 50% auto no-repeat,
+    linear-gradient(90deg, #fff9eb, #f0e0b8) !important;
+}
+
+/* ページタイトルの書体強化 */
+.page-title {
+  font-family: 'Shippori Mincho', 'Yu Mincho', serif;
+  font-size:   52px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-shadow:
+    0 3px 0 rgba(255,255,255,.85),
+    0 6px 14px rgba(50,20,5,.14);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   4. カードパネル：下部ボディの背景質感
+   ────────────────────────────────────────────────────────────── */
+.card {
+  box-shadow:
+    0 0 0 1px rgba(200,160,40,.3),
+    0 0 0 4px rgba(255,248,210,.25),
+    0 10px 26px rgba(73,45,13,.18) !important;
+}
+
+/* カード内側：羊皮紙テクスチャ密度アップ */
+.card::before {
+  background:
+    url('../img/imperial/bg-paper.png') center / 400px repeat !important;
+  opacity: .45 !important;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   5. アラート行の badge スタイル（残りN日）
+   ────────────────────────────────────────────────────────────── */
+.badge {
+  font-family: 'Shippori Mincho', 'Noto Serif JP', serif;
+  font-weight: 900;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 3px;
+}
+.badge-danger {
+  background: #ffe0e0;
+  color: #880010;
+  border: 1px solid #c87888;
+}
+.badge-warning {
+  background: #fff2c0;
+  color: #784808;
+  border: 1px solid #c8a848;
+}
+.badge-info {
+  background: #e0f0ff;
+  color: #084880;
+  border: 1px solid #88b8d8;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   6. アラート行・人物行（dashboard.js が生成するHTML用）
+   ────────────────────────────────────────────────────────────── */
+.alert-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid rgba(180,130,30,.18);
+  background: rgba(255,252,236,.5);
+  transition: background .15s;
+}
+.alert-row:hover { background: rgba(255,248,215,.9); }
+.alert-row:last-child { border-bottom: none; }
+
+.alert-mark {
+  flex: 0 0 36px;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: 'Shippori Mincho', serif;
+  font-size: 12px;
+  font-weight: 900;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.alert-mark.danger  { background: linear-gradient(135deg,#c81020,#880010); color:#fff; box-shadow:0 3px 8px rgba(200,16,32,.35); }
+.alert-mark.warning { background: linear-gradient(135deg,#c88020,#905510); color:#fff; box-shadow:0 3px 8px rgba(200,128,32,.35); }
+.alert-mark.info    { background: linear-gradient(135deg,#1070b8,#085090); color:#fff; box-shadow:0 3px 8px rgba(16,112,184,.35); }
+
+.alert-row .row-title {
+  font-family: 'Shippori Mincho', serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: #2a1008;
+  line-height: 1.45;
+}
+.alert-row .row-meta {
+  font-size: 12px;
+  color: #8a6848;
+  margin-top: 3px;
+}
+.alert-row > div:last-child {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.person-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-bottom: 1px solid rgba(180,130,30,.15);
+}
+.person-row:last-child { border-bottom: none; }
+
+.mini-avatar {
+  flex: 0 0 36px;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg,#082830,#0c3840);
+  color: #e8c060;
+  font-family: 'Shippori Mincho', serif;
+  font-size: 15px;
+  font-weight: 900;
+  border: 1.5px solid #c09020;
+  box-shadow: 0 3px 8px rgba(0,0,0,.25);
+  flex-shrink: 0;
+}
+
+.bars { display: grid; gap: 14px; }
+.bar-head {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Shippori Mincho', serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: #3a1e0a;
+  margin-bottom: 5px;
+}
+.bar {
+  height: 8px;
+  border-radius: 99px;
+  background: #e0cca8;
+  border: 1px solid rgba(100,65,15,.2);
+  overflow: hidden;
+}
+.bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #8a0c18, #c09028);
+  border-radius: 99px;
+  transition: width .6s ease;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   7. サイドバーのメニューアイテム微調整
+   ────────────────────────────────────────────────────────────── */
+.imperial-menu-card {
+  height: 76px;
+  border-radius: 10px;
+}
+.imperial-menu-title {
+  font-size: 22px;
+}

@@ -1,0 +1,954 @@
+/* =========================================================
+   visual-upgrade.css — 完全整理版
+   2026-05-29 競合ゼロ書き直し
+   
+   ルール：
+   - 各セレクタは1箇所のみ定義
+   - サイドバーアイコンはIMGタグのみで表示（CSS背景画像なし）
+   - active時も img を消さない
+   - !important は使わない
+   ========================================================= */
+
+
+/* ---------------------------------------------------------
+   01. 左上ブランドカード
+   --------------------------------------------------------- */
+
+.imperial-brand-card {
+  height: 158px;
+  min-height: 158px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 16px 16px 18px;
+  margin-bottom: 18px;
+  overflow: hidden;
+  border: 2px solid #d8aa38;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 30% 45%, rgba(20,94,93,.28), transparent 43%),
+    linear-gradient(145deg, rgba(7,50,53,.98), rgba(2,20,27,.99));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,236,166,.22),
+    inset 0 18px 28px rgba(255,255,255,.035),
+    inset 0 -18px 26px rgba(0,0,0,.30),
+    0 8px 20px rgba(0,0,0,.38);
+  color: #fff1bd;
+}
+
+/* ブランドカード内のアイコン枠 */
+.icon-frame-brand {
+  flex: 0 0 82px;
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+.icon-frame-brand img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  padding: 0;
+  margin: 0;
+}
+
+/* 汎用枠（ブランドカード外で使う場合） */
+.icon-frame {
+  flex: 0 0 60px;
+  width: 60px;
+  height: 60px;
+  display: block;
+  position: relative;
+  overflow: hidden;
+}
+
+.icon-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+}
+
+.imperial-brand-copy,
+.imperial-brand-card > div:last-child {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: visible;
+}
+
+.imperial-brand-copy {
+  padding-left: 0;
+}
+
+.imperial-brand-title {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  overflow: visible;
+  max-width: none;
+  font-size: 23px;
+  line-height: 1.05;
+  letter-spacing: .005em;
+  font-weight: 800;
+  text-shadow:
+    0 2px 0 #000,
+    0 0 7px rgba(255,231,160,.18);
+}
+
+.imperial-brand-sub {
+  display: block;
+  margin-top: 8px;
+  font: 700 15px/1.15 var(--font-en);
+  font-style: italic;
+  color: #f0cc69;
+  letter-spacing: .012em;
+}
+
+
+/* ---------------------------------------------------------
+   02. ページ見出し左アイコン（総覧ヘッダー等）
+   --------------------------------------------------------- */
+
+.page-heading {
+  gap: 28px;
+}
+
+.page-icon {
+  width: 92px;
+  height: 92px;
+  flex: 0 0 92px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: url("../img/imperial/icons/dashboard-emblem.png") 48% center / cover no-repeat;
+  border: 0;
+  box-shadow: 0 7px 13px rgba(0,0,0,.28);
+  filter: drop-shadow(0 5px 6px rgba(0,0,0,.30));
+  color: transparent;
+}
+
+.page-icon::before,
+.page-icon::after {
+  content: none;
+}
+
+
+/* ---------------------------------------------------------
+   03. サイドバー メニューカード
+   --------------------------------------------------------- */
+
+.imperial-menu-card {
+  align-items: center;
+}
+
+/* ── アイコン枠（全メニュー共通・active問わず） ── */
+.imperial-menu-card .imperial-medal {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  min-width: 58px;
+  min-height: 58px;
+  display: grid;
+  place-items: center;
+  align-self: center;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: none;
+  filter: drop-shadow(0 4px 5px rgba(0,0,0,.42));
+}
+
+/* ── アイコン画像（枠いっぱいに表示） ── */
+.imperial-menu-card .imperial-medal img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  transform: none;
+}
+
+/* SVGアイコンは非表示（PNGを使う方針のため） */
+.imperial-menu-card .imperial-medal svg {
+  display: none;
+}
+
+
+/* ---------------------------------------------------------
+   04. サイドバー 管理者カード
+   --------------------------------------------------------- */
+
+.imperial-user-avatar {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  display: block;
+  padding: 0;
+  margin: 0;
+  border: 2px solid #d8aa38;
+  border-radius: 50%;
+  overflow: hidden;
+  background: transparent;
+  color: transparent;
+  box-shadow: none;
+  filter: drop-shadow(0 4px 5px rgba(0,0,0,.42));
+}
+
+.imperial-user-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+}
+
+
+/* ---------------------------------------------------------
+   05. 数字表示補正
+   --------------------------------------------------------- */
+
+.stat-value,
+.tabular {
+  font-family: "Shippori Mincho", "Noto Serif JP", "Yu Mincho", serif;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+
+/* ---------------------------------------------------------
+   06. サイドバー背景・桜吹雪背景
+   --------------------------------------------------------- */
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background:
+    linear-gradient(180deg, rgba(2,18,22,.18) 0%, rgba(2,14,18,.26) 52%, rgba(16,7,13,.30) 100%),
+    url("../img/imperial/sidebar/sidebar-sakura-bg.png") center top / cover no-repeat,
+    linear-gradient(180deg, #062a2f 0%, #02191f 46%, #120910 100%);
+  border-right-color: rgba(160,110,32,.84);
+  box-shadow:
+    inset -14px 0 26px rgba(0,0,0,.48),
+    inset 0 0 42px rgba(255,206,98,.075),
+    10px 0 24px rgba(42,25,6,.28);
+}
+
+.sidebar::before,
+.sidebar::after {
+  content: none;
+}
+
+.sidebar > * {
+  position: relative;
+  z-index: 1;
+}
+
+.imperial-machine-deco {
+  display: none;
+}
+
+
+/* ================================================================
+   page-header-v2 対応
+   - .page-icon は dashboard-emblem.png を使用
+   - キャラクター画像がない場合は非表示
+   ================================================================ */
+
+.page-header-v2 .page-icon {
+  background-image: url("../img/imperial/icons/dashboard-emblem.png");
+  background-size: cover;
+  background-position: 48% center;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+/* キャラクター画像：ファイルが存在しない間はonerrorで非表示 */
+.page-header-chara {
+  /* JS側でonerror="this.style.display='none'" を追加するか、
+     画像準備ができるまでdisplay:noneにしてください */
+}
+
+/* ================================================================
+   Phase 01 Sidebar Card Balance 20260530
+   目的：
+   - 既存サイドバー背景・PNGアイコンは維持
+   - 非選択メニューだけ和紙カード化して、メイン画面と統一
+   - 選択中メニューは深紅のまま残す
+   ================================================================ */
+
+.sidebar .imperial-menu-card {
+  min-height: 78px;
+  border-radius: 12px;
+  gap: 15px;
+  transition: filter .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+
+.sidebar .imperial-menu-card:not(.active) {
+  color: #2a0f0b;
+  border: 1px solid rgba(195,145,61,.88);
+  background:
+    linear-gradient(180deg, rgba(255,250,236,.86), rgba(246,230,193,.82)),
+    url("../img/imperial/card-bg-ivory.png") center center / cover no-repeat,
+    #fbf2dc;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.55),
+    0 5px 12px rgba(0,0,0,.30);
+}
+
+.sidebar .imperial-menu-card:not(.active)::before {
+  inset: 5px;
+  border: 1px solid rgba(195,145,61,.28);
+  border-radius: 9px;
+}
+
+.sidebar .imperial-menu-card:not(.active)::after {
+  color: #8a5b18;
+  text-shadow: 0 0 8px rgba(216,170,56,.34);
+}
+
+.sidebar .imperial-menu-card:not(.active) .imperial-menu-title {
+  color: #2a0f0b;
+  text-shadow:
+    0 1px 0 rgba(255,255,255,.70),
+    0 2px 5px rgba(88,54,12,.14);
+}
+
+.sidebar .imperial-menu-card:not(.active) .imperial-menu-sub {
+  color: #6c4a24;
+}
+
+.sidebar .imperial-menu-card.active {
+  color: #fff1bd;
+  border: 1px solid rgba(241,198,90,.95);
+  background:
+    radial-gradient(circle at 18% 50%, rgba(255,220,120,.18), transparent 42%),
+    linear-gradient(90deg,#9a0b1b,#700713 78%,#540610);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,221,139,.45),
+    inset 0 -16px 28px rgba(0,0,0,.18),
+    0 8px 16px rgba(80,0,0,.36);
+}
+
+.sidebar .imperial-menu-card.active .imperial-menu-title {
+  color: #fff1bd;
+  text-shadow: 0 2px 0 #000;
+}
+
+.sidebar .imperial-menu-card.active .imperial-menu-sub {
+  color: #f1d38b;
+}
+
+.sidebar .imperial-menu-card:hover {
+  filter: brightness(1.03);
+  transform: translateY(-1px);
+}
+
+.sidebar .imperial-menu-card .imperial-medal {
+  filter: drop-shadow(0 5px 6px rgba(0,0,0,.46));
+}
+
+.sidebar .imperial-menu-card:not(.active) .imperial-medal {
+  box-shadow:
+    0 0 0 1px rgba(195,145,61,.45),
+    0 4px 8px rgba(66,36,8,.22);
+  background: rgba(255,248,231,.58);
+}
+
+
+/* ================================================================
+   Sidebar Sakura Paper Final Phase 20260530
+   目的：サイドバー背景を夜桜＋和柄へ再構築し、
+        通常メニューカードは和紙背景、ブランド/管理者は濃いワインレッドへ統一する。
+   ================================================================ */
+
+.sidebar {
+  background:
+    linear-gradient(180deg, rgba(2,12,20,.10) 0%, rgba(2,10,16,.18) 48%, rgba(5,4,10,.30) 100%),
+    url("../img/imperial/sidebar/sidebar-sakura-bg.png") center top / 100% auto no-repeat,
+    linear-gradient(180deg, #061326 0%, #050814 55%, #10070d 100%);
+  border-right: 4px solid rgba(160,110,32,.88);
+  box-shadow:
+    inset -12px 0 24px rgba(0,0,0,.44),
+    inset 0 0 32px rgba(255,205,96,.055),
+    8px 0 22px rgba(42,25,6,.24);
+}
+
+.sidebar::before,
+.sidebar::after {
+  content: none;
+}
+
+.imperial-nav {
+  gap: 3px;
+}
+
+.sidebar .imperial-menu-card {
+  height: 68px;
+  min-height: 68px;
+  gap: 12px;
+  padding: 6px 11px 6px 12px;
+  border-radius: 10px;
+  margin: 0;
+}
+
+.sidebar .imperial-menu-card:not(.active) {
+  color: #2a0f0b;
+  border: 1px solid rgba(166,112,36,.92);
+  background:
+    linear-gradient(180deg, rgba(255,248,229,.62), rgba(236,210,157,.35)),
+    url("../img/imperial/sidebar/sidebar-menu-paper.png") center center / 100% 100% no-repeat,
+    #f3e2bd;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.60),
+    inset 0 -8px 12px rgba(117,75,18,.08),
+    0 2px 4px rgba(0,0,0,.22);
+}
+
+.sidebar .imperial-menu-card:not(.active)::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(177,126,46,.28);
+  border-radius: 7px;
+  pointer-events: none;
+}
+
+.sidebar .imperial-menu-card:not(.active)::after {
+  color: #9a6b1f;
+  text-shadow: 0 0 6px rgba(216,170,56,.28);
+  font-size: 28px;
+}
+
+.sidebar .imperial-menu-card:not(.active) .imperial-menu-title {
+  color: #241008;
+  font-size: 22px;
+  line-height: 1.05;
+  text-shadow:
+    0 1px 0 rgba(255,255,255,.72),
+    0 2px 4px rgba(86,48,10,.11);
+}
+
+.sidebar .imperial-menu-card:not(.active) .imperial-menu-sub {
+  color: #70512d;
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.sidebar .imperial-menu-card .imperial-medal {
+  width: 48px;
+  height: 48px;
+  flex-basis: 48px;
+  filter: drop-shadow(0 4px 5px rgba(0,0,0,.42));
+}
+
+.sidebar .imperial-menu-card:not(.active) .imperial-medal {
+  background: rgba(255,248,231,.52);
+  box-shadow:
+    0 0 0 1px rgba(166,112,36,.38),
+    0 3px 6px rgba(66,36,8,.20);
+}
+
+.sidebar .imperial-menu-card.active {
+  color: #fff1bd;
+  border: 1px solid rgba(241,198,90,.96);
+  background:
+    radial-gradient(circle at 18% 50%, rgba(255,220,120,.15), transparent 42%),
+    linear-gradient(90deg, #990a19 0%, #740713 78%, #54050e 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,221,139,.43),
+    inset 0 -14px 22px rgba(0,0,0,.20),
+    0 4px 8px rgba(80,0,0,.32);
+}
+
+.sidebar .imperial-menu-card.active .imperial-menu-title {
+  font-size: 22px;
+  line-height: 1.05;
+  color: #fff1bd;
+  text-shadow: 0 2px 0 #000;
+}
+
+.sidebar .imperial-menu-card.active .imperial-menu-sub {
+  font-size: 12px;
+  line-height: 1.15;
+  color: #f1d38b;
+}
+
+.imperial-brand-card,
+.imperial-user-card {
+  border: 2px solid #d8aa38;
+  background:
+    radial-gradient(circle at 18% 50%, rgba(255,218,120,.12), transparent 45%),
+    linear-gradient(135deg, #5b0610 0%, #3d0610 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,236,166,.24),
+    inset 0 -18px 26px rgba(0,0,0,.26),
+    0 6px 14px rgba(0,0,0,.36);
+  color: #fff1bd;
+}
+
+.imperial-brand-card {
+  height: 128px;
+  min-height: 128px;
+  margin-bottom: 10px;
+  padding: 14px 14px;
+}
+
+.icon-frame-brand {
+  flex-basis: 64px;
+  width: 64px;
+  height: 64px;
+}
+
+.imperial-brand-title {
+  font-size: 22px;
+  color: #fff1bd;
+}
+
+.imperial-brand-sub {
+  margin-top: 5px;
+  font-size: 14px;
+  color: #f0cc69;
+}
+
+.imperial-sidebar-separator {
+  margin: 10px 0;
+  color: #dfb84a;
+}
+
+.imperial-user-card {
+  min-height: 66px;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 13px;
+}
+
+.imperial-user-avatar {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+}
+
+.imperial-user-name {
+  font-size: 21px;
+  line-height: 1.05;
+  color: #fff1bd;
+  text-shadow: 0 2px 0 #000;
+}
+
+.imperial-user-role {
+  display: none;
+}
+
+/* ================================================================
+   Sidebar 100pt Finish Phase 20260531
+   目的：完成イメージに寄せた最終仕上げ
+   - 管理者カードは縮小しない。下げて独立した管理領域にする
+   - ★★★を廃止し、金装飾の「管理メニュー」へ変更
+   - 通常カードは和紙ベースのまま、メニューごとに微差色を入れる
+   - 背景は青海波を弱め、下部に薄い帝劇風装飾を追加
+   ================================================================ */
+
+.sidebar {
+  background:
+    radial-gradient(circle at 22% 8%, rgba(186,116,32,.12), transparent 28%),
+    radial-gradient(circle at 90% 42%, rgba(210,168,72,.08), transparent 24%),
+    linear-gradient(180deg, rgba(7,20,33,.94) 0%, rgba(42,28,18,.72) 54%, rgba(12,14,18,.96) 100%),
+    url("../img/imperial/sidebar/sidebar-sakura-bg.png") center top / cover no-repeat,
+    linear-gradient(180deg, #071421 0%, #3c2715 55%, #21160f 100%);
+  border-right: 4px solid rgba(173,122,38,.88);
+  box-shadow:
+    inset -12px 0 22px rgba(0,0,0,.42),
+    inset 0 0 34px rgba(218,170,74,.07),
+    8px 0 22px rgba(42,25,6,.24);
+}
+
+.sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 50% 102%, rgba(216,170,56,.13), transparent 38%),
+    repeating-radial-gradient(ellipse at 50% 100%, rgba(218,170,76,.10) 0 1px, transparent 1px 22px);
+  opacity: .22;
+}
+
+.sidebar::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 18px;
+  height: 165px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: .18;
+  background:
+    linear-gradient(90deg, transparent 0 6%, rgba(216,170,56,.54) 6% 6.4%, transparent 6.4% 93.6%, rgba(216,170,56,.54) 93.6% 94%, transparent 94%),
+    radial-gradient(ellipse at 50% 100%, transparent 0 43%, rgba(216,170,56,.42) 43.5% 44.5%, transparent 45%),
+    linear-gradient(0deg, rgba(216,170,56,.52) 0 1px, transparent 1px 100%),
+    repeating-linear-gradient(90deg, transparent 0 22px, rgba(216,170,56,.24) 22px 23px, transparent 23px 45px);
+  border-bottom: 1px solid rgba(216,170,56,.55);
+  border-radius: 0 0 18px 18px;
+}
+
+.sidebar > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 通常メニュー：飴色和紙＋二重額縁 */
+.sidebar .imperial-menu-card {
+  height: 66px;
+  min-height: 66px;
+  padding: 6px 10px 6px 12px;
+  gap: 11px;
+  border-radius: 7px;
+}
+
+.imperial-nav {
+  gap: 2px;
+}
+
+.sidebar .imperial-menu-card:not(.active) {
+  --menu-accent: rgba(196,146,60,.12);
+  color: #241008;
+  border: 1px solid rgba(135,84,25,.92);
+  background:
+    linear-gradient(180deg, rgba(255,246,221,.54), rgba(222,190,130,.24)),
+    url("../img/imperial/sidebar/sidebar-menu-paper.png") center center / 100% 100% no-repeat,
+    #efe2c5;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.52),
+    inset 0 0 0 4px rgba(126,74,19,.035),
+    inset 0 -8px 12px rgba(106,64,14,.08),
+    0 2px 5px rgba(0,0,0,.24);
+}
+
+.sidebar .imperial-menu-card:not(.active)::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(174,119,37,.30);
+  border-radius: 4px;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, var(--menu-accent) 0%, transparent 34%, transparent 66%, var(--menu-accent) 100%);
+}
+
+.sidebar .imperial-menu-card:not(.active)::after {
+  color: var(--menu-arrow, #9a6b1f);
+  font-size: 27px;
+  text-shadow: 0 0 6px rgba(216,170,56,.22);
+}
+
+.sidebar .imperial-menu-card:not(.active) .imperial-menu-title {
+  font-size: 22px;
+  line-height: 1.02;
+}
+
+.sidebar .imperial-menu-card:not(.active) .imperial-menu-sub {
+  font-size: 12px;
+  line-height: 1.12;
+}
+
+.sidebar .imperial-menu-card .imperial-medal {
+  width: 47px;
+  height: 47px;
+  flex-basis: 47px;
+}
+
+.sidebar .imperial-menu-card:not(.active) .imperial-medal {
+  background: rgba(255,247,225,.58);
+  box-shadow:
+    0 0 0 1px rgba(145,91,29,.40),
+    0 3px 6px rgba(66,36,8,.21);
+}
+
+/* メニューごとの微差色：カード全体ではなく、薄い色気だけ加える */
+.sidebar .imperial-menu-card[data-menu="employees"]  { --menu-accent: rgba(141, 94, 36,.13); --menu-arrow:#93661e; }
+.sidebar .imperial-menu-card[data-menu="licenses"]   { --menu-accent: rgba(197, 96, 92,.15); --menu-arrow:#a55f35; }
+.sidebar .imperial-menu-card[data-menu="facility"]   { --menu-accent: rgba( 85,123, 84,.14); --menu-arrow:#73824b; }
+.sidebar .imperial-menu-card[data-menu="alerts"]     { --menu-accent: rgba(171, 40, 43,.14); --menu-arrow:#9b4b27; }
+.sidebar .imperial-menu-card[data-menu="promotion"]  { --menu-accent: rgba(210,156, 57,.16); --menu-arrow:#a67821; }
+.sidebar .imperial-menu-card[data-menu="masters"]    { --menu-accent: rgba(130, 86,146,.15); --menu-arrow:#8b6845; }
+.sidebar .imperial-menu-card[data-menu="master_import"] { --menu-accent: rgba( 87,105,124,.14); --menu-arrow:#7b7055; }
+
+/* activeは従来より少し落ち着いた深紅 */
+.sidebar .imperial-menu-card.active {
+  border-radius: 8px;
+  border: 1px solid rgba(241,198,90,.96);
+  background:
+    radial-gradient(circle at 18% 50%, rgba(255,220,120,.13), transparent 42%),
+    linear-gradient(90deg, #820817 0%, #640611 74%, #43040b 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,221,139,.42),
+    inset 0 -13px 22px rgba(0,0,0,.22),
+    0 4px 8px rgba(80,0,0,.30);
+}
+
+/* ブランド・管理者カード：濃ワインレッド＋金。ただし選択カードより暗く重くする */
+.imperial-brand-card,
+.imperial-user-card {
+  border-radius: 12px;
+  border: 2px solid #d8aa38;
+  background:
+    radial-gradient(circle at 18% 50%, rgba(255,218,120,.09), transparent 45%),
+    linear-gradient(135deg, #520511 0%, #30040d 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,236,166,.22),
+    inset 0 -16px 24px rgba(0,0,0,.24),
+    0 5px 13px rgba(0,0,0,.34);
+}
+
+.imperial-brand-card {
+  height: 126px;
+  min-height: 126px;
+  margin-bottom: 8px;
+}
+
+/* 管理メニュー：★★★廃止、金装飾ライン */
+.imperial-sidebar-separator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 46px 4px 10px;
+  color: #dfb84a;
+  font: 800 13px/1 var(--font-jp);
+  letter-spacing: .18em;
+  text-shadow: 0 1px 0 rgba(0,0,0,.8);
+}
+
+.imperial-sidebar-separator::before,
+.imperial-sidebar-separator::after {
+  content: "";
+  height: 1px;
+  flex: 1 1 auto;
+  background: linear-gradient(90deg, transparent, rgba(216,170,56,.78), transparent);
+}
+
+.imperial-sidebar-separator span {
+  position: relative;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+.imperial-sidebar-separator span::before,
+.imperial-sidebar-separator span::after {
+  content: "◇";
+  color: #d8aa38;
+  font-size: 10px;
+  margin: 0 6px;
+}
+
+/* 管理者は縮小しない。特別エリアとして下へ置く */
+.imperial-user-card {
+  min-height: 66px;
+  margin-top: 0;
+  padding: 9px 12px;
+}
+
+.imperial-user-card::after {
+  content: "›";
+  margin-left: auto;
+  color: #f3c84f;
+  font-size: 28px;
+  text-shadow: 0 0 8px rgba(243,200,79,.36);
+}
+
+.imperial-user-role {
+  display: none;
+}
+
+.imperial-sidebar-future-space {
+  height: 168px;
+  margin-top: 14px;
+  border-top: 1px solid rgba(216,170,56,.18);
+  background:
+    linear-gradient(90deg, transparent, rgba(216,170,56,.18), transparent) top center / 100% 1px no-repeat;
+}
+
+
+/* ================================================================
+   Sidebar Ornate Background Integration 20260531
+   目的：生成済みの大正ロマン風サイドバー背景PNGをきれいに敷く。
+   - CSSで無理に描いていた下部装飾を撤去
+   - 背景画像側の帝劇シルエット・金装飾を活かす
+   - メニューカード/ブランドカードの配色は維持
+   ================================================================ */
+
+.sidebar {
+  background:
+    linear-gradient(180deg, rgba(4,10,16,.18) 0%, rgba(5,9,13,.10) 46%, rgba(5,6,9,.20) 100%),
+    url("../img/imperial/sidebar/sidebar-sakura-bg.png") center top / 100% 100% no-repeat,
+    linear-gradient(180deg, #071421 0%, #241810 58%, #08090d 100%);
+  border-right: 4px solid rgba(173,122,38,.90);
+  box-shadow:
+    inset -12px 0 22px rgba(0,0,0,.42),
+    inset 0 0 34px rgba(218,170,74,.055),
+    8px 0 22px rgba(42,25,6,.22);
+}
+
+.sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    linear-gradient(90deg, rgba(0,0,0,.20), transparent 18%, transparent 82%, rgba(0,0,0,.22)),
+    linear-gradient(180deg, rgba(255,220,120,.04), transparent 22%, transparent 78%, rgba(255,220,120,.035));
+  opacity: .72;
+}
+
+.sidebar::after {
+  content: none;
+}
+
+.sidebar > * {
+  position: relative;
+  z-index: 1;
+}
+
+.imperial-sidebar-future-space {
+  height: 170px;
+  margin-top: 18px;
+  border-top: 1px solid rgba(216,170,56,.22);
+  background: none;
+}
+
+
+/* ================================================================
+   Dashboard Header — B案背景反映 20260531
+   目的：総覧ヘッダーを1枚背景PNG化し、文字・総覧アイコンはHTML/CSSで重ねる。
+   - 背景PNG: assets/img/imperial/header-dashboard-bg.png
+   - 上部操作ヘッダーは index.html から削除済み
+   - page-header-chara は使用しない
+   ================================================================ */
+.page-content .top-header{
+  display:none;
+}
+
+.page-main{
+  padding-top:28px;
+}
+
+.page-header.page-header-v2{
+  position:relative;
+  width:100%;
+  height:220px;
+  min-height:220px;
+  max-height:220px;
+  margin-bottom:28px;
+  padding:0;
+  display:block;
+  overflow:hidden;
+  border:2px solid #d6a64c;
+  background:#071426;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,245,205,.42),
+    0 10px 24px rgba(73,45,13,.16);
+}
+
+.page-header.page-header-v2 .page-header-bg-img{
+  display:block;
+  width:100%;
+  height:220px;
+  object-fit:contain;
+  object-position:center center;
+  max-width:none;
+  position:relative;
+  z-index:0;
+}
+
+.page-header.page-header-v2::before{
+  display:none;
+  content:none;
+}
+
+.page-header.page-header-v2::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  display:block;
+  z-index:1;
+  pointer-events:none;
+  background:linear-gradient(90deg, rgba(255,248,230,.22), rgba(255,248,230,.02) 42%, rgba(255,248,230,0));
+}
+
+.page-header.page-header-v2 .page-header-chara{
+  display:none;
+}
+
+.page-header.page-header-v2 .page-heading{
+  position:absolute;
+  left:56px;
+  top:50%;
+  transform:translateY(-50%);
+  display:flex;
+  align-items:center;
+  gap:24px;
+  z-index:2;
+}
+
+.page-header.page-header-v2 .page-icon{
+  width:92px;
+  height:92px;
+  flex:0 0 92px;
+  background-image:url("../img/imperial/sidebar/menu-dashboard.png");
+  background-size:contain;
+  background-position:center;
+  background-repeat:no-repeat;
+  border-radius:50%;
+  filter:drop-shadow(0 8px 10px rgba(38,21,5,.34));
+}
+
+.page-header.page-header-v2 .page-title{
+  font-family:var(--font-jp);
+  font-size:52px;
+  font-weight:800;
+  line-height:1;
+  color:#2a0f0b;
+  letter-spacing:.08em;
+  text-shadow:
+    0 2px 0 rgba(255,246,221,.82),
+    0 5px 10px rgba(76,40,9,.18);
+}
+
+.page-header.page-header-v2 .page-title-en{
+  margin-top:12px;
+  padding-bottom:9px;
+  font-family:var(--font-en);
+  font-size:19px;
+  font-weight:700;
+  letter-spacing:.18em;
+  color:#754719;
+  border-bottom:1px solid rgba(145,16,27,.48);
+  text-shadow:0 1px 0 rgba(255,248,229,.76);
+}
+
+@media(max-width:1200px){
+  .page-header.page-header-v2 .page-heading{left:34px;gap:18px;}
+  .page-header.page-header-v2 .page-icon{width:74px;height:74px;flex-basis:74px;}
+  .page-header.page-header-v2 .page-title{font-size:40px;}
+  .page-header.page-header-v2 .page-title-en{font-size:14px;letter-spacing:.13em;}
+}

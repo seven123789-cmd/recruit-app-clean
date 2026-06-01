@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>社員取込 — 資格・免許管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/common.css">
+<link rel="stylesheet" href="assets/css/visual-upgrade.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+.import-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 20px; }
+.import-card h3 { font-family: var(--font-mincho, 'Shippori Mincho', serif); font-size: 1rem; font-weight: 600; color: var(--text-primary); margin: 0 0 16px; display:flex;align-items:center;gap:8px; }
+.drop-zone { border: 2px dashed var(--border-strong, #c8b896); border-radius: 10px; padding: 48px 24px; text-align: center; cursor: pointer; transition: all .2s; background: var(--surface-alt, #faf8f4); }
+.drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent, #8b6a3e); background: var(--surface-hover, #f5f0e8); }
+.drop-zone svg { color: var(--text-muted); margin-bottom: 12px; }
+.drop-zone .drop-label { font-size: 1rem; color: var(--text-secondary); font-weight: 500; }
+.drop-zone .drop-sub { font-size: .8rem; color: var(--text-muted); margin-top: 6px; }
+.import-progress { display:none; }
+.import-progress.visible { display:block; }
+.progress-bar-wrap { background: var(--border); border-radius: 99px; height: 8px; overflow: hidden; margin: 12px 0; }
+.progress-bar-fill { height: 100%; background: var(--accent, #8b6a3e); border-radius: 99px; transition: width .3s; }
+.result-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin: 16px 0; }
+.result-stat { background: var(--surface-alt, #faf8f4); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; text-align:center; }
+.result-stat .rs-val { font-size: 1.5rem; font-weight: 700; color: var(--accent, #8b6a3e); font-family: var(--font-mincho,'Shippori Mincho',serif); }
+.result-stat .rs-label { font-size: .72rem; color: var(--text-muted); margin-top: 2px; }
+.preview-wrap { max-height: 360px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+.preview-wrap table { width: 100%; font-size: .8rem; border-collapse: collapse; }
+.preview-wrap th { background: var(--surface-alt,#faf8f4); padding: 7px 10px; text-align:left; border-bottom: 1px solid var(--border); position: sticky; top:0; z-index:1; white-space:nowrap; font-weight:600; font-size:.72rem; color:var(--text-secondary); }
+.preview-wrap td { padding: 6px 10px; border-bottom: 1px solid var(--border-light,#eee); white-space: nowrap; }
+.preview-wrap tr:last-child td { border-bottom: none; }
+.step-badge { display: inline-flex; align-items:center; justify-content:center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent,#8b6a3e); color:#fff; font-size:.72rem; font-weight:700; flex-shrink:0; }
+.mapping-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.mapping-table th { text-align:left; padding: 6px 10px; background: var(--surface-alt,#faf8f4); border-bottom: 1px solid var(--border); color: var(--text-secondary); font-weight: 600; font-size: .72rem; }
+.mapping-table td { padding: 6px 10px; border-bottom: 1px solid var(--border-light,#eee); vertical-align:middle; }
+.mapping-table tr:last-child td { border-bottom: none; }
+.tag { display:inline-block; padding: 1px 8px; border-radius: 4px; font-size: .72rem; font-weight: 600; }
+.tag-yes { background: #d4edda; color: #155724; }
+.tag-no { background: #f8d7da; color: #721c24; }
+.btn-primary { background: var(--accent,#8b6a3e); color: #fff; border: none; border-radius: 6px; padding: 10px 24px; font-size: .88rem; font-weight: 600; cursor: pointer; transition: opacity .15s; }
+.btn-primary:hover { opacity: .85; }
+.btn-primary:disabled { opacity: .45; cursor:default; }
+.btn-dl { background: #1a6b3a; color: #fff; border: none; border-radius: 6px; padding: 10px 24px; font-size: .88rem; font-weight: 600; cursor: pointer; transition: opacity .15s; }
+.btn-dl:hover { opacity:.85; }
+.alert-box { padding: 12px 16px; border-radius: 8px; font-size: .84rem; margin-bottom: 16px; }
+.alert-box.info { background: #e8f4fd; border: 1px solid #b8daff; color: #004085; }
+.alert-box.success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+.alert-box.warning { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+<aside class="sidebar" id="sidebar"></aside>
+<div class="page-content">
+<main class="page-main">
+
+  <div class="page-header">
+    <div class="page-heading">
+      <div class="page-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <div><div class="page-title">社員取込</div><div class="page-title-en">Employee Master Import</div></div>
+    </div>
+  </div>
+
+  <!-- 現在のデータ状況 -->
+  <div class="import-card" id="current-status-card">
+    <h3><span class="step-badge">i</span> 現在の社員データ状況</h3>
+    <div class="result-stats" id="current-stats">
+      <div class="result-stat"><div class="rs-val" id="cs-total">—</div><div class="rs-label">登録社員数</div></div>
+      <div class="result-stat"><div class="rs-val" id="cs-seishain">—</div><div class="rs-label">正社員</div></div>
+      <div class="result-stat"><div class="rs-val" id="cs-centers">—</div><div class="rs-label">所属センター数</div></div>
+      <div class="result-stat"><div class="rs-val" id="cs-source">—</div><div class="rs-label">データソース</div></div>
+    </div>
+    <div class="alert-box info">現在のデータは <strong>assets/data/employee_master_2026_04.json</strong> から読み込まれています。新しいXLSファイルを取り込むと、このファイルが更新されます。</div>
+  </div>
+
+  <!-- ステップ1: ファイル選択 -->
+  <div class="import-card">
+    <h3><span class="step-badge">1</span> 社員名簿ファイルを選択</h3>
+    <div class="drop-zone" id="drop-zone">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      <div class="drop-label">XLS / XLSX ファイルをドロップ、またはクリックして選択</div>
+      <div class="drop-sub">社員名簿.xls 形式（ヘッダー3行目：頭文字・社員コード・所属…）</div>
+    </div>
+    <input type="file" id="file-input" accept=".xls,.xlsx" style="display:none">
+
+    <div class="import-progress" id="import-progress">
+      <div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--text-secondary)">
+        <span id="progress-label">処理中...</span><span id="progress-pct">0%</span>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- ステップ2: 列マッピング確認 -->
+  <div class="import-card" id="mapping-card" style="display:none">
+    <h3><span class="step-badge">2</span> 列マッピング確認</h3>
+    <table class="mapping-table">
+      <thead><tr><th>元のカラム名</th><th>マッピング先フィールド</th><th>変換内容</th><th>必須</th></tr></thead>
+      <tbody>
+        <tr><td>社員ｺｰﾄﾞ</td><td>employee_code</td><td>数値 → 文字列</td><td><span class="tag tag-yes">必須</span></td></tr>
+        <tr><td>社員名漢字</td><td>name</td><td>トリム処理</td><td><span class="tag tag-yes">必須</span></td></tr>
+        <tr><td>社員名ｶﾅ</td><td>kana</td><td>半角カナ</td><td><span class="tag tag-no">任意</span></td></tr>
+        <tr><td>所属</td><td>center</td><td>数値コード → 文字列</td><td><span class="tag tag-yes">必須</span></td></tr>
+        <tr><td>職種</td><td>position</td><td>11→職員 / 21-41→内務員 / 45-71→外商員</td><td><span class="tag tag-yes">必須</span></td></tr>
+        <tr><td>身分</td><td>employment_type</td><td>0→正社員 / 1→パート / 3→嘱託 / 8→再雇用 など</td><td><span class="tag tag-yes">必須</span></td></tr>
+        <tr><td>職位</td><td>current_grade</td><td>0→1級 / 6→6級 / 7→管理職 / 9→役員</td><td><span class="tag tag-no">任意</span></td></tr>
+        <tr><td>性別</td><td>gender</td><td>1→男性 / 2→女性</td><td><span class="tag tag-no">任意</span></td></tr>
+        <tr><td>生年月日</td><td>birth_date</td><td>YYMMDD整数 → YYYY-MM-DD</td><td><span class="tag tag-no">任意</span></td></tr>
+        <tr><td>入社年月日</td><td>hire_date</td><td>YYMMDD整数 → YYYY-MM-DD</td><td><span class="tag tag-no">任意</span></td></tr>
+        <tr><td>年令</td><td>age</td><td>整数</td><td><span class="tag tag-no">任意</span></td></tr>
+        <tr><td>勤続</td><td>years_of_service</td><td>整数</td><td><span class="tag tag-no">任意</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ステップ3: プレビュー -->
+  <div class="import-card" id="preview-card" style="display:none">
+    <h3><span class="step-badge">3</span> 取込プレビュー（最初の20件）</h3>
+    <div class="result-stats" id="preview-stats"></div>
+    <div class="preview-wrap">
+      <table>
+        <thead><tr><th>社員コード</th><th>氏名</th><th>カナ</th><th>所属</th><th>職種</th><th>雇用形態</th><th>等級</th><th>性別</th><th>生年月日</th><th>入社年月日</th><th>年齢</th><th>勤続</th></tr></thead>
+        <tbody id="preview-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <button class="btn-primary" id="btn-import" onclick="doImport()">このデータでインポート実行</button>
+      <button class="btn-dl" id="btn-dl" onclick="downloadJson()" style="display:none">JSONをダウンロード</button>
+      <span id="import-result-msg" style="font-size:.84rem;font-weight:600;color:var(--accent,#8b6a3e)"></span>
+    </div>
+  </div>
+
+</main>
+</div>
+</div>
+
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/common.js"></script>
+<script>
+let parsedEmployees = [];
+
+// コードマッピング
+const SHOKUHU_MAP = {11:'職員',16:'職員',21:'内務員',31:'内務員',41:'内務員',45:'外商員',51:'外商員',71:'外商員',0:'職員'};
+const MIBUN_MAP   = {0:'正社員',1:'パート',3:'嘱託',4:'派遣',5:'アルバイト',6:'契約社員',8:'再雇用',9:'その他'};
+const GENDER_MAP  = {1:'男性',2:'女性',0:'不明'};
+const GRADE_MAP   = {0:'1級',1:'2級',2:'3級',3:'4級',4:'5級',6:'6級',7:'管理職',9:'役員'};
+
+function parseYYMMDD(v) {
+  if (!v || isNaN(v)) return null;
+  v = parseInt(v);
+  if (v < 10000) return null;
+  const year0 = Math.floor(v / 10000);
+  const month = Math.floor((v % 10000) / 100);
+  const day   = v % 100;
+  const year  = year0 < 100 ? (year0 >= 25 ? 1900 + year0 : 2000 + year0) : year0;
+  try {
+    const d = new Date(year, month - 1, day);
+    if (isNaN(d.getTime())) return null;
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  } catch { return null; }
+}
+
+function parseXLS(data) {
+  const wb = XLSX.read(data, {type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+
+  // ヘッダー行を探す（'社員ｺｰﾄﾞ' がある行）
+  let headerRow = -1;
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    if (rows[i] && rows[i].some(c => c && String(c).includes('社員'))) {
+      headerRow = i; break;
+    }
+  }
+  if (headerRow < 0) { alert('ヘッダー行が見つかりません。社員名簿フォーマットを確認してください。'); return []; }
+
+  const headers = rows[headerRow].map(h => h ? String(h).trim() : '');
+  const idx = name => headers.indexOf(name);
+
+  const iCode   = idx('社員ｺｰﾄﾞ');
+  const iName   = idx('社員名漢字');
+  const iKana   = idx('社員名ｶﾅ');
+  const iCenter = idx('所属');
+  const iPos    = idx('職種');
+  const iMibun  = idx('身分');
+  const iGender = idx('性別');
+  const iBirth  = idx('生年月日');
+  const iHire   = idx('入社年月日');
+  const iGrade  = idx('職位');
+  const iAge    = idx('年令');
+  const iKinz   = idx('勤続');
+
+  const employees = [];
+  for (let i = headerRow + 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row) continue;
+    const code = row[iCode];
+    const name = row[iName];
+    if (!code || !name || String(name).trim() === '') continue;
+    const codeStr = String(parseInt(code));
+    const shokuhu = parseInt(row[iPos]) || 11;
+    const mibun   = parseInt(row[iMibun]) || 0;
+    const gender  = parseInt(row[iGender]) || 0;
+    const grade   = parseInt(row[iGrade]) || 0;
+    employees.push({
+      id: `emp_${codeStr}`,
+      employee_code: codeStr,
+      name: String(name).trim(),
+      kana: row[iKana] ? String(row[iKana]).trim() : '',
+      center: row[iCenter] ? String(parseInt(row[iCenter])) : '0',
+      position: SHOKUHU_MAP[shokuhu] || '職員',
+      employment_type: MIBUN_MAP[mibun] || '正社員',
+      current_grade: GRADE_MAP[grade] || '一般',
+      gender: GENDER_MAP[gender] || '不明',
+      birth_date: parseYYMMDD(row[iBirth]),
+      hire_date:  parseYYMMDD(row[iHire]),
+      age: row[iAge] ? parseInt(row[iAge]) : null,
+      years_of_service: row[iKinz] ? parseInt(row[iKinz]) : null,
+      job_code: shokuhu,
+      status_code: mibun,
+      grade_code: grade,
+      division: '家電物流事業部',
+      promotion_target_flag: false,
+      source_year_month: new Date().toISOString().slice(0,7)
+    });
+  }
+  return employees;
+}
+
+function showPreview(employees) {
+  parsedEmployees = employees;
+  const centers   = new Set(employees.map(e => e.center));
+  const positions = {};
+  const empTypes  = {};
+  employees.forEach(e => {
+    positions[e.position] = (positions[e.position]||0)+1;
+    empTypes[e.employment_type] = (empTypes[e.employment_type]||0)+1;
+  });
+
+  document.getElementById('preview-stats').innerHTML = [
+    ['rs-total', employees.length, '取込対象'],
+    ['rs-seishain', empTypes['正社員']||0, '正社員'],
+    ['rs-centers', centers.size, '所属センター数'],
+    ['rs-syokuin', positions['職員']||0, '職員'],
+    ['rs-naimu', positions['内務員']||0, '内務員'],
+    ['rs-gaisho', positions['外商員']||0, '外商員'],
+  ].map(([id,v,label]) => `<div class="result-stat"><div class="rs-val" id="${id}">${v.toLocaleString()}</div><div class="rs-label">${label}</div></div>`).join('');
+
+  const tbody = document.getElementById('preview-tbody');
+  tbody.innerHTML = employees.slice(0, 20).map(e =>
+    `<tr><td><strong>${e.employee_code}</strong></td><td>${e.name}</td><td style="color:var(--text-muted)">${e.kana||'—'}</td>
+    <td>${e.center}</td><td>${e.position}</td><td>${e.employment_type}</td><td>${e.current_grade}</td>
+    <td>${e.gender}</td><td>${e.birth_date||'—'}</td><td>${e.hire_date||'—'}</td>
+    <td>${e.age??'—'}</td><td>${e.years_of_service??'—'}</td></tr>`
+  ).join('') + (employees.length > 20 ? `<tr><td colspan="12" style="color:var(--text-muted);padding:10px;text-align:center">他 ${employees.length-20} 件...</td></tr>` : '');
+
+  document.getElementById('mapping-card').style.display = 'block';
+  document.getElementById('preview-card').style.display = 'block';
+}
+
+function doImport() {
+  if (!parsedEmployees.length) return;
+  const btn = document.getElementById('btn-import');
+  btn.disabled = true; btn.textContent = '処理中...';
+
+  const output = {
+    source_file: '社員名簿.xls',
+    sheet: '社員名簿',
+    imported_at: new Date().toISOString().slice(0,10),
+    summary: {
+      total: parsedEmployees.length,
+      centers: [...new Set(parsedEmployees.map(e=>e.center))].length,
+      position_counts: parsedEmployees.reduce((a,e)=>{a[e.position]=(a[e.position]||0)+1;return a;},{}),
+      employment_type_counts: parsedEmployees.reduce((a,e)=>{a[e.employment_type]=(a[e.employment_type]||0)+1;return a;},{})
+    },
+    employees: parsedEmployees
+  };
+
+  // LocalStorageにも保存（ブラウザキャッシュとして）
+  try {
+    localStorage.setItem('imported_employees_v1', JSON.stringify(output));
+  } catch(e) { console.warn('LocalStorage保存失敗:', e); }
+
+  document.getElementById('import-result-msg').textContent = `✓ ${parsedEmployees.length.toLocaleString()}件を取り込みました。JSONをダウンロードしてデータを保存してください。`;
+  document.getElementById('btn-dl').style.display = 'inline-block';
+  btn.textContent = '✓ 完了';
+  window._importedOutput = output;
+}
+
+function downloadJson() {
+  if (!window._importedOutput) return;
+  const blob = new Blob([JSON.stringify(window._importedOutput, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'employee_master_2026_04.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ファイル処理
+function handleFile(file) {
+  if (!file) return;
+  document.getElementById('import-progress').classList.add('visible');
+  document.getElementById('progress-label').textContent = file.name + ' を読み込み中...';
+  document.getElementById('progress-fill').style.width = '30%';
+  document.getElementById('progress-pct').textContent = '30%';
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById('progress-fill').style.width = '70%';
+    document.getElementById('progress-pct').textContent = '70%';
+    try {
+      const data = new Uint8Array(e.target.result);
+      const employees = parseXLS(data);
+      document.getElementById('progress-fill').style.width = '100%';
+      document.getElementById('progress-pct').textContent = '100%';
+      document.getElementById('progress-label').textContent = `${employees.length.toLocaleString()}件を解析完了`;
+      if (employees.length > 0) showPreview(employees);
+    } catch(err) {
+      console.error(err);
+      alert('ファイルの解析に失敗しました: ' + err.message);
+      document.getElementById('import-progress').classList.remove('visible');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ドロップゾーン
+const dz = document.getElementById('drop-zone');
+const fi = document.getElementById('file-input');
+dz.addEventListener('click', () => fi.click());
+fi.addEventListener('change', e => handleFile(e.target.files[0]));
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+
+// 現在のデータ状況を表示
+(async () => {
+  await Auth.requireAuth();
+  renderSidebar('master_import');
+  APP.initHeader();
+  try {
+    const emps = await APP.loadEmployees();
+    const seishain = emps.filter(e=>e.employment_type==='正社員').length;
+    const centers  = new Set(emps.map(e=>e.center)).size;
+    document.getElementById('cs-total').textContent    = emps.length.toLocaleString();
+    document.getElementById('cs-seishain').textContent = seishain.toLocaleString();
+    document.getElementById('cs-centers').textContent  = centers;
+    document.getElementById('cs-source').textContent   = 'JSON';
+  } catch(e) { console.warn(e); }
+})();
+</script>
+</body></html>

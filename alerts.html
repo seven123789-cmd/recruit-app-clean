@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>アラート — 資格・免許管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/common.css">
+<link rel="stylesheet" href="assets/css/visual-upgrade.css">
+</head>
+<body>
+<div class="app-shell">
+<aside class="sidebar" id="sidebar"></aside>
+<div class="page-content">
+<main class="page-main">
+  <div class="page-header">
+    <div class="page-heading">
+      <div class="page-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+      <div><div class="page-title">アラート</div><div class="page-title-en">Expiry Alerts</div></div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat-card"><div class="stat-top"><span>対象件数</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div></div><div class="stat-value tabular" id="alert-total">—</div><div class="stat-sub">全期限データ</div></div>
+    <div class="stat-card danger"><div class="stat-top"><span>期限切れ</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div></div><div class="stat-value tabular" id="alert-expired">—</div><div class="stat-sub">要即時対応</div></div>
+    <div class="stat-card warning"><div class="stat-top"><span>三十日以内</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></div><div class="stat-value tabular" id="alert-30">—</div><div class="stat-sub">更新準備</div></div>
+    <div class="stat-card info"><div class="stat-top"><span>九十日以内</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div><div class="stat-value tabular" id="alert-90">—</div><div class="stat-sub">計画対応</div></div>
+  </div>
+  <div class="filter-panel">
+    <div class="filter-grid compact">
+      <div class="form-group"><label class="form-label">検索</label><input id="filter-keyword" class="form-control" placeholder="社員名・資格名"></div>
+      <div class="form-group"><label class="form-label">センター</label><select id="filter-center" class="form-control"></select></div>
+      <div class="form-group"><label class="form-label">資格</label><select id="filter-license" class="form-control"></select></div>
+      <div class="form-group"><label class="form-label">状態</label><select id="filter-status" class="form-control"><option value="">すべて</option><option>期限切れ</option><option>30日以内</option><option>90日以内</option><option>正常</option><option>期限なし</option></select></div>
+    </div>
+  </div>
+  <div class="table-card">
+    <div class="table-tools"><div class="table-count">計 <strong id="alert-count">—</strong> 件</div></div>
+    <div class="table-wrap"><table><thead><tr><th>状態</th><th>社員</th><th>センター</th><th>資格</th><th>区分</th><th>期限日</th><th>残日数</th></tr></thead><tbody id="alert-tbody"></tbody></table></div>
+  </div>
+</main>
+</div>
+</div>
+<div id="toast-container"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/common.js"></script>
+<script src="assets/js/alerts.js"></script>
+<script>(async()=>{await Auth.requireAuth();renderSidebar('alerts');Modal.setup();APP.initHeader();await initAlerts();})();</script>
+</body></html>

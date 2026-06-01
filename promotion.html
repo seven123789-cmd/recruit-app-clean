@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>社員マスタ取込 — 資格・免許管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/common.css">
+<link rel="stylesheet" href="assets/css/visual-upgrade.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="app-shell">
+<aside class="sidebar" id="sidebar"></aside>
+<div class="page-content">
+<main class="page-main">
+  <div class="page-header">
+    <div class="page-heading">
+      <div class="page-icon" aria-hidden="true"></div>
+      <div>
+        <div class="page-title">社員取込</div>
+        <div class="page-title-en">EMPLOYEE MASTER IMPORT</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content-grid">
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Excel取込</div>
+          <div class="card-sub">対象シート：人事データ_2604</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <label>
+            <span class="label">社員マスタExcel</span>
+            <input type="file" id="excel-file" accept=".xlsx,.xls,.xlsm">
+          </label>
+          <label>
+            <span class="label">取込対象</span>
+            <select id="target-filter">
+              <option value="target">家電対象のみ</option>
+              <option value="all">全行を確認用に表示</option>
+            </select>
+          </label>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px">
+          <button class="btn btn-primary" onclick="readEmployeeMaster()">読込・プレビュー</button>
+          <button class="btn btn-secondary" onclick="saveEmployeeMasterToLocal()">デモ保存</button>
+          <button class="btn btn-secondary" onclick="upsertEmployeeMaster()">Supabase反映</button>
+          <button class="btn btn-secondary" onclick="downloadEmployeeMasterJson()">JSON出力</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">取込ルール</div>
+          <div class="card-sub">列対応と変換条件</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <table>
+          <tbody>
+            <tr><th>B列</th><td>社員番号 → employee_code</td></tr>
+            <tr><th>G列</th><td>氏名 → employee_name / name</td></tr>
+            <tr><th>D列</th><td>職種判定：11/16=職員、41/45=外商員、51=内務員</td></tr>
+            <tr><th>M列</th><td>等級：10=1級、20=2級、30=3級、数値あり=正社員、空欄=副社員</td></tr>
+            <tr><th>J/K/I/P列</th><td>生年月日・入社日・性別・年齢</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:24px">
+    <div class="card-header">
+      <div>
+        <div class="card-title">プレビュー</div>
+        <div class="card-sub" id="import-summary">未読込</div>
+      </div>
+    </div>
+    <div class="card-body" style="overflow:auto">
+      <table>
+        <thead><tr><th>社員番号</th><th>氏名</th><th>職種</th><th>等級</th><th>雇用形態</th><th>生年月日</th><th>入社日</th><th>年齢</th><th>性別</th><th>判定</th></tr></thead>
+        <tbody id="preview-body"><tr><td colspan="10" class="empty">Excelを選択してください</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+</div>
+</div>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/common.js"></script>
+<script>
+let importedEmployees = [];
+
+function cell(row, index){ return row[index] ?? ''; }
+function normalizeCode(value){ return String(value ?? '').trim(); }
+function excelDate(value){
+  if(!value) return '';
+  if(value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString().slice(0,10);
+  if(typeof value === 'number'){
+    const d = XLSX.SSF.parse_date_code(value);
+    if(d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+  }
+  const s = String(value).trim().replace(/[./]/g,'-');
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? s : d.toISOString().slice(0,10);
+}
+function positionFromJob(value){
+  const v = Number(String(value ?? '').trim());
+  if([11,16].includes(v)) return '職員';
+  if([41,45].includes(v)) return '外商員';
+  if(v === 51) return '内務員';
+  return '';
+}
+function gradeFromCode(value){
+  const v = String(value ?? '').trim();
+  if(v === '') return '';
+  if(v === '10') return '1級';
+  if(v === '20') return '2級';
+  if(v === '30') return '3級';
+  return '正社員';
+}
+function employmentFromGrade(value){
+  return String(value ?? '').trim() === '' ? '副社員' : '正社員';
+}
+function genderFromCode(value){
+  const v = String(value ?? '').trim();
+  if(v === '1') return '男性';
+  if(v === '2') return '女性';
+  return '';
+}
+function mapRow(row, rowNumber){
+  const jobCode = cell(row, 3);
+  const gradeCode = cell(row, 12);
+  const position = positionFromJob(jobCode);
+  return {
+    source_row: rowNumber,
+    employee_code: normalizeCode(cell(row, 1)),
+    employee_name: String(cell(row, 6) ?? '').trim(),
+    name: String(cell(row, 6) ?? '').trim(),
+    position,
+    job_code: normalizeCode(jobCode),
+    grade: gradeFromCode(gradeCode),
+    current_grade: gradeFromCode(gradeCode),
+    employment_type: employmentFromGrade(gradeCode),
+    birth_date: excelDate(cell(row, 9)),
+    hire_date: excelDate(cell(row, 10)),
+    age: cell(row, 15) || null,
+    gender: genderFromCode(cell(row, 8)),
+    import_status: position ? '家電対象' : '家電対象外'
+  };
+}
+async function readEmployeeMaster(){
+  const input = document.getElementById('excel-file');
+  const file = input.files?.[0];
+  if(!file){ APP.toast('Excelファイルを選択してください','warning'); return; }
+  const buffer = await file.arrayBuffer();
+  const wb = XLSX.read(buffer, { type:'array', cellDates:true });
+  const sheetName = wb.SheetNames.includes('人事データ_2604') ? '人事データ_2604' : wb.SheetNames[0];
+  const sheet = wb.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header:1, defval:'' });
+  const mapped = rows.slice(1).map((row, i) => mapRow(row, i + 2)).filter(r => r.employee_code || r.employee_name);
+  const filter = document.getElementById('target-filter').value;
+  importedEmployees = filter === 'target' ? mapped.filter(r => r.position) : mapped;
+  renderPreview(importedEmployees, mapped.length, sheetName);
+  APP.toast('プレビューを作成しました');
+}
+function renderPreview(rows, total, sheetName){
+  const body = document.getElementById('preview-body');
+  const summary = document.getElementById('import-summary');
+  summary.textContent = `${sheetName} / 読込 ${total}行 / 表示 ${rows.length}行`;
+  body.innerHTML = rows.length ? rows.slice(0, 300).map(r => `<tr>
+    <td>${APP.escape(r.employee_code)}</td><td>${APP.escape(r.employee_name)}</td><td>${APP.escape(r.position || '-')}</td>
+    <td>${APP.escape(r.grade || '-')}</td><td>${APP.escape(r.employment_type)}</td><td>${APP.escape(r.birth_date)}</td>
+    <td>${APP.escape(r.hire_date)}</td><td>${APP.escape(r.age || '')}</td><td>${APP.escape(r.gender)}</td><td>${APP.escape(r.import_status)}</td>
+  </tr>`).join('') : '<tr><td colspan="10" class="empty">取込対象がありません</td></tr>';
+}
+function saveEmployeeMasterToLocal(){
+  if(!importedEmployees.length){ APP.toast('保存するデータがありません','warning'); return; }
+  const LS_KEY = 'license_sakuran_v1';
+  const current = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+  current.employees = importedEmployees.map((r, idx) => ({
+    id: r.employee_code || `import_${idx}`,
+    employee_code: r.employee_code,
+    name: r.employee_name,
+    center: r.center || '',
+    division: '家電物流事業部',
+    position: r.position,
+    employment_type: r.employment_type,
+    current_grade: r.current_grade,
+    birth_date: r.birth_date,
+    hire_date: r.hire_date,
+    age: r.age,
+    gender: r.gender,
+    promotion_target_flag: false,
+    last_promotion_date: null
+  }));
+  localStorage.setItem(LS_KEY, JSON.stringify(current));
+  APP.toast('デモデータへ保存しました');
+}
+async function upsertEmployeeMaster(){
+  if(!importedEmployees.length){ APP.toast('反映するデータがありません','warning'); return; }
+  const sb = APP.client();
+  if(!sb){ APP.toast('Supabase未接続のため反映できません','warning'); return; }
+  const payload = importedEmployees.map(r => ({
+    employee_code: r.employee_code,
+    name: r.employee_name,
+    position: r.position,
+    employment_type: r.employment_type,
+    current_grade: r.current_grade,
+    birth_date: r.birth_date || null,
+    hire_date: r.hire_date || null,
+    gender: r.gender || null
+  }));
+  const { error } = await sb.from('employees').upsert(payload, { onConflict:'employee_code' });
+  if(error){ APP.toast(`反映失敗：${error.message}`,'error'); return; }
+  APP.toast('Supabaseへ反映しました');
+}
+function downloadEmployeeMasterJson(){
+  if(!importedEmployees.length){ APP.toast('出力するデータがありません','warning'); return; }
+  const blob = new Blob([JSON.stringify(importedEmployees, null, 2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'employee_master_import.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+(async()=>{await Auth.requireAuth();renderSidebar('master_import');Modal.setup();APP.initHeader();})();
+</script>
+</body>
+</html>

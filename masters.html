@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>資格登録 — 資格・免許管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Shippori+Mincho:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/common.css">
+<link rel="stylesheet" href="assets/css/visual-upgrade.css">
+</head>
+<body>
+<div class="app-shell">
+<aside class="sidebar" id="sidebar"></aside>
+<div class="page-content">
+<main class="page-main">
+  <div class="page-header">
+    <div class="page-heading">
+      <div class="page-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+      <div><div class="page-title">資格登録</div><div class="page-title-en">License Registration</div></div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat-card"><div class="stat-top"><span>登録資格数</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div></div><div class="stat-value tabular" id="lic-total">—</div><div class="stat-sub">社員別登録数</div></div>
+    <div class="stat-card danger"><div class="stat-top"><span>期限切れ</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div></div><div class="stat-value tabular" id="lic-expired">—</div><div class="stat-sub">要対応</div></div>
+    <div class="stat-card warning"><div class="stat-top"><span>三十日以内</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></div><div class="stat-value tabular" id="lic-30">—</div><div class="stat-sub">更新準備</div></div>
+    <div class="stat-card info"><div class="stat-top"><span>九十日以内</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div><div class="stat-value tabular" id="lic-90">—</div><div class="stat-sub">計画対応</div></div>
+  </div>
+  <div class="content-grid">
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">社員別資格登録</div><div class="card-sub">employee_licenses へ登録</div></div></div>
+      <div class="card-body">
+        <form id="license-form" class="form-grid">
+          <div class="form-group"><label class="form-label">社員</label><select id="license-employee" class="form-control" required></select></div>
+          <div class="form-group"><label class="form-label">資格</label><select id="license-master" class="form-control" required></select></div>
+          <div class="form-group"><label class="form-label">取得日</label><input id="license-acquired" type="date" class="form-control"></div>
+          <div class="form-group"><label class="form-label">更新日</label><input id="license-renewal" type="date" class="form-control"></div>
+          <div class="form-group"><label class="form-label">期限日</label><input id="license-expiration" type="date" class="form-control"></div>
+          <div class="form-group"><label class="form-label">メモ</label><input id="license-memo" class="form-control" placeholder="免許番号・補足など"></div>
+          <div class="form-full mt-3"><button class="btn btn-primary w-full" type="submit">資格を登録する</button></div>
+        </form>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">登録上の注意</div></div></div>
+      <div class="card-body">
+        <div class="section-stack">
+          <div class="quick-card"><div class="quick-ico" style="font-size:14px;font-family:var(--font-serif)">一</div><div><div class="row-title">社員・資格はマスタから選択</div><div class="row-meta">表記ゆれを防止するため</div></div></div>
+          <div class="quick-card"><div class="quick-ico" style="font-size:14px;font-family:var(--font-serif)">二</div><div><div class="row-title">期限日は必要な資格のみ入力</div><div class="row-meta">未入力は期限なしとして扱う</div></div></div>
+          <div class="quick-card"><div class="quick-ico" style="font-size:14px;font-family:var(--font-serif)">三</div><div><div class="row-title">日本時間基準で管理</div><div class="row-meta">Asia/Tokyo</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="filter-panel">
+    <div class="filter-grid compact">
+      <div class="form-group"><label class="form-label">検索</label><input id="filter-keyword" class="form-control" placeholder="社員名・資格名"></div>
+      <div class="form-group"><label class="form-label">センター</label><select id="filter-center" class="form-control"></select></div>
+      <div class="form-group"><label class="form-label">資格</label><select id="filter-license" class="form-control"></select></div>
+      <div class="form-group"><label class="form-label">状態</label><select id="filter-status" class="form-control"><option value="">すべて</option><option>期限切れ</option><option>30日以内</option><option>90日以内</option><option>正常</option><option>期限なし</option></select></div>
+      <button id="btn-clear-filter" class="btn btn-secondary" style="margin-top:auto">リセット</button>
+    </div>
+  </div>
+  <div class="table-card">
+    <div class="table-tools"><div class="table-count">計 <strong id="license-count">—</strong> 件</div><div class="text-muted text-sm">v_license_screen 参照</div></div>
+    <div class="table-wrap"><table><thead><tr><th>社員</th><th>センター</th><th>資格</th><th>取得日</th><th>更新日</th><th>期限日</th><th>状態</th><th>残日数</th><th>メモ</th></tr></thead><tbody id="license-tbody"></tbody></table></div>
+    <div class="pagination" id="license-pagination"></div>
+  </div>
+</main>
+</div>
+</div>
+<div id="toast-container"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/supabase.js"></script>
+<script src="assets/js/common.js"></script>
+<script src="assets/js/licenses.js"></script>
+<script>(async()=>{await Auth.requireAuth();renderSidebar('licenses');Modal.setup();APP.initHeader();await initLicenses();})();</script>
+</body></html>
