@@ -1,0 +1,62 @@
+/* dashboard_age.css : page specific styles only */
+
+#appScreen:not(.hidden){display:block}
+
+.auth-shell{max-width:520px;margin:48px auto 0}
+.auth-title{margin:0 0 8px;font-size:28px;color:#fff}
+.auth-sub{margin:0 0 20px;color:rgba(255,255,255,.82)}
+.auth-card{background:#fff;border:1px solid rgba(226,232,240,.9);border-radius:22px;box-shadow:var(--shadow);padding:24px}
+.auth-card h2{margin:0 0 8px;font-size:22px;color:#0f172a}
+
+.btn-primary{background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;box-shadow:0 10px 22px rgba(99,102,241,.22)}
+.btn-secondary{background:#eaf2ff;color:#1e3a8a;border:1px solid var(--line-strong)}
+
+.grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
+.metric-card{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-soft);padding:18px}
+.metric-card .label{font-size:12px;color:#64748b;font-weight:900;margin-bottom:8px}
+.metric-card .value{font-size:30px;font-weight:950;line-height:1;color:#0f172a}
+.metric-card .sub{font-size:12px;color:#475569;font-weight:700;margin-top:8px;line-height:1.5}
+
+.insight-card{display:flex;gap:14px;align-items:center;background:#f8fafc;border:1px solid #dbeafe;border-left:6px solid #3b82f6;border-radius:18px;box-shadow:var(--shadow-soft);padding:16px 18px;margin-bottom:18px}
+.insight-card.success{background:#ecfdf5;border-color:#bbf7d0;border-left-color:#16a34a}
+.insight-card.warning{background:#fffbeb;border-color:#fde68a;border-left-color:#f59e0b}
+.insight-title{font-size:12px;font-weight:950;color:#2563eb;white-space:nowrap}
+.insight-body{font-size:14px;font-weight:950;color:#0f172a;line-height:1.6}
+
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px}
+.section-head h2{margin:0;color:#0f4fe8;font-size:20px;font-weight:950;line-height:1.25}
+
+.age-band-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.age-band-card{background:#fff;border:1px solid #dbeafe;border-left:5px solid #94a3b8;border-radius:18px;box-shadow:var(--shadow-soft);padding:16px}
+.age-band-card.success{border-left-color:#16a34a;background:#f0fdf4}
+.age-band-card.warning{border-left-color:#f59e0b;background:#fffbeb}
+.age-band-card.neutral{border-left-color:#94a3b8;background:#f8fafc}
+.age-band-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+.age-band-head h3{margin:0;color:#0f172a;font-size:16px;font-weight:950}
+.age-band-head strong{color:#0f172a;font-size:24px;font-weight:950;white-space:nowrap}
+.age-band-head small{font-size:11px;color:#64748b;margin-left:2px}
+.age-band-bar{height:8px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-bottom:12px}
+.age-band-bar span{display:block;height:100%;border-radius:inherit;background:linear-gradient(135deg,#3b82f6,#6366f1)}
+.age-band-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.age-band-metrics div{border:1px solid #dbe3ee;background:rgba(255,255,255,.8);border-radius:12px;padding:10px}
+.age-band-metrics span{display:block;color:#64748b;font-size:11px;font-weight:900}
+.age-band-metrics b{display:block;margin-top:4px;color:#0f172a;font-size:15px;font-weight:950}
+
+.card.table-card{padding:20px;overflow:hidden}
+.card.table-card .table-head{padding:0 0 14px}
+.card.table-card .table-head h2{margin:0;color:#0f4fe8;font-size:20px;font-weight:950;line-height:1.25}
+.card.table-card .table-wrap{border:1px solid #dbeafe;border-radius:16px;overflow:auto;background:#fff}
+.card.table-card table{width:100%;min-width:980px;border-collapse:collapse;background:#fff;table-layout:fixed}
+.card.table-card th{height:42px;padding:10px 14px;background:#eff6ff;color:#1e3a8a;font-size:12px;font-weight:950;line-height:1.3;white-space:nowrap;border-bottom:1px solid #bfdbfe}
+.card.table-card td{height:48px;padding:10px 14px;color:#0f172a;font-size:13px;font-weight:800;line-height:1.35;vertical-align:middle;white-space:nowrap;border-bottom:1px solid #e5edf8;text-align:center}
+.card.table-card th:first-child,.card.table-card td:first-child{padding-left:18px;text-align:left}
+.card.table-card tbody tr:last-child td{border-bottom:0}
+.empty-box{border:1px dashed #cbd5e1;border-radius:14px;background:#f8fafc;color:#64748b;padding:16px;text-align:center;font-weight:900}
+#pageMessage.hidden{display:none!important}
+
+@media(max-width:1280px){
+  .grid-5,.age-band-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:720px){
+  .grid-5,.age-band-grid{grid-template-columns:1fr}
+}

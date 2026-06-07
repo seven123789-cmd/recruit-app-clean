@@ -24,7 +24,8 @@
       title:"採用比較",
       key:"compare",
       items:[
-        { href:"./dashboard_compare.html", label:"比較分析" }
+        { href:"./dashboard_compare.html", label:"比較分析" },
+        { href:"./dashboard_age.html", label:"年齢分析" }
       ]
     },
     {
