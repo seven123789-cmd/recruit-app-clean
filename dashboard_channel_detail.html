@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>媒体応募内訳</title>
+<title>応募詳細分析</title>
 <link href="./assets/css/common.css?v=20260609_channel_detail" rel="stylesheet"/>
 <link href="./assets/css/header.css?v=20260609_channel_detail" rel="stylesheet"/>
 <link href="./assets/css/sidebar.css?v=20260609_channel_detail" rel="stylesheet"/>
@@ -24,7 +24,7 @@
 <body class="auth-checking">
 <div class="container hidden" id="authScreen">
   <div class="auth-shell">
-    <h1 class="auth-title">媒体応募内訳</h1>
+    <h1 class="auth-title">応募詳細分析</h1>
     <p class="auth-sub">ログイン後に画面を表示します。</p>
     <div class="auth-card">
       <h2>ログイン</h2>
@@ -54,7 +54,7 @@
     <main class="main-content">
       <header class="page-header dashboard-page-header">
         <div class="dashboard-title-line">
-          <h1>媒体応募内訳</h1>
+          <h1>応募詳細分析</h1>
           <div aria-label="集計状態" class="dashboard-header-meta">
             <span class="dashboard-header-chip">対象年度：<span id="sideFiscalYear">-</span></span>
             <span class="dashboard-header-chip">対象月：<span id="sideMonth">-</span></span>
@@ -69,7 +69,7 @@
       <section class="channel-detail-control analysis-control-card">
         <div class="analysis-control-copy">
           <p>分析条件</p>
-          <h2>月 × 媒体 × 本部から職種・年齢まで確認</h2>
+          <h2>月 × 媒体 × 本部から職種・年齢まで深掘り</h2>
         </div>
         <div class="analysis-control-form channel-detail-form">
           <div class="analysis-field">
@@ -567,9 +567,10 @@ function updateSummary(data, divisionData){
   setText("sideRows", applied);
   setText("sideMonth", monthLabel($("month")?.value || ""));
   setText("sideChannel", $("channel")?.value || "すべて");
-  setText("sideDivision", $("division")?.value || "すべて");
+  const filterDivision = $("division")?.value || "";
+  setText("sideDivision", filterDivision || "すべて");
   setText("sideCenter", $("center")?.value || "すべて");
-  const selectedText = selectedDivision || "すべて";
+  const selectedText = selectedDivision || filterDivision || "すべて";
   setText("selectedDivisionBox", selectedText);
   const link = $("listLink");
   if(link) link.href = buildListUrl();
