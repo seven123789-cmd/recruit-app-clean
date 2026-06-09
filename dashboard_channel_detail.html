@@ -1,53 +1,677 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>媒体応募内訳</title>
-<link rel="stylesheet" href="./assets/css/common.css">
-<link rel="stylesheet" href="./assets/css/header.css">
-<link rel="stylesheet" href="./assets/css/sidebar.css">
-<link rel="stylesheet" href="./assets/css/dashboard_ui.css">
-<script src="./sidebar.js"></script>
+<link href="./assets/css/common.css?v=20260609_channel_detail" rel="stylesheet"/>
+<link href="./assets/css/header.css?v=20260609_channel_detail" rel="stylesheet"/>
+<link href="./assets/css/sidebar.css?v=20260609_channel_detail" rel="stylesheet"/>
+<link href="./assets/css/dashboard_ui.css?v=20260609_channel_detail" rel="stylesheet"/>
+<link href="./assets/css/dashboard_channel_detail.css?v=20260609_channel_detail" rel="stylesheet"/>
+<script src="assets/js/version.js?v=20260609_channel_detail"></script>
+<script src="./common.js?v=20260609_channel_detail"></script>
+<script src="assets/js/overdue_popup.js?v=20260609_channel_detail"></script>
+<script src="assets/js/dashboard_utils.js?v=20260609_channel_detail"></script>
+<script src="assets/js/supabase.js?v=20260609_channel_detail"></script>
+<script src="assets/js/auth.js?v=20260609_channel_detail"></script>
+<script src="assets/js/ui_utils.js?v=20260609_channel_detail"></script>
+<script src="assets/js/audit_utils.js?v=20260609_channel_detail"></script>
+<script src="assets/js/ops_guard.js?v=20260609_channel_detail"></script>
+<script src="assets/js/safe_utils.js?v=20260609_channel_detail"></script>
+<script src="./sidebar.js?v=20260609_channel_detail"></script>
 </head>
-<body>
-<div class="app-layout">
-<aside class="sidebar" id="dashboardSidebarMenu"></aside>
-<main class="main-content">
-<header class="page-header dashboard-page-header">
-<h1>媒体応募内訳（試作版）</h1>
-</header>
-
-<section class="analysis-control-card">
-<h2>条件</h2>
-<p>年度・月・媒体ごとに本部別、職種別、年齢層別の応募状況を確認します。</p>
-</section>
-
-<section class="analysis-card">
-<h2>本部別応募数</h2>
-<table class="table">
-<thead><tr><th>本部</th><th>応募数</th></tr></thead>
-<tbody id="divisionTable"></tbody>
-</table>
-</section>
-
-<section class="analysis-card">
-<h2>職種別応募数</h2>
-<table class="table">
-<thead><tr><th>職種</th><th>応募数</th></tr></thead>
-<tbody id="jobTable"></tbody>
-</table>
-</section>
-
-<section class="analysis-card">
-<h2>年齢層別応募数</h2>
-<table class="table">
-<thead><tr><th>年齢層</th><th>応募数</th></tr></thead>
-<tbody id="ageTable"></tbody>
-</table>
-</section>
-</main>
+<body class="auth-checking">
+<div class="container hidden" id="authScreen">
+  <div class="auth-shell">
+    <h1 class="auth-title">媒体応募内訳</h1>
+    <p class="auth-sub">ログイン後に画面を表示します。</p>
+    <div class="auth-card">
+      <h2>ログイン</h2>
+      <div class="form-grid">
+        <div class="col-12">
+          <label for="loginEmail">メールアドレス</label>
+          <input id="loginEmail" placeholder="example@sline.co.jp" type="email"/>
+        </div>
+        <div class="col-12">
+          <label for="loginPassword">パスワード</label>
+          <input id="loginPassword" placeholder="パスワード" type="password"/>
+        </div>
+        <div class="col-12">
+          <button class="btn-primary" onclick="login()" type="button">ログイン</button>
+        </div>
+        <div class="col-12">
+          <div class="message-box message-info" id="authMessage">未ログインです</div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+
+<div class="hidden" id="appScreen">
+  <div class="app-layout">
+    <aside class="sidebar" id="dashboardSidebarMenu" aria-label="採用管理メニュー"></aside>
+    <main class="main-content">
+      <header class="page-header dashboard-page-header">
+        <div class="dashboard-title-line">
+          <h1>媒体応募内訳</h1>
+          <div aria-label="集計状態" class="dashboard-header-meta">
+            <span class="dashboard-header-chip">対象年度：<span id="sideFiscalYear">-</span></span>
+            <span class="dashboard-header-chip">対象月：<span id="sideMonth">-</span></span>
+            <span class="dashboard-header-chip">対象媒体：<span id="sideChannel">すべて</span></span>
+            <span class="dashboard-header-chip">対象本部：<span id="sideDivision">すべて</span></span>
+            <span class="dashboard-header-chip">対象営業所：<span id="sideCenter">すべて</span></span>
+            <span class="dashboard-header-chip">対象件数：<span id="sideRows">0</span></span>
+          </div>
+        </div>
+      </header>
+
+      <section class="channel-detail-control analysis-control-card">
+        <div class="analysis-control-copy">
+          <p>分析条件</p>
+          <h2>月 × 媒体 × 本部から職種・年齢まで確認</h2>
+        </div>
+        <div class="analysis-control-form channel-detail-form">
+          <div class="analysis-field">
+            <label for="fy">対象年度</label>
+            <select id="fy" onchange="handleFiscalYearChange()">
+              <option value="current"></option>
+              <option value="previous"></option>
+              <option value="all">全期間</option>
+            </select>
+          </div>
+          <div class="analysis-field">
+            <label for="month">応募月</label>
+            <select id="month" onchange="handleFilterChange()"></select>
+          </div>
+          <div class="analysis-field">
+            <label for="channel">媒体</label>
+            <select id="channel" onchange="handleFilterChange()"><option value="">全媒体</option></select>
+          </div>
+          <div class="analysis-field">
+            <label for="division">本部</label>
+            <select id="division" onchange="handleDivisionChange()"><option value="">全部</option></select>
+          </div>
+          <div class="analysis-field">
+            <label for="center">営業所</label>
+            <select id="center" onchange="handleFilterChange()"><option value="">全営業所</option></select>
+          </div>
+          <div class="analysis-field">
+            <label for="jobType">職種</label>
+            <select id="jobType" onchange="handleFilterChange()"><option value="">全職種</option></select>
+          </div>
+          <div class="analysis-field">
+            <label for="ageBand">年齢層</label>
+            <select id="ageBand" onchange="handleFilterChange()">
+              <option value="">全年齢層</option>
+              <option value="u29">20代以下</option>
+              <option value="30s">30代</option>
+              <option value="40s">40代</option>
+              <option value="50s">50代</option>
+              <option value="60p">60代以上</option>
+              <option value="unknown">年齢未設定</option>
+            </select>
+          </div>
+          <div class="channel-detail-actions">
+            <button class="btn-primary" onclick="loadAnalysis()" type="button">更新</button>
+            <button class="btn-secondary" onclick="clearFilters()" type="button">クリア</button>
+          </div>
+          <div class="period-text analysis-period" id="periodText">対象期間：-</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>サマリー</h2>
+        <div class="grid-5 summary-grid channel-detail-kpis">
+          <div class="metric-card kpi-applied"><div class="label">応募</div><div class="value" id="sumApplied">0</div><div class="sub">条件に一致する応募数</div></div>
+          <div class="metric-card kpi-interview"><div class="label">面接実施</div><div class="value" id="sumInterview">0</div><div class="sub">面接まで進んだ人数</div></div>
+          <div class="metric-card kpi-hired"><div class="label">採用</div><div class="value" id="sumJoin">0</div><div class="sub">入社日登録済みまたは入社済</div></div>
+          <div class="metric-card kpi-rate-interview"><div class="label">応募→面接</div><div class="value" id="sumInterviewRate">0.0%</div><div class="sub">応募数に対する面接率</div></div>
+          <div class="metric-card kpi-rate-hired"><div class="label">応募→採用</div><div class="value" id="sumJoinRate">0.0%</div><div class="sub">応募数に対する実入社率</div></div>
+        </div>
+      </section>
+
+      <section class="insight-card neutral" id="detailInsight">
+        <div class="insight-title">確認ポイント</div>
+        <div class="insight-body">条件を選択すると、媒体別の偏りを確認できます。</div>
+      </section>
+
+      <section class="channel-detail-layout">
+        <article class="card table-card channel-detail-main-card">
+          <div class="table-head">
+            <div>
+              <h2>本部別サマリー</h2>
+              <p>本部をクリックすると、下の営業所別・職種別・年齢層別・応募者一覧がその本部に絞られます。</p>
+            </div>
+            <button class="btn-secondary" onclick="clearSelectedDivision()" type="button">本部選択解除</button>
+          </div>
+          <div class="table-wrap">
+            <table class="channel-detail-table">
+              <thead id="divisionHead"></thead>
+              <tbody id="divisionBody"><tr><td class="empty">読込中です</td></tr></tbody>
+            </table>
+          </div>
+        </article>
+
+        <aside class="channel-detail-side card">
+          <h2>選択中の本部</h2>
+          <div class="selected-division-box" id="selectedDivisionBox">すべて</div>
+          <a class="btn-primary channel-detail-list-link" id="listLink" href="./list.html">一覧で確認</a>
+        </aside>
+      </section>
+
+      <section class="channel-detail-grid">
+        <article class="card table-card">
+          <div class="table-head"><h2>営業所別</h2></div>
+          <div class="table-wrap table-wrap-compact"><table class="channel-detail-table"><thead id="centerHead"></thead><tbody id="centerBody"><tr><td class="empty">読込中です</td></tr></tbody></table></div>
+        </article>
+        <article class="card table-card">
+          <div class="table-head"><h2>職種別</h2></div>
+          <div class="table-wrap table-wrap-compact"><table class="channel-detail-table"><thead id="jobHead"></thead><tbody id="jobBody"><tr><td class="empty">読込中です</td></tr></tbody></table></div>
+        </article>
+      </section>
+
+      <section class="card table-card">
+        <div class="table-head">
+          <div>
+            <h2>本部 × 職種</h2>
+            <p>月・媒体を選んだうえで、どの本部にどの職種の応募が多いか確認します。</p>
+          </div>
+        </div>
+        <div class="table-wrap"><table class="channel-detail-table channel-detail-cross-table"><thead id="divisionJobHead"></thead><tbody id="divisionJobBody"><tr><td class="empty">読込中です</td></tr></tbody></table></div>
+      </section>
+
+      <section class="card table-card">
+        <div class="table-head">
+          <div>
+            <h2>本部 × 年齢層</h2>
+            <p>月・媒体を選んだうえで、各本部の年齢層バランスを確認します。</p>
+          </div>
+        </div>
+        <div class="table-wrap"><table class="channel-detail-table channel-detail-cross-table"><thead id="divisionAgeHead"></thead><tbody id="divisionAgeBody"><tr><td class="empty">読込中です</td></tr></tbody></table></div>
+      </section>
+
+      <section class="card table-card">
+        <div class="table-head">
+          <div>
+            <h2>応募者明細</h2>
+            <p>現在の条件と選択中の本部に一致する応募者を表示します。</p>
+          </div>
+        </div>
+        <div class="table-wrap"><table class="channel-detail-table candidate-table"><thead id="candidateHead"></thead><tbody id="candidateBody"><tr><td class="empty">読込中です</td></tr></tbody></table></div>
+      </section>
+
+      <div class="message-box message-info hidden" id="pageMessage"></div>
+    </main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const sb = window.getRecruitSupabaseClient();
+const STATE_KEY = "recruit:dashboard_channel_detail:filters";
+
+let currentUser = null;
+let currentRole = null;
+let rows = [];
+let CENTER_MASTER = {};
+let channelMasterRows = [];
+let selectedDivision = "";
+let suppressPersist = false;
+
+function $(id){ return document.getElementById(id); }
+function setText(id, value){ const el = $(id); if(el) el.textContent = value; }
+function setMsg(id, msg, type="info"){
+  const el = $(id);
+  if(!el) return;
+  if(!msg){ el.textContent = ""; el.className = "message-box message-info hidden"; return; }
+  el.textContent = msg;
+  el.className = "message-box message-" + type;
+}
+function html(value){ return String(value ?? "").replace(/[&<>"']/g, s => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[s])); }
+function rate(n, d){ return !d ? "0.0%" : ((n / d) * 100).toFixed(1) + "%"; }
+function rateNum(n, d){ return !d ? 0 : Number(((n / d) * 100).toFixed(1)); }
+function validDate(s){ if(!s) return false; const y = Number(String(s).slice(0, 4)); return y >= 2000; }
+function isHired(r){ return window.RecruitRule?.isHired ? window.RecruitRule.isHired(r) : (window.isRecruitHired ? window.isRecruitHired(r) : (validDate(r.join_date) || String(r.hiring_result || "").trim() === "入社済")); }
+function isInterviewDone(r){ return window.isRecruitStageReached ? window.isRecruitStageReached(r, "面接実施") : validDate(r.interview_done_date); }
+function fiscalRange(type){
+  const fy = typeof fiscalYear === "function" ? fiscalYear() : (new Date().getMonth() + 1 >= 4 ? new Date().getFullYear() : new Date().getFullYear() - 1);
+  if(type === "previous") return { fy: fy - 1, label: (fy - 1) + "年度", from: (fy - 1) + "-04-01", to: fy + "-03-31" };
+  if(type === "all") return { fy: null, label: "全期間", from: "", to: "" };
+  return { fy, label: fy + "年度", from: fy + "-04-01", to: (fy + 1) + "-03-31" };
+}
+function monthValueFromDate(dateText){
+  if(!validDate(dateText)) return "";
+  return String(dateText).slice(0, 7);
+}
+function currentMonthValue(range){
+  const today = new Date();
+  const value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  if(!range || !range.from || !range.to) return value;
+  return value >= String(range.from).slice(0, 7) && value <= String(range.to).slice(0, 7) ? value : "";
+}
+function monthLabel(value){
+  if(!value) return "全月";
+  const parts = String(value).split("-");
+  return `${Number(parts[0])}年${Number(parts[1])}月`;
+}
+function buildFiscalMonths(range){
+  if(!range || !range.fy) return [];
+  const months = [];
+  for(let i = 0; i < 12; i++){
+    const month = ((3 + i) % 12) + 1;
+    const year = month >= 4 ? range.fy : range.fy + 1;
+    months.push(`${year}-${String(month).padStart(2, "0")}`);
+  }
+  return months;
+}
+function applyFiscalYear(keepMonth = true){
+  const range = fiscalRange($("fy")?.value || "current");
+  const monthEl = $("month");
+  const before = keepMonth ? monthEl.value : "";
+  const months = range.fy ? buildFiscalMonths(range) : getAllMonthOptions(rows);
+  monthEl.innerHTML = '<option value="">全月</option>' + months.map(v => `<option value="${html(v)}">${html(monthLabel(v))}</option>`).join("");
+  if(before && [...monthEl.options].some(o => o.value === before)){
+    monthEl.value = before;
+  }else if(!keepMonth){
+    monthEl.value = currentMonthValue(range);
+  }
+  const period = range.from && range.to ? `${range.from} ～ ${range.to}` : "全期間";
+  setText("periodText", "対象期間：" + period);
+  setText("sideFiscalYear", range.label);
+  setText("sideMonth", monthLabel(monthEl.value));
+}
+function getAllMonthOptions(data){
+  return [...new Set((data || []).map(r => monthValueFromDate(r.applied_date)).filter(Boolean))].sort().reverse();
+}
+function normalizeAgeNumber(value){
+  if(value === null || value === undefined || value === "") return null;
+  const match = String(value).match(/\d+/);
+  if(!match) return null;
+  const age = Number(match[0]);
+  return Number.isFinite(age) ? age : null;
+}
+function ageBand(value){
+  const age = normalizeAgeNumber(value);
+  if(age === null) return { key:"unknown", label:"年齢未設定" };
+  if(age <= 29) return { key:"u29", label:"20代以下" };
+  if(age <= 39) return { key:"30s", label:"30代" };
+  if(age <= 49) return { key:"40s", label:"40代" };
+  if(age <= 59) return { key:"50s", label:"50代" };
+  return { key:"60p", label:"60代以上" };
+}
+function normalizeText(value, fallback){
+  const text = String(value || "").trim();
+  return text || fallback;
+}
+function saveState(){
+  if(suppressPersist) return;
+  localStorage.setItem(STATE_KEY, JSON.stringify({
+    fy: $("fy")?.value || "current",
+    month: $("month")?.value || "",
+    channel: $("channel")?.value || "",
+    division: $("division")?.value || "",
+    center: $("center")?.value || "",
+    jobType: $("jobType")?.value || "",
+    ageBand: $("ageBand")?.value || "",
+    selectedDivision
+  }));
+}
+function readState(){
+  try{ return JSON.parse(localStorage.getItem(STATE_KEY) || "null"); }catch(e){ return null; }
+}
+function applyState(){
+  const state = readState();
+  suppressPersist = true;
+  if(state){
+    if($("fy")) $("fy").value = state.fy || "current";
+    applyFiscalYear(true);
+    setSelectValue("month", state.month || "");
+    setSelectValue("channel", state.channel || "");
+    setSelectValue("division", state.division || "");
+    updateCenterOptions();
+    setSelectValue("center", state.center || "");
+    setSelectValue("jobType", state.jobType || "");
+    setSelectValue("ageBand", state.ageBand || "");
+    selectedDivision = state.selectedDivision || "";
+  }else{
+    applyFiscalYear(false);
+  }
+  suppressPersist = false;
+}
+function setSelectValue(id, value){
+  const el = $(id);
+  if(!el) return;
+  if(value && ![...el.options].some(o => o.value === value)){
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    el.appendChild(option);
+  }
+  el.value = value || "";
+}
+function setSelectOptions(id, values, blank="すべて"){
+  const el = $(id);
+  if(!el) return [];
+  const current = el.value;
+  const list = [...new Set((values || []).map(v => String(v || "").trim()).filter(Boolean))].sort((a,b) => a.localeCompare(b, "ja"));
+  el.innerHTML = `<option value="">${html(blank)}</option>` + list.map(v => `<option value="${html(v)}">${html(v)}</option>`).join("");
+  if(list.includes(current)) el.value = current;
+  return list;
+}
+async function fetchChannelMasterRows(){
+  try{
+    const channels = window.RecruitMaster ? await window.RecruitMaster.list("channels") : [];
+    channelMasterRows = (channels || []).map((name, index) => ({ name:String(name || "").trim(), display_order:index + 1, is_active:true })).filter(r => r.name);
+  }catch(e){
+    console.error("媒体マスタ読込失敗", e);
+    channelMasterRows = [];
+  }
+}
+function getChannelOptions(data){
+  const master = channelMasterRows.map(r => r.name).filter(Boolean);
+  if(master.length) return master;
+  return (data || []).map(r => r.channel);
+}
+async function loadCenterMaster(){
+  if(window.RecruitMaster && typeof window.RecruitMaster.loadCenterMaster === "function"){
+    return await window.RecruitMaster.loadCenterMaster({ assignCenterMaster: value => { CENTER_MASTER = value || {}; } });
+  }
+  CENTER_MASTER = {};
+  return [];
+}
+function bindMasters(data){
+  const divisions = Object.keys(CENTER_MASTER).length ? Object.keys(CENTER_MASTER) : data.map(r => r.division);
+  setSelectOptions("division", divisions, "全部");
+  updateCenterOptions(data);
+  setSelectOptions("channel", getChannelOptions(data), "全媒体");
+  setSelectOptions("jobType", data.map(r => r.job_type), "全職種");
+}
+function updateCenterOptions(sourceRows = rows){
+  const div = $("division")?.value || "";
+  const centers = div && CENTER_MASTER[div] ? CENTER_MASTER[div] : (Object.keys(CENTER_MASTER).length ? Object.values(CENTER_MASTER).flat() : (sourceRows || []).filter(r => !div || r.division === div).map(r => r.center_name));
+  setSelectOptions("center", centers, "全営業所");
+}
+function handleFiscalYearChange(){
+  applyFiscalYear(false);
+  handleFilterChange();
+}
+function handleDivisionChange(){
+  updateCenterOptions();
+  selectedDivision = "";
+  handleFilterChange();
+}
+function handleFilterChange(){
+  selectedDivision = "";
+  saveState();
+  renderAnalysis();
+}
+function clearFilters(){
+  localStorage.removeItem(STATE_KEY);
+  suppressPersist = true;
+  $("fy").value = "current";
+  $("channel").value = "";
+  $("division").value = "";
+  updateCenterOptions();
+  $("center").value = "";
+  $("jobType").value = "";
+  $("ageBand").value = "";
+  selectedDivision = "";
+  applyFiscalYear(false);
+  suppressPersist = false;
+  saveState();
+  renderAnalysis();
+}
+function clearSelectedDivision(){
+  selectedDivision = "";
+  saveState();
+  renderAnalysis();
+}
+function selectDivision(value){
+  selectedDivision = value || "";
+  saveState();
+  renderAnalysis();
+}
+function filteredBase(data){
+  const range = fiscalRange($("fy")?.value || "current");
+  const month = $("month")?.value || "";
+  const division = $("division")?.value || "";
+  const center = $("center")?.value || "";
+  const channel = $("channel")?.value || "";
+  const jobType = $("jobType")?.value || "";
+  const band = $("ageBand")?.value || "";
+  return (data || []).filter(r => !r.is_deleted).filter(r => {
+    if(!validDate(r.applied_date)) return false;
+    if(range.from && r.applied_date < range.from) return false;
+    if(range.to && r.applied_date > range.to) return false;
+    if(month && monthValueFromDate(r.applied_date) !== month) return false;
+    if(division && r.division !== division) return false;
+    if(center && r.center_name !== center) return false;
+    if(channel && normalizeText(r.channel, "未設定") !== channel) return false;
+    if(jobType && normalizeText(r.job_type, "職種未設定") !== jobType) return false;
+    if(band && ageBand(r.age).key !== band) return false;
+    return true;
+  });
+}
+function groupBy(data, keyFn){
+  const map = new Map();
+  (data || []).forEach(r => {
+    const key = keyFn(r);
+    if(!map.has(key)) map.set(key, { key, applied:0, interview:0, join:0 });
+    const item = map.get(key);
+    item.applied += 1;
+    if(isInterviewDone(r)) item.interview += 1;
+    if(isHired(r)) item.join += 1;
+  });
+  return [...map.values()].sort((a,b) => b.applied - a.applied || b.join - a.join || String(a.key).localeCompare(String(b.key), "ja"));
+}
+function groupCross(data, rowKeyFn, colKeyFn){
+  const rowMap = new Map();
+  const cols = new Set();
+  (data || []).forEach(r => {
+    const rowKey = rowKeyFn(r);
+    const colKey = colKeyFn(r);
+    cols.add(colKey);
+    if(!rowMap.has(rowKey)) rowMap.set(rowKey, { key:rowKey, total:0, cols:new Map() });
+    const item = rowMap.get(rowKey);
+    item.total += 1;
+    item.cols.set(colKey, (item.cols.get(colKey) || 0) + 1);
+  });
+  return {
+    cols:[...cols].sort((a,b) => String(a).localeCompare(String(b), "ja")),
+    rows:[...rowMap.values()].sort((a,b) => b.total - a.total || String(a.key).localeCompare(String(b.key), "ja"))
+  };
+}
+function renderGroupTable(headId, bodyId, label, items, options = {}){
+  const head = $(headId);
+  const body = $(bodyId);
+  head.innerHTML = `<tr><th>${html(label)}</th><th>応募</th><th>面接</th><th>採用</th><th>面接率</th><th>採用率</th></tr>`;
+  if(!items.length){ body.innerHTML = '<tr><td class="empty" colspan="6">データがありません</td></tr>'; return; }
+  body.innerHTML = items.map(item => {
+    const active = options.selectable && selectedDivision === item.key ? " active-row" : "";
+    const click = options.selectable ? ` onclick="selectDivision('${html(String(item.key).replace(/'/g, "&#39;"))}')"` : "";
+    return `<tr class="${options.selectable ? "clickable-row" : ""}${active}"${click}>
+      <td><strong>${html(item.key)}</strong><span class="bar-track"><span style="width:${Math.min(100, options.max ? item.applied / options.max * 100 : 0).toFixed(1)}%"></span></span></td>
+      <td>${item.applied}</td>
+      <td>${item.interview}</td>
+      <td>${item.join}</td>
+      <td>${rate(item.interview, item.applied)}</td>
+      <td>${rate(item.join, item.applied)}</td>
+    </tr>`;
+  }).join("");
+}
+function renderCrossTable(headId, bodyId, cross){
+  const head = $(headId);
+  const body = $(bodyId);
+  const cols = cross.cols;
+  head.innerHTML = `<tr><th>本部</th><th>合計</th>${cols.map(c => `<th>${html(c)}</th>`).join("")}</tr>`;
+  if(!cross.rows.length){ body.innerHTML = `<tr><td class="empty" colspan="${cols.length + 2}">データがありません</td></tr>`; return; }
+  body.innerHTML = cross.rows.map(row => `<tr>
+    <td><strong>${html(row.key)}</strong></td>
+    <td>${row.total}</td>
+    ${cols.map(c => `<td>${row.cols.get(c) || ""}</td>`).join("")}
+  </tr>`).join("");
+}
+function renderCandidates(data){
+  const head = $("candidateHead");
+  const body = $("candidateBody");
+  head.innerHTML = "<tr><th>氏名</th><th>応募日</th><th>本部</th><th>営業所</th><th>媒体</th><th>職種</th><th>年齢</th><th>担当</th><th>進捗</th></tr>";
+  if(!data.length){ body.innerHTML = '<tr><td class="empty" colspan="9">データがありません</td></tr>'; return; }
+  body.innerHTML = data.slice(0, 80).map(r => {
+    const detailUrl = `./detail.html?id=${encodeURIComponent(r.id)}`;
+    return `<tr>
+      <td><a class="analysis-link" href="${detailUrl}"><strong>${html(r.name || "氏名未設定")}</strong></a></td>
+      <td>${html(r.applied_date || "")}</td>
+      <td>${html(r.division || "未設定")}</td>
+      <td>${html(r.center_name || "未設定")}</td>
+      <td>${html(normalizeText(r.channel, "未設定"))}</td>
+      <td>${html(normalizeText(r.job_type, "職種未設定"))}</td>
+      <td>${html(r.age ? String(r.age).replace(/歳$/, "") + "歳" : "未設定")}</td>
+      <td>${html(r.owner_name || "未設定")}</td>
+      <td>${html(r.status || r.hiring_result || "未設定")}</td>
+    </tr>`;
+  }).join("") + (data.length > 80 ? `<tr><td class="empty" colspan="9">上位80件のみ表示しています。全件は「一覧で確認」から確認してください。</td></tr>` : "");
+}
+function buildListUrl(dataScopeDivision = selectedDivision){
+  const params = new URLSearchParams();
+  params.set("source", "dashboard_channel_detail");
+  params.set("filter", "all");
+  const range = fiscalRange($("fy")?.value || "current");
+  const month = $("month")?.value || "";
+  if(month){
+    params.set("from", month + "-01");
+    const [y, m] = month.split("-").map(Number);
+    const next = new Date(y, m, 1);
+    const last = new Date(next.getFullYear(), next.getMonth(), 0);
+    params.set("to", `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, "0")}-${String(last.getDate()).padStart(2, "0")}`);
+  }else{
+    if(range.from) params.set("from", range.from);
+    if(range.to) params.set("to", range.to);
+  }
+  const division = dataScopeDivision || $("division")?.value || "";
+  if(division) params.set("division", division);
+  if($("center")?.value) params.set("center", $("center").value);
+  if($("channel")?.value) params.set("channel", $("channel").value);
+  if($("jobType")?.value) params.set("job", $("jobType").value);
+  return "./list.html?" + params.toString();
+}
+function updateSummary(data, divisionData){
+  const applied = data.length;
+  const interview = data.filter(isInterviewDone).length;
+  const join = data.filter(isHired).length;
+  setText("sumApplied", applied);
+  setText("sumInterview", interview);
+  setText("sumJoin", join);
+  setText("sumInterviewRate", rate(interview, applied));
+  setText("sumJoinRate", rate(join, applied));
+  setText("sideRows", applied);
+  setText("sideMonth", monthLabel($("month")?.value || ""));
+  setText("sideChannel", $("channel")?.value || "すべて");
+  setText("sideDivision", $("division")?.value || "すべて");
+  setText("sideCenter", $("center")?.value || "すべて");
+  const selectedText = selectedDivision || "すべて";
+  setText("selectedDivisionBox", selectedText);
+  const link = $("listLink");
+  if(link) link.href = buildListUrl();
+  const top = divisionData[0];
+  const insight = $("detailInsight");
+  if(!applied){
+    insight.className = "insight-card neutral";
+    insight.innerHTML = '<div class="insight-title">確認ポイント</div><div class="insight-body">対象データがありません。年度・月・媒体を確認してください。</div>';
+    return;
+  }
+  insight.className = "insight-card success";
+  insight.innerHTML = `<div class="insight-title">確認ポイント</div><div class="insight-body">応募が最も多い本部は ${html(top?.key || "-")}（${top?.applied || 0}件）です。職種・年齢層の偏りは下段で確認してください。</div>`;
+}
+function renderAnalysis(){
+  applyFiscalYear(true);
+  const base = filteredBase(rows);
+  const divisionItems = groupBy(base, r => normalizeText(r.division, "本部未設定"));
+  if(selectedDivision && !divisionItems.some(x => x.key === selectedDivision)) selectedDivision = "";
+  const scoped = selectedDivision ? base.filter(r => normalizeText(r.division, "本部未設定") === selectedDivision) : base;
+  const maxDivision = Math.max(...divisionItems.map(x => x.applied), 1);
+  updateSummary(base, divisionItems);
+  renderGroupTable("divisionHead", "divisionBody", "本部", divisionItems, { selectable:true, max:maxDivision });
+  renderGroupTable("centerHead", "centerBody", "営業所", groupBy(scoped, r => normalizeText(r.center_name, "営業所未設定")), { max:Math.max(...groupBy(scoped, r => normalizeText(r.center_name, "営業所未設定")).map(x => x.applied), 1) });
+  renderGroupTable("jobHead", "jobBody", "職種", groupBy(scoped, r => normalizeText(r.job_type, "職種未設定")), { max:Math.max(...groupBy(scoped, r => normalizeText(r.job_type, "職種未設定")).map(x => x.applied), 1) });
+  renderCrossTable("divisionJobHead", "divisionJobBody", groupCross(base, r => normalizeText(r.division, "本部未設定"), r => normalizeText(r.job_type, "職種未設定")));
+  renderCrossTable("divisionAgeHead", "divisionAgeBody", groupCross(base, r => normalizeText(r.division, "本部未設定"), r => ageBand(r.age).label));
+  renderCandidates(scoped.sort((a,b) => String(b.applied_date || "").localeCompare(String(a.applied_date || ""))));
+  saveState();
+}
+async function getUser(){
+  currentUser = await window.RecruitPageAuth.getUser({ client: sb, currentUser });
+  return currentUser;
+}
+async function getRole(userId){
+  if(currentRole) return currentRole;
+  const user = currentUser || (userId ? { id:userId } : null);
+  currentRole = await window.RecruitPageAuth.getRole({ client: sb, user, currentRole });
+  return currentRole;
+}
+function showAuth(msg="未ログインです", type="info"){
+  currentUser = null;
+  currentRole = null;
+  window.RecruitPageAuth.showAuth({ msg, type, setMsg });
+}
+async function showApp(){
+  const user = await getUser();
+  if(!user){ showAuth(); return false; }
+  await getRole(user.id);
+  window.RecruitPageAuth.showApp();
+  return true;
+}
+async function login(){
+  await window.RecruitPageAuth.login({
+    client: sb,
+    setMsg,
+    afterLogin: async function(){
+      currentUser = null;
+      currentRole = null;
+      if(await showApp()) await initPageAfterLogin();
+    }
+  });
+}
+async function logout(){
+  if(window.RecruitAuth && typeof window.RecruitAuth.logoutToIndex === "function"){
+    await window.RecruitAuth.logoutToIndex();
+    return;
+  }
+  try{ await sb.auth.signOut(); }catch(e){}
+  window.location.replace("./index.html");
+}
+sb.auth.onAuthStateChange((ev) => {
+  if(ev === "SIGNED_OUT"){
+    if(window.RecruitAuth && typeof window.RecruitAuth.isDirectLogout === "function" && window.RecruitAuth.isDirectLogout()) return;
+    showAuth("ログアウトしました", "success");
+  }
+});
+async function authInit(){
+  await window.RecruitPageAuth.authInit({
+    client: sb,
+    setMsg,
+    onRole: function(role, user){ currentRole = role; currentUser = user; },
+    afterAuth: async function(){ await initPageAfterLogin(); }
+  });
+}
+async function loadAnalysis(){
+  try{
+    setMsg("pageMessage", "", "info");
+    await Promise.all([fetchChannelMasterRows(), loadCenterMaster()]);
+    const { data, error } = await sb.from("candidates").select("id,name,age,job_type,applied_date,status,division,center_name,channel,channel_detail,owner_name,hiring_result,is_deleted,interview_done_date,join_date,appointment_date,interview1_date,offer_date").order("id", { ascending:false });
+    if(error) throw error;
+    rows = data || [];
+    applyFiscalYear(true);
+    bindMasters(rows);
+    applyState();
+    renderAnalysis();
+  }catch(e){
+    console.error(e);
+    setMsg("pageMessage", "読込失敗: " + (e.message || e), "error");
+  }
+}
+async function initPageAfterLogin(){ await loadAnalysis(); }
+authInit();
+</script>
 </body>
 </html>
