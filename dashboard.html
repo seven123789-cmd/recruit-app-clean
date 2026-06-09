@@ -396,8 +396,9 @@ function applyFiscalYearSelection(){
     document.getElementById("filterFrom").value = range.from;
     document.getElementById("filterTo").value = range.to;
   }
+  saveDashboardFilterState();
 }
-const DASHBOARD_STATE_KEY = "recruit_dashboard_filter_state";
+const DASHBOARD_STATE_KEY = "recruit:dashboard:filters";
 function getDashboardFilterState(){
   return {
     fiscalYear:document.getElementById("filterFiscalYear")?.value || "current",
@@ -414,15 +415,27 @@ function getDashboardFilterState(){
 }
 function saveDashboardFilterState(){
   try{
-    sessionStorage.setItem(DASHBOARD_STATE_KEY, JSON.stringify(getDashboardFilterState()));
+    localStorage.setItem(DASHBOARD_STATE_KEY, JSON.stringify(getDashboardFilterState()));
   }catch(e){
     console.warn(e);
   }
 }
+function setDashboardSelectValue(id,value){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const v=String(value||"");
+  if(v && !Array.from(el.options || []).some(opt=>opt.value===v)){
+    const option=document.createElement("option");
+    option.value=v;
+    option.textContent=v;
+    el.appendChild(option);
+  }
+  el.value=v;
+}
 function restoreDashboardFilterState(){
   let saved=null;
   try{
-    saved=JSON.parse(sessionStorage.getItem(DASHBOARD_STATE_KEY) || "null");
+    saved=JSON.parse(localStorage.getItem(DASHBOARD_STATE_KEY) || "null");
   }catch(e){
     saved=null;
   }
@@ -437,11 +450,11 @@ function restoreDashboardFilterState(){
 
   if(document.getElementById("filterFrom"))document.getElementById("filterFrom").value=saved.from || "";
   if(document.getElementById("filterTo"))document.getElementById("filterTo").value=saved.to || "";
-  if(document.getElementById("filterDivision"))document.getElementById("filterDivision").value=saved.division || "";
+  setDashboardSelectValue("filterDivision", saved.division || "");
   updateCenterOptionsForFilter();
-  if(document.getElementById("filterCenter"))document.getElementById("filterCenter").value=saved.center || "";
-  if(document.getElementById("filterChannel"))document.getElementById("filterChannel").value=saved.channel || "";
-  if(document.getElementById("filterOwner"))document.getElementById("filterOwner").value=saved.owner || "";
+  setDashboardSelectValue("filterCenter", saved.center || "");
+  setDashboardSelectValue("filterChannel", saved.channel || "");
+  setDashboardSelectValue("filterOwner", saved.owner || "");
   if(document.getElementById("filterDeleted"))document.getElementById("filterDeleted").value=saved.deleted || "active";
 
   const card=document.getElementById("filterCard");
@@ -455,7 +468,7 @@ function restoreDashboardFilterState(){
 }
 function clearDashboardFilterState(){
   try{
-    sessionStorage.removeItem(DASHBOARD_STATE_KEY);
+    localStorage.removeItem(DASHBOARD_STATE_KEY);
   }catch(e){
     console.warn(e);
   }
@@ -475,6 +488,7 @@ function clearFilters(){
   document.getElementById("filterChannel").value = "";
   document.getElementById("filterOwner").value = "";
   if (currentRole === "admin") document.getElementById("filterDeleted").value = "active";
+  saveDashboardFilterState();
   loadDashboard();
 }
 function toggleFilters(){
@@ -482,6 +496,7 @@ function toggleFilters(){
   const mark = document.getElementById("filterToggleMark");
   card.classList.toggle("hidden");
   mark.textContent = card.classList.contains("hidden") ? "＋" : "－";
+  saveDashboardFilterState();
 }
 async function loadMasterDivisionCenterOptions(){
 
@@ -522,7 +537,10 @@ function populateSelect(id, values, emptyLabel = "すべて"){
   const list = [...new Set((values || []).filter(Boolean))].sort((a,b) => String(a).localeCompare(String(b),"ja"));
   el.innerHTML = '<option value="">' + emptyLabel + '</option>';
   list.forEach(v => el.innerHTML += '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>');
-  if (list.includes(current)) el.value = current;
+  if (current && !list.includes(current)) {
+    el.innerHTML += '<option value="' + escapeHtml(current) + '">' + escapeHtml(current) + '</option>';
+  }
+  if (current) el.value = current;
 }
 
 async function loadDashboardMasterChannels(){
@@ -701,6 +719,14 @@ function goListFilter(filterType){
   if (payload.owner) params.set("owner", payload.owner);
   window.location.href = "./list.html?" + params.toString();
 }
+["filterFiscalYear","filterFrom","filterTo","filterDivision","filterCenter","filterChannel","filterOwner","filterDeleted"].forEach(id=>{
+  document.addEventListener("change",e=>{
+    if(e.target && e.target.id===id){
+      if(id==="filterDivision") updateCenterOptionsForFilter();
+      saveDashboardFilterState();
+    }
+  });
+});
 sb.auth.onAuthStateChange((event) => {
   if (event === "SIGNED_OUT") {
     currentUser = null;

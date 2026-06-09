@@ -257,7 +257,7 @@ const listVirtualState = { rows:[], start:-1, end:-1, today:"" };
 
 const ACTIVE_STATUSES=window.RECRUIT_STAGE_STATUSES || ["応募","書類選考","アポ取得","面接設定","面接実施","内定","採用"];
 const HIRING_RESULT_OPTIONS=window.RECRUIT_HIRING_RESULTS || ["進行中","保留","辞退","不採用","不通","採用","入社済"];
-const STATE="recruit_list_filter_state";
+const STATE="recruit:list:filters";
 const NAV="recruit_list_navigation_state";
 
 function $(id){return document.getElementById(id)}
@@ -563,10 +563,6 @@ async function authInit(){
 }
 
 function saveState(){
-  // dashboardから来た一時条件はLISTの通常保存条件に混ぜない。
-  // ここで保存すると、次回「全期間」で開いた時に前回年度が復活する。
-  if(dashboardContextActive)return;
-
   localStorage.setItem(STATE,JSON.stringify({
     listFilter:currentListFilter,
     sortMode,
@@ -581,7 +577,12 @@ function saveState(){
     dateFrom:$("filterDateFrom")?.value||"",
     dateTo:$("filterDateTo")?.value||"",
     statuses:[...selectedStatusFilters],
-    results:[...selectedResultFilters]
+    results:[...selectedResultFilters],
+    dashboardContextActive,
+    dashboardFilterActive,
+    dashboardFrom,
+    dashboardTo,
+    dashboardJob
   }));
 }
 function restoreState(){
@@ -1581,6 +1582,11 @@ async function loadCandidates(){
         if(dateToEl)dateToEl.value=state.dateTo||"";
         selectedStatusFilters=new Set(Array.isArray(state.statuses)?state.statuses.map(v=>String(v||"").trim()).filter(Boolean):[]);
         selectedResultFilters=new Set(Array.isArray(state.results)?state.results.map(v=>String(v||"").trim()).filter(Boolean):[]);
+        dashboardContextActive=!!state.dashboardContextActive;
+        dashboardFilterActive=!!state.dashboardFilterActive;
+        dashboardFrom=validDate(state.dashboardFrom) ? state.dashboardFrom : "";
+        dashboardTo=validDate(state.dashboardTo) ? state.dashboardTo : "";
+        dashboardJob=state.dashboardJob||"";
       }
     }
 
@@ -1617,6 +1623,16 @@ async function initPageAfterLogin(){
       requestRenderCandidates();
     }
   });
+});
+document.addEventListener("input",e=>{
+  if(e.target && e.target.id==="filterNameKeyword"){
+    if(dashboardContextActive){
+      clearDashboardRangeFilter();
+      dashboardContextActive=false;
+    }
+    saveState();
+    requestRenderCandidates();
+  }
 });
 authInit();
 </script>
