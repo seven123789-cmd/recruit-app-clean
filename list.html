@@ -117,6 +117,18 @@
             <label for="filterNameKeyword">氏名・フリーワード検索</label>
             <input id="filterNameKeyword" type="text" placeholder="例：山田 / テンリク / Indeed">
           </div>
+          <div class="col-3">
+            <label for="filterAgeFrom">年齢（下限）</label>
+            <input id="filterAgeFrom" type="number" min="0" max="99" inputmode="numeric" placeholder="例：20">
+          </div>
+          <div class="col-3">
+            <label for="filterAgeTo">年齢（上限）</label>
+            <input id="filterAgeTo" type="number" min="0" max="99" inputmode="numeric" placeholder="例：59">
+          </div>
+          <div class="col-3">
+            <label for="filterJobType">職種</label>
+            <select id="filterJobType"><option value="">全職種</option></select>
+          </div>
           <div class="col-12 list-status-filter-panel">
             <div class="list-status-filter-head">
               <div>
@@ -307,6 +319,13 @@ function matchesListFreeword(row, keyword){
   const key = normalizeListFreewordKey(keyword);
   if(!key) return true;
   return normalizeListFreewordKey(listFreewordText(row)).includes(key);
+}
+function normalizeListAgeNumber(value){
+  const text=String(value ?? "").replace(/[０-９]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0xFEE0));
+  const match=text.match(/\d+/);
+  if(!match)return null;
+  const age=Number(match[0]);
+  return Number.isFinite(age) ? age : null;
 }
 
 
@@ -573,6 +592,9 @@ function saveState(){
     center:$("filterCenter").value,
     owner:$("filterOwner").value,
     channel:$("filterChannel").value,
+    ageFrom:$("filterAgeFrom")?.value||"",
+    ageTo:$("filterAgeTo")?.value||"",
+    jobType:$("filterJobType")?.value||"",
     dateType:$("filterDateType")?.value||"applied_date",
     dateFrom:$("filterDateFrom")?.value||"",
     dateTo:$("filterDateTo")?.value||"",
@@ -597,6 +619,7 @@ function applyDashboardFilterIfExists(){
   dashboardTo=validDate(payload.to) ? payload.to : "";
   dashboardFilterActive=!!(dashboardFrom||dashboardTo);
   dashboardJob=payload.job||"";
+  setFilterValue("filterJobType",dashboardJob);
 
   // dashboard遷移時は、LISTに残っていた前回年度・月を必ず消す。
   setFilterValue("filterYear","");
@@ -777,6 +800,7 @@ async function setupFilters(rows){
   setSelectOptions("filterDivision", divisionOptions, "全部");
   setSelectOptions("filterCenter", centerOptions, "全営業所");
   setSelectOptions("filterOwner", rows.map(r=>r.owner_name), "全担当");
+  setSelectOptions("filterJobType", rows.map(r=>r.job_type), "全職種");
   await loadListMasterChannels();
   setSelectOptions("filterChannel", getListChannelOptions(rows), "全媒体");
   await loadListMasterStatuses(rows);
@@ -785,7 +809,7 @@ async function setupFilters(rows){
   setupBulkStatusOptions();
 }
 function clearFilters(){
-  ["filterYear","filterMonth","filterNameKeyword","filterDivision","filterCenter","filterOwner","filterChannel","filterDateFrom","filterDateTo"].forEach(id=>{
+  ["filterYear","filterMonth","filterNameKeyword","filterDivision","filterCenter","filterOwner","filterChannel","filterAgeFrom","filterAgeTo","filterJobType","filterDateFrom","filterDateTo"].forEach(id=>{
     const el=$(id);
     if(el)el.value="";
   });
@@ -1002,7 +1026,11 @@ function filteredRows(){
   const dateType=$("filterDateType")?.value || "applied_date";
   const dateFrom=$("filterDateFrom")?.value || "";
   const dateTo=$("filterDateTo")?.value || "";
-  const job=dashboardJob;
+  const ageFromRaw=$("filterAgeFrom")?.value || "";
+  const ageToRaw=$("filterAgeTo")?.value || "";
+  const ageFrom=ageFromRaw==="" ? null : Number(ageFromRaw);
+  const ageTo=ageToRaw==="" ? null : Number(ageToRaw);
+  const job=$("filterJobType")?.value || dashboardJob;
 
   let arr=allCandidateRows.filter(r=>{
     if(dashboardFilterActive){
@@ -1023,6 +1051,12 @@ function filteredRows(){
       if(dateTo&&targetDate>dateTo)return false;
     }
     if(nameKeyword && !matchesListFreeword(r, nameKeyword))return false;
+    if(ageFrom!==null || ageTo!==null){
+      const rowAge=normalizeListAgeNumber(r.age);
+      if(rowAge===null)return false;
+      if(ageFrom!==null && rowAge<ageFrom)return false;
+      if(ageTo!==null && rowAge>ageTo)return false;
+    }
     if(selectedStatusFilters.size && !selectedStatusFilters.has(String(normalizeListCandidate(r).status||"").trim()))return false;
     if(selectedResultFilters.size && !selectedResultFilters.has(normalizeHiringResult(r)))return false;
     return (!d||r.division===d)&&(!c||r.center_name===c)&&(!o||r.owner_name===o)&&(!ch||r.channel===ch)&&(!job||r.job_type===job);
@@ -1544,7 +1578,7 @@ async function loadCandidates(){
       sortMode = "appliedDesc";
       clearDashboardRangeFilter();
       dashboardContextActive = false;
-      ["filterYear","filterMonth","filterNameKeyword","filterDivision","filterCenter","filterOwner","filterChannel","filterDateFrom","filterDateTo"].forEach(id => {
+      ["filterYear","filterMonth","filterNameKeyword","filterDivision","filterCenter","filterOwner","filterChannel","filterAgeFrom","filterAgeTo","filterJobType","filterDateFrom","filterDateTo"].forEach(id => {
         const el = $(id);
         if(el) el.value = "";
       });
@@ -1569,7 +1603,10 @@ async function loadCandidates(){
           division:"filterDivision",
           center:"filterCenter",
           owner:"filterOwner",
-          channel:"filterChannel"
+          channel:"filterChannel",
+          ageFrom:"filterAgeFrom",
+          ageTo:"filterAgeTo",
+          jobType:"filterJobType"
         };
         Object.entries(map).forEach(([key,id])=>{
           const el=$(id);
@@ -1612,7 +1649,7 @@ async function loadCandidates(){
 async function initPageAfterLogin(){
   await loadCandidates();
 }
-["filterYear","filterMonth","filterNameKeyword","filterDivision","filterCenter","filterOwner","filterChannel","filterDateType","filterDateFrom","filterDateTo"].forEach(id=>{
+["filterYear","filterMonth","filterNameKeyword","filterDivision","filterCenter","filterOwner","filterChannel","filterAgeFrom","filterAgeTo","filterJobType","filterDateType","filterDateFrom","filterDateTo"].forEach(id=>{
   document.addEventListener("change",e=>{
     if(e.target&&e.target.id===id){
       if(dashboardContextActive){
@@ -1625,7 +1662,7 @@ async function initPageAfterLogin(){
   });
 });
 document.addEventListener("input",e=>{
-  if(e.target && e.target.id==="filterNameKeyword"){
+  if(e.target && ["filterNameKeyword","filterAgeFrom","filterAgeTo"].includes(e.target.id)){
     if(dashboardContextActive){
       clearDashboardRangeFilter();
       dashboardContextActive=false;
