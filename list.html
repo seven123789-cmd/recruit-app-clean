@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="./assets/css/common.css?v=20260528">
 <link rel="stylesheet" href="./assets/css/header.css?v=20260528">
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260528">
-<link rel="stylesheet" href="./assets/css/list.css?v=20260529_list_virtual">
+<link rel="stylesheet" href="./assets/css/list.css?v=20260529_list_name_meta_clean">
 </head>
 <body class="auth-checking">
 
@@ -294,6 +294,7 @@ function listFreewordText(row){
     row?.channel_detail,
     row?.media_detail,
     row?.job_type,
+    row?.age,
     row?.status,
     row?.hiring_result,
     row?.memo,
@@ -370,17 +371,21 @@ function resultBadge(row){
   const cls=result==="入社済"?"result-joined":result==="採用"?"result-hired":result==="不採用"?"result-rejected":result==="辞退"?"result-declined":result==="不通"?"result-no-contact":result==="保留"?"result-hold":"result-pending";
   return `<span class="result-badge ${cls}">${esc(result)}</span>`;
 }
-function actionRequiredBadge(row){
-  if(!isActionRequired(row)) return "";
-  return '<button class="list-action-required-badge" type="button" title="応募者詳細で要対応内容を確認">要対応</button>';
-}
 function dataQualityBadge(row){
   if(!isDataQualityIssue(row)) return "";
   return '<button class="list-data-quality-badge" type="button" title="応募者詳細で未登録・不整合の内容を確認">データ不整合</button>';
 }
+function candidateNameMeta(row){
+  const job = String(row?.job_type || "").trim() || "職種未設定";
+  const ageRaw = row?.age ?? "";
+  const ageText = String(ageRaw || "").trim();
+  const age = ageText ? ageText.replace(/歳$/, "") + "歳" : "年齢未設定";
+  return job + " / " + age;
+}
 function nameCell(row){
-  const alerts=[actionRequiredBadge(row), dataQualityBadge(row)].filter(Boolean).join("");
-  return `<div class="candidate-name-cell"><strong>${esc(row.name||"")}</strong>${alerts ? `<div class="candidate-alert-line">${alerts}</div>` : ""}</div>`;
+  const quality = dataQualityBadge(row);
+  const meta = candidateNameMeta(row);
+  return `<div class="candidate-name-cell"><strong>${esc(row.name||"")}</strong><div class="candidate-sub-meta">${esc(meta)}</div>${quality ? `<div class="candidate-alert-line">${quality}</div>` : ""}</div>`;
 }
 
 function statusResultCell(row){
@@ -1515,7 +1520,7 @@ async function loadCandidates(){
   try{
     const {data,error}=await sb
       .from("candidates")
-      .select("id,name,applied_date,status,division,center_name,channel,channel_detail,owner_name,next_action_date,hiring_result,is_deleted,appointment_date,interview1_date,interview_done_date,offer_date,join_date,reject_reason,decline_reason,action_memo")
+      .select("id,name,age,job_type,applied_date,status,division,center_name,channel,channel_detail,owner_name,next_action_date,hiring_result,is_deleted,appointment_date,interview1_date,interview_done_date,offer_date,join_date,reject_reason,decline_reason,action_memo")
       .eq("is_deleted",false)
       .order("id",{ascending:false});
     if(error)throw error;
