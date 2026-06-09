@@ -1,0 +1,53 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>媒体応募内訳</title>
+<link rel="stylesheet" href="./assets/css/common.css">
+<link rel="stylesheet" href="./assets/css/header.css">
+<link rel="stylesheet" href="./assets/css/sidebar.css">
+<link rel="stylesheet" href="./assets/css/dashboard_ui.css">
+<script src="./sidebar.js"></script>
+</head>
+<body>
+<div class="app-layout">
+<aside class="sidebar" id="dashboardSidebarMenu"></aside>
+<main class="main-content">
+<header class="page-header dashboard-page-header">
+<h1>媒体応募内訳（試作版）</h1>
+</header>
+
+<section class="analysis-control-card">
+<h2>条件</h2>
+<p>年度・月・媒体ごとに本部別、職種別、年齢層別の応募状況を確認します。</p>
+</section>
+
+<section class="analysis-card">
+<h2>本部別応募数</h2>
+<table class="table">
+<thead><tr><th>本部</th><th>応募数</th></tr></thead>
+<tbody id="divisionTable"></tbody>
+</table>
+</section>
+
+<section class="analysis-card">
+<h2>職種別応募数</h2>
+<table class="table">
+<thead><tr><th>職種</th><th>応募数</th></tr></thead>
+<tbody id="jobTable"></tbody>
+</table>
+</section>
+
+<section class="analysis-card">
+<h2>年齢層別応募数</h2>
+<table class="table">
+<thead><tr><th>年齢層</th><th>応募数</th></tr></thead>
+<tbody id="ageTable"></tbody>
+</table>
+</section>
+</main>
+</div>
+</body>
+</html>

@@ -25,7 +25,8 @@
       key:"compare",
       items:[
         { href:"./dashboard_compare.html", label:"比較分析" },
-        { href:"./dashboard_age.html", label:"年齢分析" }
+        { href:"./dashboard_age.html", label:"年齢分析" },
+        { href:"./dashboard_channel_detail.html", label:"媒体応募内訳" }
       ]
     },
     {
