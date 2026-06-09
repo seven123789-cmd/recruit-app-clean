@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="./assets/css/sidebar.css?v=20260524_metric_audit">
 <link rel="stylesheet" href="./assets/css/dashboard.css?v=20260528_batch_finish1">
 <link rel="icon" href="data:,">
-<script src="./common.js?v=20260529_reject_save_fix"></script>
+<script src="./common.js?v=20260529_dashboard_state_restore"></script>
 <script src="assets/js/overdue_popup.js?v=20260529_step1"></script>
 <script src="assets/js/dashboard_utils.js?v=20260529_step1"></script>
 <script src="assets/js/supabase.js?v=20260524_metric_audit"></script>
@@ -397,12 +397,76 @@ function applyFiscalYearSelection(){
     document.getElementById("filterTo").value = range.to;
   }
 }
+const DASHBOARD_STATE_KEY = "recruit_dashboard_filter_state";
+function getDashboardFilterState(){
+  return {
+    fiscalYear:document.getElementById("filterFiscalYear")?.value || "current",
+    from:document.getElementById("filterFrom")?.value || "",
+    to:document.getElementById("filterTo")?.value || "",
+    division:document.getElementById("filterDivision")?.value || "",
+    center:document.getElementById("filterCenter")?.value || "",
+    channel:document.getElementById("filterChannel")?.value || "",
+    owner:document.getElementById("filterOwner")?.value || "",
+    deleted:document.getElementById("filterDeleted")?.value || "active",
+    filterOpen:!document.getElementById("filterCard")?.classList.contains("hidden"),
+    savedAt:(window.RecruitDate?.nowIso ? window.RecruitDate.nowIso() : new Date().toISOString())
+  };
+}
+function saveDashboardFilterState(){
+  try{
+    sessionStorage.setItem(DASHBOARD_STATE_KEY, JSON.stringify(getDashboardFilterState()));
+  }catch(e){
+    console.warn(e);
+  }
+}
+function restoreDashboardFilterState(){
+  let saved=null;
+  try{
+    saved=JSON.parse(sessionStorage.getItem(DASHBOARD_STATE_KEY) || "null");
+  }catch(e){
+    saved=null;
+  }
+  if(!saved)return false;
+
+  const fiscal=document.getElementById("filterFiscalYear");
+  if(fiscal && saved.fiscalYear)fiscal.value=saved.fiscalYear;
+
+  if(saved.fiscalYear && saved.fiscalYear !== "custom"){
+    applyFiscalYearSelection();
+  }
+
+  if(document.getElementById("filterFrom"))document.getElementById("filterFrom").value=saved.from || "";
+  if(document.getElementById("filterTo"))document.getElementById("filterTo").value=saved.to || "";
+  if(document.getElementById("filterDivision"))document.getElementById("filterDivision").value=saved.division || "";
+  updateCenterOptionsForFilter();
+  if(document.getElementById("filterCenter"))document.getElementById("filterCenter").value=saved.center || "";
+  if(document.getElementById("filterChannel"))document.getElementById("filterChannel").value=saved.channel || "";
+  if(document.getElementById("filterOwner"))document.getElementById("filterOwner").value=saved.owner || "";
+  if(document.getElementById("filterDeleted"))document.getElementById("filterDeleted").value=saved.deleted || "active";
+
+  const card=document.getElementById("filterCard");
+  const mark=document.getElementById("filterToggleMark");
+  if(card && mark){
+    card.classList.toggle("hidden", !saved.filterOpen);
+    mark.textContent=card.classList.contains("hidden") ? "＋" : "－";
+  }
+
+  return true;
+}
+function clearDashboardFilterState(){
+  try{
+    sessionStorage.removeItem(DASHBOARD_STATE_KEY);
+  }catch(e){
+    console.warn(e);
+  }
+}
 function setCurrentFiscalYear(){
   refreshDashboardFiscalYearLabels();
   document.getElementById("filterFiscalYear").value = "current";
   applyFiscalYearSelection();
 }
 function clearFilters(){
+  clearDashboardFilterState();
   document.getElementById("filterFiscalYear").value = "current";
   applyFiscalYearSelection();
   document.getElementById("filterDivision").value = "";
@@ -550,6 +614,8 @@ async function loadDashboard(){
     const filterFrom = document.getElementById("filterFrom").value;
     const filterTo = document.getElementById("filterTo").value;
 
+    saveDashboardFilterState();
+
     let query = sb.from("candidates").select("*").order("id", { ascending:false });
     if (currentRole === "admin") {
       if (filterDeleted === "active") query = query.eq("is_deleted", false);
@@ -614,6 +680,7 @@ function goListFilter(filterType){
     owner:document.getElementById("filterOwner")?.value || "",
     savedAt:(window.RecruitDate?.nowIso ? window.RecruitDate.nowIso() : new Date().toISOString())
   };
+  saveDashboardFilterState();
   try {
     // dashboardからLISTへ渡す条件は一時情報なのでsessionStorageだけに保存する。
     // localStorageに残すと、別条件で開いた時に前回年度が復活する原因になる。
@@ -649,7 +716,8 @@ sb.auth.onAuthStateChange((event) => {
     if (ok) {
       await loadCenterMaster();
       refreshDashboardFiscalYearLabels();
-      setCurrentFiscalYear();
+      const restoredDashboardState = restoreDashboardFilterState();
+      if (!restoredDashboardState) setCurrentFiscalYear();
       await loadDashboard();
     }
   } catch (e) {
