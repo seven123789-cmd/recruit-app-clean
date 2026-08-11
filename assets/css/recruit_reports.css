@@ -1,8 +1,10 @@
 /* =========================================================
    recruit_reports.css
    採用レポート画面 固有レイアウト
-   共通UIは common.css / dashboard_ui.css を使用し、
-   ここではレポート固有の2カラム配置と印刷だけを定義する。
+
+   共通部品：common.css / dashboard_ui.css
+   このファイルはレポート特有の「2カラム表」「集計表」「印刷」のみを担当。
+   common.css の table min-width:920px をレポート表に持ち込まない。
    ========================================================= */
 
 .report-head{
@@ -12,14 +14,9 @@
   gap:16px;
 }
 .report-head > div{min-width:0;}
-.report-head p{
-  margin:6px 0 0;
-  color:#64748b;
-}
+.report-head p{margin:6px 0 0;color:#64748b;}
 
-.report-print-title{
-  margin:4px 0 12px;
-}
+.report-print-title{margin:4px 0 12px;}
 .report-print-title h2{
   margin:0 0 4px;
   color:#0f172a;
@@ -27,33 +24,91 @@
   font-weight:950;
   line-height:1.25;
 }
-.report-print-title div{
-  color:#64748b;
-  font-size:13px;
-  font-weight:750;
-}
+.report-print-title div{color:#64748b;font-size:13px;font-weight:750;}
 
 .report-summary-grid--six{
   grid-template-columns:repeat(6,minmax(0,1fr))!important;
 }
 
+/* サマリー上段の左右2表 */
 .report-two{
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
   gap:16px;
   width:100%;
   min-width:0;
+  align-items:start;
 }
-.report-two > *{
-  min-width:0;
+.report-two > *{min-width:0;}
+
+/* table-card は common.css の正式な構造に合わせる */
+.report-table-card{padding:0!important;overflow:hidden;}
+.report-table-card .table-head{
+  padding:18px 20px 12px;
+  border-bottom:1px solid var(--line);
 }
-.report-two .table-wrap{
+.report-table-card .table-head h2{
+  margin:0;
+  color:#0f4fe8;
+  font-size:18px;
+  font-weight:950;
+  line-height:1.25;
+}
+.report-table-card .table-wrap{
   width:100%;
-  min-width:0;
+  max-width:100%;
+  overflow-x:auto;
+  overflow-y:auto;
+  max-height:680px;
 }
-.report-two table{
-  min-width:640px;
+
+/*
+  common.css の table{min-width:920px} をこの画面だけ正しく解除。
+  左右2分割表はコンテナ幅内で収め、数値列の基準を揃える。
+*/
+.report-table{
+  width:100%!important;
+  min-width:0!important;
+  table-layout:fixed;
+  border-collapse:collapse;
+  background:#fff;
 }
+.report-table th,
+.report-table td{
+  height:44px;
+  padding:10px 8px;
+  vertical-align:middle;
+  font-variant-numeric:tabular-nums;
+  line-height:1.25;
+}
+.report-table th{
+  text-align:center;
+  font-size:12px;
+  white-space:nowrap;
+}
+.report-table td{
+  text-align:center;
+  font-size:13px;
+  white-space:nowrap;
+}
+.report-table th:first-child,
+.report-table td:first-child{
+  text-align:left;
+  padding-left:14px;
+}
+
+/* 左右2分割に入る5～6列表 */
+.report-table--summary th:first-child,
+.report-table--summary td:first-child{width:34%;}
+.report-table--summary th:not(:first-child),
+.report-table--summary td:not(:first-child){width:auto;}
+
+/* 8列前後の全幅表は最低限の幅を確保し、必要時だけ表内スクロール */
+.report-table--wide{min-width:760px!important;}
+.report-table--wide th:first-child,
+.report-table--wide td:first-child{width:18%;}
+.report-table--wide th:nth-child(2),
+.report-table--wide td:nth-child(2){width:16%;}
 
 .report-note{
   margin:12px 0 0;
@@ -63,91 +118,46 @@
 }
 
 @media(max-width:1400px){
-  .report-summary-grid--six{
-    grid-template-columns:repeat(3,minmax(0,1fr))!important;
-  }
+  .report-summary-grid--six{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
 }
-@media(max-width:1200px){
-  .report-two{
-    grid-template-columns:1fr;
-  }
-  .report-two table{
-    min-width:920px;
-  }
+@media(max-width:1180px){
+  .report-two{grid-template-columns:1fr;}
+  .report-table--summary{min-width:0!important;}
 }
 @media(max-width:720px){
-  .report-head{
-    display:block;
-  }
-  .report-head .no-print{
-    margin-top:12px;
-  }
-  .report-summary-grid--six{
-    grid-template-columns:1fr!important;
-  }
+  .report-head{display:block;}
+  .report-head .no-print{margin-top:12px;}
+  .report-summary-grid--six{grid-template-columns:1fr!important;}
+  .report-table--summary{min-width:620px!important;}
 }
 
 @media print{
-  .sidebar,
-  .no-print,
-  .sidebar-section-title{
-    display:none!important;
-  }
-  body{
-    background:#fff!important;
-  }
-  .app-layout,
-  .main-content{
+  .sidebar,.no-print,.sidebar-section-title{display:none!important;}
+  body{background:#fff!important;}
+  .app-layout,.main-content{
     display:block!important;
     width:100%!important;
     max-width:none!important;
     margin:0!important;
     padding:0!important;
   }
-  .page-header{
-    box-shadow:none!important;
-    margin-bottom:8px!important;
-  }
-  .card{
-    box-shadow:none!important;
-    break-inside:avoid;
-    margin:8px 0!important;
-    padding:10px!important;
-  }
-  .report-print-title{
-    margin:0 0 8px;
-  }
-  .report-summary-grid,
-  .report-summary-grid--six{
+  .page-header{box-shadow:none!important;margin-bottom:8px!important;}
+  .card{box-shadow:none!important;break-inside:avoid;margin:8px 0!important;}
+  .report-print-title{margin:0 0 8px;}
+  .report-summary-grid,.report-summary-grid--six{
     grid-template-columns:repeat(6,minmax(0,1fr))!important;
     gap:6px!important;
   }
-  .report-summary-grid .metric-card{
-    min-height:0!important;
-    padding:8px!important;
-    box-shadow:none!important;
-  }
-  .report-summary-grid .metric-card .value{
-    font-size:20px!important;
-  }
-  .report-two{
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:8px;
-  }
-  .table-wrap{
-    overflow:visible!important;
-    max-height:none!important;
-  }
-  table,
-  .report-two table{
+  .report-summary-grid .metric-card{min-height:0!important;padding:8px!important;box-shadow:none!important;}
+  .report-summary-grid .metric-card .value{font-size:20px!important;}
+  .report-two{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+  .report-table-card .table-wrap{overflow:visible!important;max-height:none!important;}
+  .report-table,.report-table--summary,.report-table--wide{
+    width:100%!important;
     min-width:0!important;
-    font-size:10px;
+    table-layout:fixed!important;
+    font-size:9px;
   }
-  th,td{
-    padding:5px!important;
-  }
-  @page{
-    size:A4 landscape;
-    margin:10mm;
-  }
+  .report-table th,.report-table td{height:auto!important;padding:4px!important;font-size:9px!important;}
+  @page{size:A4 landscape;margin:10mm;}
 }
