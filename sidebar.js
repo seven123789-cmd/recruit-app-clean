@@ -26,7 +26,9 @@
       items:[
         { href:"./dashboard_compare.html", label:"比較分析" },
         { href:"./dashboard_age.html", label:"年齢分析" },
-        { href:"./dashboard_channel_detail.html", label:"応募詳細分析" }
+        { href:"./dashboard_channel_detail.html", label:"応募詳細分析" },
+        { href:"./dashboard_media_division.html", label:"本部別・媒体分析" },
+        { href:"./dashboard_recruit_summary.html", label:"採用実績サマリー" }
       ]
     },
     {
