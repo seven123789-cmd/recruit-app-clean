@@ -1,2 +1,153 @@
-/* recruit_reports.css */
-.report-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}.report-head p{margin:6px 0 0;color:#64748b}.report-filters{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:14px;width:100%}.report-print-title{margin:18px 0 10px}.report-print-title h2{margin:0 0 4px}.report-print-title div{color:#64748b}.report-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}.report-kpis--six{grid-template-columns:repeat(6,1fr)}.report-kpi{padding:16px;border:1px solid #dbe3ee;border-radius:12px;background:#fff}.report-kpi span{display:block;color:#64748b;font-size:13px}.report-kpi strong{display:block;font-size:28px;margin-top:4px}.report-two{display:grid;grid-template-columns:1fr 1fr;gap:16px}.report-note{font-size:12px;color:#64748b;margin:12px 0 0}.table-card h2{margin-bottom:12px}@media(max-width:900px){.report-filters,.report-kpis,.report-kpis--six,.report-two{grid-template-columns:1fr 1fr}}@media print{.sidebar,.no-print,.sidebar-section-title{display:none!important}.app-layout,.main-content{display:block!important;width:100%!important;margin:0!important;padding:0!important}.main-content{max-width:none!important}.card{box-shadow:none!important;break-inside:avoid;margin:8px 0!important;padding:10px!important}.report-two{grid-template-columns:1fr 1fr}.report-kpis,.report-kpis--six{grid-template-columns:repeat(6,1fr)}.report-kpi{padding:8px}.report-kpi strong{font-size:20px}table{font-size:10px}th,td{padding:5px!important}.report-print-title{margin-top:0}@page{size:A4 landscape;margin:10mm}}
+/* =========================================================
+   recruit_reports.css
+   採用レポート画面 固有レイアウト
+   共通UIは common.css / dashboard_ui.css を使用し、
+   ここではレポート固有の2カラム配置と印刷だけを定義する。
+   ========================================================= */
+
+.report-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+}
+.report-head > div{min-width:0;}
+.report-head p{
+  margin:6px 0 0;
+  color:#64748b;
+}
+
+.report-print-title{
+  margin:4px 0 12px;
+}
+.report-print-title h2{
+  margin:0 0 4px;
+  color:#0f172a;
+  font-size:22px;
+  font-weight:950;
+  line-height:1.25;
+}
+.report-print-title div{
+  color:#64748b;
+  font-size:13px;
+  font-weight:750;
+}
+
+.report-summary-grid--six{
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+}
+
+.report-two{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+  width:100%;
+  min-width:0;
+}
+.report-two > *{
+  min-width:0;
+}
+.report-two .table-wrap{
+  width:100%;
+  min-width:0;
+}
+.report-two table{
+  min-width:640px;
+}
+
+.report-note{
+  margin:12px 0 0;
+  color:#64748b;
+  font-size:12px;
+  line-height:1.6;
+}
+
+@media(max-width:1400px){
+  .report-summary-grid--six{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:1200px){
+  .report-two{
+    grid-template-columns:1fr;
+  }
+  .report-two table{
+    min-width:920px;
+  }
+}
+@media(max-width:720px){
+  .report-head{
+    display:block;
+  }
+  .report-head .no-print{
+    margin-top:12px;
+  }
+  .report-summary-grid--six{
+    grid-template-columns:1fr!important;
+  }
+}
+
+@media print{
+  .sidebar,
+  .no-print,
+  .sidebar-section-title{
+    display:none!important;
+  }
+  body{
+    background:#fff!important;
+  }
+  .app-layout,
+  .main-content{
+    display:block!important;
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  .page-header{
+    box-shadow:none!important;
+    margin-bottom:8px!important;
+  }
+  .card{
+    box-shadow:none!important;
+    break-inside:avoid;
+    margin:8px 0!important;
+    padding:10px!important;
+  }
+  .report-print-title{
+    margin:0 0 8px;
+  }
+  .report-summary-grid,
+  .report-summary-grid--six{
+    grid-template-columns:repeat(6,minmax(0,1fr))!important;
+    gap:6px!important;
+  }
+  .report-summary-grid .metric-card{
+    min-height:0!important;
+    padding:8px!important;
+    box-shadow:none!important;
+  }
+  .report-summary-grid .metric-card .value{
+    font-size:20px!important;
+  }
+  .report-two{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  .table-wrap{
+    overflow:visible!important;
+    max-height:none!important;
+  }
+  table,
+  .report-two table{
+    min-width:0!important;
+    font-size:10px;
+  }
+  th,td{
+    padding:5px!important;
+  }
+  @page{
+    size:A4 landscape;
+    margin:10mm;
+  }
+}
